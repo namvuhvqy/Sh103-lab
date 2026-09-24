@@ -7,6 +7,7 @@ const adminLinks = [
   ["Nhân sự", "/admin/users"],
   ["Master Data", "/admin/master"],
   ["Seed / Import", "/admin/import"],
+  ["Audit log", "/admin/audit"],
 ] as const;
 
 export function AdminPageShell({ title, description, children }: { title: string; description: string; children: ReactNode }) {
