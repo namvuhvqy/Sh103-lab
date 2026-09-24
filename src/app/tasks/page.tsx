@@ -1,0 +1,46 @@
+import Link from "next/link";
+import { AppShell } from "@/components/shell/AppShell";
+import { TaskList } from "@/components/forms/TaskList";
+import { TasksFeedback } from "@/components/forms/TasksFeedback";
+import { getTodayTasks } from "@/lib/forms/queries";
+
+export const dynamic = "force-dynamic";
+
+const filters = [
+  ["ALL", "Tất cả"],
+  ["SINH_HOA", "Sinh hóa"],
+  ["MIEN_DICH", "Miễn dịch"],
+  ["NUOC_TIEU", "Nước tiểu"],
+  ["LY_TAM", "Ly tâm"],
+  ["NHAN_BENH_PHAM", "Nhận bệnh phẩm"],
+  ["GENERAL", "Chung"],
+];
+
+export default async function TasksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ area?: string; error?: string; saved?: string }>;
+}) {
+  const query = await searchParams;
+  const tasks = await getTodayTasks();
+
+  return (
+    <AppShell headerTitle="Việc hôm nay">
+      <h1 className="text-3xl font-bold">Việc hôm nay</h1>
+      <p className="mt-2 text-slate-600">Các nghĩa vụ theo ca và ngày, hỗ trợ nhập bù.</p>
+      <TasksFeedback error={query.error} saved={query.saved} />
+      <nav aria-label="Lọc khu vực" className="mt-5 flex gap-2 overflow-x-auto pb-3 pr-8 [scrollbar-width:thin]">
+        {filters.map(([code, label]) => (
+          <Link
+            key={code}
+            href={`/tasks?area=${code}`}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-bold ${(query.area ?? "ALL") === code ? "bg-slate-950 text-white" : "bg-white"}`}
+          >
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-5"><TaskList tasks={tasks} area={query.area} /></div>
+    </AppShell>
+  );
+}

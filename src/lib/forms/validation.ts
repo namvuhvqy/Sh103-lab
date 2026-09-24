@@ -1,0 +1,6 @@
+export type ValidationResult={ok:true}|{ok:false;error:string};
+export function validateDecontamination(value:{daily:boolean;weekly:boolean;spill:boolean}):ValidationResult{return value.daily||value.weekly||value.spill?{ok:true}:{ok:false,error:"Chọn ít nhất một hoạt động khử nhiễm"}}
+const CADENCES=new Set(["DAILY","WEEKLY","MONTHLY"]);const RESULTS=new Set(["PASS","FAIL"]);
+export function validateMaintenance(cadence:string,result:string):ValidationResult{if(!CADENCES.has(cadence))return{ok:false,error:"Chu kỳ bảo dưỡng không hợp lệ"};if(!RESULTS.has(result))return{ok:false,error:"Kết quả chỉ nhận Đạt hoặc Không đạt"};return{ok:true}}
+export type ShiftStatus={assetId:string;status:string};
+export function validateShiftStatuses(statuses:ShiftStatus[],expectedAssetIds:string[]):ValidationResult{const expected=new Set(expectedAssetIds);const received=new Set(statuses.map(s=>s.assetId));if(statuses.some(s=>!expected.has(s.assetId)||!new Set(["BT","KSD","H"]).has(s.status)))return{ok:false,error:"Trạng thái máy không hợp lệ"};if(received.size!==statuses.length)return{ok:false,error:"Mỗi máy chỉ có một trạng thái"};if(received.size!==expected.size||[...expected].some(id=>!received.has(id)))return{ok:false,error:"Phải ghi đủ trạng thái cho toàn bộ máy"};return{ok:true}}
