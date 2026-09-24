@@ -2,7 +2,6 @@ const CACHE_NAME = "sh103-static-v1";
 const OFFLINE_URL = "/offline";
 
 const STATIC_ASSETS = [
-  "/",
   "/offline",
   "/manifest.json",
   "/favicon.ico",

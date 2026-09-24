@@ -6,6 +6,11 @@ import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import fs from "fs";
 import path from "path";
 
+function readPngDimensions(filePath: string): [number, number] {
+  const png = fs.readFileSync(filePath);
+  return [png.readUInt32BE(16), png.readUInt32BE(20)];
+}
+
 describe("P1 PWA & Offline UX Requirements", () => {
   it("renders OfflineBanner with warning message when offline", () => {
     render(<OfflineBanner isOffline={true} />);
@@ -41,6 +46,14 @@ describe("P1 PWA & Offline UX Requirements", () => {
     expect(has192).toBe(true);
     expect(has512).toBe(true);
     expect(hasMaskable).toBe(true);
+
+    for (const icon of manifest.icons as Array<{ src: string; sizes: string }>) {
+      const expected = icon.sizes.split("x").map(Number) as [number, number];
+      const actual = readPngDimensions(
+        path.resolve(__dirname, `../public${icon.src}`)
+      );
+      expect(actual).toEqual(expected);
+    }
   });
 
   it("service worker sw.js only caches static/shell/offline and explicitly bypasses auth/rest/rpc/admin/reports", () => {
@@ -57,5 +70,6 @@ describe("P1 PWA & Offline UX Requirements", () => {
     expect(swContent).toContain("/reports");
     // Offline fallback cached
     expect(swContent).toContain("/offline");
+    expect(swContent).not.toMatch(/STATIC_ASSETS\s*=\s*\[[\s\S]*?["']\/["']/);
   });
 });
