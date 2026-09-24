@@ -35,7 +35,7 @@ export function MobileHeader({
         {rightAction || (
           <button
             type="button"
-            className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-600 transition-colors"
+            className="grid min-h-11 min-w-11 place-items-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-100"
             aria-label="Thông báo"
           >
             <Bell className="w-5 h-5" />

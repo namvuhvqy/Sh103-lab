@@ -33,7 +33,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-zinc-50 text-zinc-900">
       <DesktopSidebar isAdmin={isAdmin} />
 
-      <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
+      <div className="flex min-w-0 flex-1 flex-col pb-24 md:pb-0">
         <OfflineBanner isOffline={!isOnline} />
 
         <MobileHeader
