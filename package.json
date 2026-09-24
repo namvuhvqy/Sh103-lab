@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "audit:remote": "node scripts/audit-remote.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

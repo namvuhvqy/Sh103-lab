@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentShift } from "./domain";
+import { summarizeAreaProgress } from "./area-progress";
 import type { TaskView } from "@/components/forms/TaskList";
 
 export interface OccurrenceView {
@@ -12,9 +13,25 @@ export interface AssetView { id: string; source_name: string; source_code: strin
 
 export async function getAreaSummaries() {
   const supabase = await createClient();
-  const { data: locations } = await supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order");
-  const { data: assets } = await supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true);
-  return (locations ?? []).map((location) => ({ ...location, deviceCount: (assets ?? []).filter((asset) => asset.location_id === location.id).length, completed: 0, total: (assets ?? []).filter((asset) => asset.location_id === location.id).length }));
+  const shift = currentShift();
+  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: shift.businessDate });
+  if (ensureError) throw new Error(`Không khởi tạo được kỳ vận hành: ${ensureError.message}`);
+  const [{ data: locations, error: locationError }, { data: assets, error: assetError }, { data: occurrence, error: occurrenceError }] = await Promise.all([
+    supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order"),
+    supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true),
+    supabase.from("schedule_occurrences").select("fulfilled_by_record_id,register_periods!inner(form_template_versions!inner(form_templates!inner(code)))").eq("business_date", shift.businessDate).eq("slot_code", shift.code).eq("register_periods.form_template_versions.form_templates.code", "BM.06/QL.TRTB.01").maybeSingle(),
+  ]);
+  if (locationError) throw new Error(`Không tải được khu vực: ${locationError.message}`);
+  if (assetError) throw new Error(`Không tải được thiết bị: ${assetError.message}`);
+  if (occurrenceError) throw new Error(`Không tải được ca BM.06: ${occurrenceError.message}`);
+
+  let completedAssetIds = new Set<string>();
+  if (occurrence?.fulfilled_by_record_id) {
+    const { data: statuses, error: statusError } = await supabase.from("equipment_shift_statuses").select("asset_id").eq("shift_record_id", occurrence.fulfilled_by_record_id);
+    if (statusError) throw new Error(`Không tải được trạng thái ca BM.06: ${statusError.message}`);
+    completedAssetIds = new Set((statuses ?? []).map((status) => status.asset_id));
+  }
+  return summarizeAreaProgress(locations ?? [], assets ?? [], completedAssetIds);
 }
 export async function getArea(code: string) {
   const supabase = await createClient();
@@ -52,6 +69,13 @@ export async function getPeriod(id: string): Promise<{ period: PeriodView; occur
   ]);
   return period ? { period: period as unknown as PeriodView, occurrences: occurrences ?? [], records: (records ?? []) as unknown as RecordView[] } : null;
 }
+export async function getRecord(id: string): Promise<RecordView | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("records").select("id,record_type,business_date,slot_code,record_state,is_na,note,measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit),equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot)").eq("id", id).eq("is_effective", true).maybeSingle();
+  if (error) throw new Error(`Không tải được bản ghi: ${error.message}`);
+  return data as unknown as RecordView | null;
+}
+
 export async function getAsset(id: string): Promise<{ asset: AssetView; records: Array<{ id: string; business_date: string; slot_code: string | null; record_type: string; record_state: string; note: string | null }>; shifts: Array<{ status_code: string; records: { id: string; business_date: string; slot_code: string | null; record_state: string } }> } | null> {
   const supabase = await createClient();
   const { data: asset } = await supabase.from("assets").select("id,source_name,source_code,source_order,asset_type,active,locations(id,code,name)").eq("id", id).single();

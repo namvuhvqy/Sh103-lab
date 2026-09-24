@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(56);
+select plan(61);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
 values('30000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','p3@test.local','',now(),now(),now());
@@ -20,6 +20,9 @@ select has_table('public','decontamination_details','KNBM detail exists');
 select has_table('public','maintenance_details','maintenance detail exists');
 select has_table('public','equipment_shift_details','BM06 header detail exists');
 select has_table('public','equipment_shift_statuses','BM06 statuses exist');
+select has_table('public','decontamination_events','KNBM append-only activity audit exists');
+select has_column('public','decontamination_events','performed_by','KNBM event preserves performer');
+select has_column('public','decontamination_events','performed_at','KNBM event preserves timestamp');
 
 select is((select count(*)::integer from public.form_template_versions where status='PUBLISHED'),6,'six published versions seeded');
 select is((select count(*)::integer from public.form_schedule_rules r join public.form_template_versions v on v.id=r.form_version_id join public.form_templates t on t.id=v.form_template_id where t.code='BM.01/QL.HTAT.01'),2,'BM01 has two slot rules');
@@ -67,6 +70,8 @@ select col_has_check('public','maintenance_details','cadence','maintenance caden
 select col_has_check('public','maintenance_details','result','maintenance result constrained');
 select col_has_check('public','equipment_shift_statuses','status_code','BM06 status constrained');
 select col_is_unique('public','equipment_shift_statuses',array['shift_record_id','asset_id'],'one status per asset per shift');
+select has_column('public','equipment_shift_statuses','updated_by','BM06 status tracks latest contributor');
+select has_column('public','equipment_shift_statuses','updated_at','BM06 status tracks latest update time');
 select has_function('public','save_measurement_record',array['uuid','timestamptz','numeric','numeric','text','boolean','text'],'measurement save RPC exists');
 select has_function('public','save_decontamination_record',array['uuid','date','boolean','boolean','boolean','text'],'KNBM save RPC exists');
 select has_function('public','save_maintenance_record',array['uuid','timestamptz','text','text','text'],'maintenance save RPC exists');
