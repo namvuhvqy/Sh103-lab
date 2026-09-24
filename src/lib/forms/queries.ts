@@ -9,6 +9,9 @@ export interface OccurrenceView {
 }
 export interface PeriodView { id: string; period_label: string | null; status: string; period_start: string; period_end: string; locations: { code: string; name: string } | null; assets: { source_name: string } | null; form_template_versions: { form_templates: { code: string; name: string } }; }
 export interface RecordView { id: string; record_type: string; business_date: string; slot_code: string | null; record_state: string; is_na: boolean; note: string | null; measurement_details: unknown; decontamination_details: unknown; maintenance_details: unknown; equipment_shift_details: unknown; equipment_shift_statuses: Array<{ asset_display_order_snapshot: number; status_code: string; asset_label_snapshot: string }>; }
+type RawShiftDetail = { usage_value: number | null; usage_unit: string | null; equipment_shift_statuses: RecordView["equipment_shift_statuses"] };
+type RawRecordView = Omit<RecordView, "equipment_shift_details" | "equipment_shift_statuses"> & { equipment_shift_details: RawShiftDetail | RawShiftDetail[] | null };
+export function normalizeRecord(row: RawRecordView): RecordView { const detail = Array.isArray(row.equipment_shift_details) ? row.equipment_shift_details[0] ?? null : row.equipment_shift_details; return { ...row, equipment_shift_details: detail ? { usage_value: detail.usage_value, usage_unit: detail.usage_unit } : null, equipment_shift_statuses: detail?.equipment_shift_statuses ?? [] }; }
 export interface AssetView { id: string; source_name: string; source_code: string | null; source_order: number; asset_type: string; active: boolean; locations: { id: string; code: string; name: string } | null; }
 
 export async function getAreaSummaries() {
@@ -65,15 +68,16 @@ export async function getPeriod(id: string): Promise<{ period: PeriodView; occur
   const [{ data: period }, { data: occurrences }, { data: records }] = await Promise.all([
     supabase.from("register_periods").select("id,period_label,status,period_start,period_end,locations(code,name),assets(source_name),form_template_versions(form_templates(code,name))").eq("id", id).single(),
     supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,window_start,window_end,fulfilled_by_record_id").eq("period_id", id).order("window_start"),
-    supabase.from("records").select("id,record_type,business_date,slot_code,record_state,is_na,note,measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit),equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot)").eq("period_id", id).eq("is_effective", true).order("business_date"),
+    supabase.from("records").select("id,record_type,business_date,slot_code,record_state,is_na,note,measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))").eq("period_id", id).eq("is_effective", true).order("business_date"),
   ]);
-  return period ? { period: period as unknown as PeriodView, occurrences: occurrences ?? [], records: (records ?? []) as unknown as RecordView[] } : null;
+  const normalizedRecords = ((records ?? []) as unknown as RawRecordView[]).map(normalizeRecord);
+  return period ? { period: period as unknown as PeriodView, occurrences: occurrences ?? [], records: normalizedRecords } : null;
 }
 export async function getRecord(id: string): Promise<RecordView | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("records").select("id,record_type,business_date,slot_code,record_state,is_na,note,measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit),equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot)").eq("id", id).eq("is_effective", true).maybeSingle();
+  const { data, error } = await supabase.from("records").select("id,record_type,business_date,slot_code,record_state,is_na,note,measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))").eq("id", id).eq("is_effective", true).maybeSingle();
   if (error) throw new Error(`Không tải được bản ghi: ${error.message}`);
-  return data as unknown as RecordView | null;
+  return data ? normalizeRecord(data as unknown as RawRecordView) : null;
 }
 
 export async function getAsset(id: string): Promise<{ asset: AssetView; records: Array<{ id: string; business_date: string; slot_code: string | null; record_type: string; record_state: string; note: string | null }>; shifts: Array<{ status_code: string; records: { id: string; business_date: string; slot_code: string | null; record_state: string } }> } | null> {
