@@ -19,9 +19,12 @@ describe("P5 M01-M06 route contract", () => {
     expect(home).not.toMatch(/Việc ưu tiên|Thao tác nhanh|mẫu hôm nay|patient|LIS/i);
     expect(home).toMatch(/OperationalBanner/);
   });
-  it("provides authenticated official export endpoints", () => {
+  it("provides authenticated official PDF and Excel export endpoints", () => {
     expect(read("src/app/api/reports/[periodId]/csv/route.ts")).toMatch(/APPROVED/);
     expect(read("src/app/api/reports/[periodId]/pdf/route.ts")).toMatch(/APPROVED/);
+    const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
+    expect(xlsx).toMatch(/APPROVED/);
+    expect(xlsx).toContain("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   });
   it("joins BM.06 statuses through equipment shift details", () => {
     const queries = read("src/lib/p5/operational-queries.ts");
