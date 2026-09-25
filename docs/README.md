@@ -14,12 +14,13 @@ docs/
 │   ├── 00_PRODUCT_SCOPE_FINAL.md      # Định vị sản phẩm, 6 nhóm form, 3 vai trò, quyết định P0-16 Area-first (5 khu vực)
 │   ├── 01_ARCHITECTURE_FINAL.md      # Kiến trúc kỹ thuật: Next.js + Supabase, 5 Khu vực, Schema, RLS, Index
 │   ├── 02_FORMS_DATA_RULES_FINAL.md   # Đặc tả 6 biểu mẫu, Bảng ánh xạ 25 máy vào các khu vực, 13 dòng tủ
-│   ├── 03_SCREEN_MENU_UIUX_FINAL.md   # Thiết kế 27 màn hình (S00–S26), Area-first flow, 5 thẻ khu vực, Design tokens
-│   └── 04_IMPLEMENTATION_PLAN_FINAL.md# Lộ trình kỹ thuật P0–P9, tích hợp Area-first vào P2/P3, Exit Gate
+│   ├── 03_SCREEN_MENU_UIUX_FINAL.md   # Thiết kế màn hình/menu, Area-first flow, mobile-first
+│   ├── 04_IMPLEMENTATION_PLAN_FINAL.md# Lộ trình kỹ thuật P0–P9, Exit Gate
+│   └── 05_P5_PRODUCT_UI_EXPANSION_FINAL.md # Owner-approved P5 addendum: UI polish, Notification Center, Admin Announcement, Incident Report, Report Center
 │
 ├── [Hồ Sơ Đánh Giá & Audit Chuyên Đề]
-│   ├── AREA_FIRST_CHANGE_IMPACT_AUDIT.md # Đánh giá tác động chuyển đổi mô hình điều hướng Area-First
-│   └── FINAL_CROSS_FILE_AUDIT.md         # Báo cáo kiểm tra chéo 17 tiêu chí đồng nhất giữa 5 file FINAL
+│   ├── AREA_FIRST_CHANGE_IMPACT_AUDIT.md # Hồ sơ lịch sử thay đổi Area-first; không phải source of truth mới hơn FINAL
+│   └── FINAL_CROSS_FILE_AUDIT.md         # Hồ sơ audit lịch sử; không được dùng để ghi đè các file FINAL/Addendum mới hơn
 │
 └── danh mục biểu mẫu/                 # [Biểu Mẫu Gốc & Phụ Lục Chuẩn Hóa]
     ├── BM.01_KNBM.docx                # Mẫu gốc: Khử nhiễm bề mặt khu vực làm việc
@@ -33,23 +34,46 @@ docs/
 
 ---
 
-## 2. Thứ tự Đọc & Triển khai Tài liệu (Dành cho Lập trình viên & Kỹ sư)
+## 2. Thứ tự Đọc & Triển khai Tài liệu
 
 Để nắm bắt đúng kiến trúc và triển khai chính xác:
 
-1. **Bước 1 — Nắm bắt phạm vi & luồng điều hướng Area-first:**
-   - Đọc [00_PRODUCT_SCOPE_FINAL.md](file:///docs/00_PRODUCT_SCOPE_FINAL.md) (khóa 5 khu vực làm việc, 3 vai trò, cờ Admin).
-   - Đọc [AREA_FIRST_CHANGE_IMPACT_AUDIT.md](file:///docs/AREA_FIRST_CHANGE_IMPACT_AUDIT.md) và [FINAL_CROSS_FILE_AUDIT.md](file:///docs/FINAL_CROSS_FILE_AUDIT.md).
+1. **Bước 1 — Nắm phạm vi lõi:**
+   - Đọc `00_PRODUCT_SCOPE_FINAL.md`.
+   - Đọc `01_ARCHITECTURE_FINAL.md`.
+   - Đọc `02_FORMS_DATA_RULES_FINAL.md`.
+   - Đọc `03_SCREEN_MENU_UIUX_FINAL.md`.
+   - Đọc `04_IMPLEMENTATION_PLAN_FINAL.md`.
 
-2. **Bước 2 — Tham chiếu đặc tả chi tiết khi lập trình:**
-   - Nghiệp vụ & Dữ liệu: [02_FORMS_DATA_RULES_FINAL.md](file:///docs/02_FORMS_DATA_RULES_FINAL.md) (bảng ánh xạ 25 máy, 13 dòng tủ, 6 biểu mẫu).
-   - Kiến trúc & Database: [01_ARCHITECTURE_FINAL.md](file:///docs/01_ARCHITECTURE_FINAL.md) (schema PostgreSQL, bảng locations, RLS).
-   - Giao diện & Tương tác: [03_SCREEN_MENU_UIUX_FINAL.md](file:///docs/03_SCREEN_MENU_UIUX_FINAL.md) (27 màn hình S00–S26, 5 thẻ khu vực, mobile-first).
-   - Kế hoạch & Tiêu chí nghiệm thu: [04_IMPLEMENTATION_PLAN_FINAL.md](file:///docs/04_IMPLEMENTATION_PLAN_FINAL.md) (lộ trình P0–P9).
+2. **Bước 2 — Nếu task thuộc P5 trở đi:**
+   - Bắt buộc đọc thêm `05_P5_PRODUCT_UI_EXPANSION_FINAL.md`.
+   - File 05 là Owner-approved addendum cho P5 và bổ sung chính thức các scope mới: UI/branding polish, operational banner, Notification Center, Admin Announcement, Incident Report, nâng cấp màn hình Nhiệt độ/Độ ẩm, Approval Center presentation và Report Center.
+   - Chỉ các điểm được file 05 ghi rõ là scope expansion mới được phép ghi đè giới hạn cũ từ P5 trở đi. Các rule lõi về role, approval authority, 25 máy, 13 tủ, Area-first, RLS, correction/audit vẫn giữ nguyên.
+
+3. **Bước 3 — Raw source:**
+   - Dùng `danh mục biểu mẫu/` để đối chiếu nguồn khi cần.
+   - Không tự suy ra business rule mới từ layout cũ của file Word/Excel nếu FINAL đã có quyết định mới hơn.
 
 ---
 
-## 3. Lưu Ý Về Quản Trị Tài Liệu
+## 3. Thứ tự ưu tiên khi có xung đột
 
-- Các file tài liệu mang hậu tố `_FINAL.md` giữ tên để đồng bộ với lịch sử dự án và là Source of Truth chính thức cho quá trình triển khai mã nguồn.
-- Mọi thông tin xác thực/biến môi trường phải được lưu trong `.env.local` theo mẫu `.env.example`, tuyệt đối không lưu thông tin nhạy cảm vào thư mục tài liệu hoặc commit lên repository.
+1. Quyết định Owner mới nhất được ghi rõ trong file FINAL/Addendum.
+2. `00_PRODUCT_SCOPE_FINAL.md` cho phạm vi lõi P0–P4.
+3. `02_FORMS_DATA_RULES_FINAL.md` cho nghiệp vụ 6 Core Pilot forms.
+4. `01_ARCHITECTURE_FINAL.md` cho architecture/security/data contract.
+5. `03_SCREEN_MENU_UIUX_FINAL.md` cho UI/UX hiện hành.
+6. `04_IMPLEMENTATION_PLAN_FINAL.md` cho sequencing/exit gates.
+7. `05_P5_PRODUCT_UI_EXPANSION_FINAL.md` cho các mở rộng đã duyệt từ P5 trở đi; tại đúng các mục được đánh dấu scope expansion, file 05 là quyết định mới hơn.
+8. Audit/process artifacts chỉ để tham khảo lịch sử, không được dùng để ghi đè FINAL.
+
+Nếu vẫn còn mâu thuẫn không giải được bằng thứ tự trên, AI coding agent phải dừng và hỏi Owner; không tự chọn phương án.
+
+---
+
+## 4. Lưu Ý Về Quản Trị Tài Liệu
+
+- Các file tài liệu mang hậu tố `_FINAL.md` và P5 addendum trong danh sách trên là Source of Truth chính thức cho phạm vi tương ứng.
+- Mọi thông tin xác thực/biến môi trường phải được lưu trong `.env.local` theo mẫu `.env.example`, tuyệt đối không lưu thông tin nhạy cảm vào thư mục tài liệu hoặc commit repository.
+- Không hard-code dữ liệu demo chỉ để đạt giao diện giống ảnh tham chiếu.
+- Với UI P5, ảnh tham chiếu chỉ định hướng độ hoàn thiện; business rules luôn đến từ docs.
