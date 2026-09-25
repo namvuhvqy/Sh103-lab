@@ -25,15 +25,15 @@ export function HospitalLogo({
   return (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
       <div
-        className="relative shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/40 shadow-sm"
+        className="relative shrink-0 overflow-hidden rounded-full ring-2 ring-emerald-600/30 bg-white shadow-xs p-0.5 flex items-center justify-center"
         style={{ width: px, height: px }}
       >
         <Image
-          src="/images/logo/logo-103-photo.png"
+          src="/images/logo/hospital-103-logo.png"
           alt="Logo Bệnh viện Quân y 103"
           width={px}
           height={px}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           priority
         />
       </div>

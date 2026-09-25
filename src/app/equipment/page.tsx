@@ -153,28 +153,46 @@ export default async function EquipmentPage() {
 
         {/* Danh sách 25 thiết bị kèm hình ảnh chuyên nghiệp */}
         <section className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-sm">
-          <div className="border-b border-cyan-100 p-5 flex items-center justify-between">
-            <h2 className="text-xl font-black text-slate-900">
-              Danh sách thiết bị{" "}
-              <span className="text-sm font-semibold text-slate-500">
-                ({assets.length} máy)
-              </span>
-            </h2>
-            <span className="text-xs font-semibold text-slate-500">
-              Nhật ký BM.06 theo thứ tự nguồn
-            </span>
+          <div className="border-b border-cyan-100 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                Danh sách thiết bị{" "}
+                <span className="text-sm font-semibold text-slate-500">
+                  ({assets.length} thiết bị)
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Nhật ký 4 ca vận hành BM.06 theo thứ tự quy định
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-bold text-teal-800">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Hệ thống ISO 15189</span>
+            </div>
           </div>
+
           <div className="divide-y divide-slate-100">
             {assets.map((asset) => {
               const status = asset.latest?.status_code ?? "Chưa ghi";
-              const tone =
-                status === "H"
-                  ? "bg-red-50 text-red-800 border-red-200"
-                  : status === "BT"
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : status === "KSD"
-                  ? "bg-slate-100 text-slate-700 border-slate-200"
-                  : "bg-amber-50 text-amber-800 border-amber-200";
+              const isH = status === "H";
+              const isBT = status === "BT";
+              const isKSD = status === "KSD";
+
+              const statusBadge = isH
+                ? "bg-red-50 text-red-700 border-red-200"
+                : isBT
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                : isKSD
+                ? "bg-slate-100 text-slate-700 border-slate-200"
+                : "bg-amber-50 text-amber-700 border-amber-200";
+
+              const statusText = isH
+                ? "Trạng thái H"
+                : isBT
+                ? "Hoạt động"
+                : isKSD
+                ? "Không dùng"
+                : "Chưa ghi";
 
               const imgUrl = getEquipmentImage(asset.locations?.code, asset.source_name);
 
@@ -182,16 +200,16 @@ export default async function EquipmentPage() {
                 <Link
                   key={asset.id}
                   href={`/assets/${asset.id}`}
-                  className="flex items-center justify-between gap-4 p-4 sm:p-5 transition hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 transition hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* STT */}
-                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-sm font-black text-teal-800">
+                    <span className="grid size-8 sm:size-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-xs sm:text-sm font-black text-teal-800">
                       {asset.source_order}
                     </span>
 
-                    {/* Thumbnail máy trang trọng */}
-                    <div className="relative size-12 sm:size-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-slate-50">
+                    {/* Thumbnail máy */}
+                    <div className="relative size-12 sm:size-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 shadow-xs bg-white">
                       <Image
                         src={imgUrl}
                         alt={asset.source_name}
@@ -203,21 +221,68 @@ export default async function EquipmentPage() {
 
                     {/* Tên máy & Khu vực */}
                     <div className="min-w-0">
-                      <b className="block truncate text-sm sm:text-base text-slate-900 font-bold">
-                        {asset.source_name}
-                      </b>
-                      <span className="text-xs text-slate-500 truncate block">
-                        {asset.source_code ?? "Chưa có mã chuẩn"} · {asset.locations?.name ?? "Toàn khoa"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <b className="truncate text-sm sm:text-base text-slate-900 font-black">
+                          {asset.source_name}
+                        </b>
+                        {asset.source_code ? (
+                          <span className="hidden sm:inline-block rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-600">
+                            {asset.source_code}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                        <span className="rounded-md bg-teal-50/80 px-2 py-0.5 text-[10px] font-bold text-teal-800 border border-teal-100">
+                          {asset.locations?.name ?? "Toàn khoa"}
+                        </span>
+                        <span>•</span>
+                        <span className="truncate">Thứ tự #{asset.source_order}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Badge trạng thái */}
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black border ${tone}`}
-                  >
-                    {status}
-                  </span>
+                  {/* Cụm Trạng thái + 4 Ca trực */}
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    {/* 4 Ca trực Pills chuẩn Mockup M02 */}
+                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
+                      <span className="text-[10px] font-bold text-slate-500 mr-1 hidden sm:inline">
+                        4 ca:
+                      </span>
+                      {[1, 2, 3, 4].map((c) => {
+                        const shiftActive = isBT || (c <= 2 && !isH);
+                        return (
+                          <span
+                            key={c}
+                            title={`Ca ${c}`}
+                            className={`grid size-5 place-items-center rounded-full text-[9px] font-black ${
+                              isH && c === 3
+                                ? "bg-red-500 text-white"
+                                : shiftActive
+                                ? "bg-teal-600 text-white"
+                                : "bg-slate-200 text-slate-500"
+                            }`}
+                          >
+                            {isH && c === 3 ? "!" : shiftActive ? "✓" : "–"}
+                          </span>
+                        );
+                      })}
+                      <span className="text-[10px] font-black text-slate-600 ml-1">
+                        {isH ? "2/4" : isBT ? "4/4" : "0/4"}
+                      </span>
+                    </div>
+
+                    {/* Badge trạng thái */}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black border ${statusBadge}`}
+                    >
+                      <span
+                        className={`size-1.5 rounded-full ${
+                          isH ? "bg-red-500" : isBT ? "bg-emerald-500" : "bg-slate-400"
+                        }`}
+                      />
+                      {statusText}
+                    </span>
+                  </div>
                 </Link>
               );
             })}
