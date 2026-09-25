@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { AREAS } from "@/constants/areas";
 import { cn } from "@/lib/utils";
+import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import {
   Home,
   CheckSquare,
@@ -63,13 +64,12 @@ export function DesktopSidebar({
         className
       )}
     >
-      <div className="flex items-center gap-2 px-2 py-3 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-base shadow-xs">
-          SH
-        </div>
-        <div>
-          <h1 className="font-bold text-sm text-zinc-900 leading-tight">SH103 Sinh Hóa</h1>
-          <p className="text-[11px] text-zinc-500">Quản lý biểu mẫu PXN</p>
+      <div className="flex items-center gap-3 px-2 py-3 mb-4 rounded-2xl bg-teal-50/70 border border-teal-100/80">
+        <HospitalLogo size="md" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 truncate">BV Quân y 103</p>
+          <h1 className="font-black text-sm text-teal-900 leading-tight truncate">Khoa Sinh Hóa</h1>
+          <p className="text-[10px] font-semibold text-teal-700 truncate">Hệ thống biểu mẫu PXN</p>
         </div>
       </div>
 
