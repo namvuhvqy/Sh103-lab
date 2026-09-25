@@ -23,6 +23,17 @@ docs/
 │   ├── AREA_FIRST_CHANGE_IMPACT_AUDIT.md # Hồ sơ lịch sử thay đổi Area-first; không phải source of truth mới hơn FINAL
 │   └── FINAL_CROSS_FILE_AUDIT.md         # Hồ sơ audit lịch sử; không được dùng để ghi đè các file FINAL/Addendum mới hơn
 │
+├── mockups/p5/                        # Bộ 9 mockup giao diện chuẩn hóa (M01 – M08, M06b)
+│   ├── M01-home-overview.jpg
+│   ├── M02-temperature-humidity.jpg
+│   ├── M03-equipment-bm06.jpg
+│   ├── M04-decontamination.jpg
+│   ├── M05-approvals.jpg
+│   ├── M06-reports.jpg
+│   ├── M06b-modal-xuat-bieu-mau.jpg   # Modal xuất biểu mẫu (màn hình phụ M06)
+│   ├── M07-notifications.jpg
+│   └── M08-incidents.jpg
+│
 └── danh mục biểu mẫu/                 # Biểu mẫu gốc & phụ lục chuẩn hóa
     ├── BM.01_KNBM.docx
     ├── BM.01_QL.HTAT_TD nhiệt độ PXN.doc
@@ -108,16 +119,19 @@ Mockup là **visual reference**, không phải business source of truth.
 - 25 máy, 13 dòng tủ, threshold/slot, approval authority, RLS, correction/audit luôn theo docs.
 - Mọi KPI/count/chart phải lấy từ Supabase/query thật.
 
-Sáu mockup đã chốt hiện tại:
+Bộ chín mockup đã chốt hiện tại (lưu tại `docs/mockups/p5/`):
 
-- M01 Home
+- M01 Home (Tổng quan)
 - M02 Nhiệt độ & Độ ẩm
-- M03 Thiết bị/BM.06
-- M04 Khử nhiễm
-- M05 Approval Center
+- M03 Thiết bị / BM.06 (4 ca)
+- M04 Khử nhiễm bề mặt
+- M05 Trung tâm phê duyệt (Approval Center)
 - M06 Báo cáo & Thống kê
+- M06b Màn hình phụ xuất biểu mẫu (Preview & Export Modal của M06)
+- M07 Trung tâm thông báo (Notification Center)
+- M08 Quản lý & Báo cáo sự cố (Incidents)
 
-Còn cần M07 Notification Center và M08 Incident Report để đóng toàn bộ P5 visual gate.
+Toàn bộ 9 mockup đã hoàn thiện và đồng bộ đầy đủ, chính thức đóng P5 visual design reference.
 
 ---
 

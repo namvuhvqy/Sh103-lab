@@ -23,7 +23,7 @@ Không được dùng screenshot để ghi đè nghiệp vụ, quyền, master d
 
 # 2. Trạng thái mockup P5
 
-## 2.1. Sáu mockup đã chốt
+## 2.1. Bộ chín mockup đã chốt (Core + Expanded P5)
 
 - `M01` — Home / Tổng quan.
 - `M02` — Nhiệt độ & Độ ẩm.
@@ -31,17 +31,19 @@ Không được dùng screenshot để ghi đè nghiệp vụ, quyền, master d
 - `M04` — Khử nhiễm bề mặt.
 - `M05` — Trung tâm phê duyệt.
 - `M06` — Báo cáo & Thống kê.
+- `M06b` — Màn hình phụ của M06: Modal Xuất biểu mẫu (Preview & Export Modal).
+- `M07` — Notification Center & Admin Announcement.
+- `M08` — Quản lý & Báo cáo sự cố (Incidents).
 
-Sáu mockup này đủ để khóa **visual system + 6 màn hình lõi** và Hermes có thể bắt đầu P5 UI implementation.
+Bộ 9 mockup trên đã được số hóa và lưu trữ tại `docs/mockups/p5/`, chính thức khóa toàn bộ **visual system + các màn hình lõi & mở rộng P5**.
 
-## 2.2. Hai mockup còn thiếu để P5 visual contract đầy đủ
+## 2.2. Vị trí & vai trò của M06b trong hệ thống
 
-- `M07` — Notification Center + Admin Announcement presentation.
-- `M08` — Báo cáo sự cố: list/new/detail states.
+- `M06b` không phải màn hình điều hướng độc lập trên BottomNav/Sidebar.
+- `M06b` là **Màn hình phụ / Modal tương tác trực tiếp (Dialog trên Desktop/Tablet, Bottom Sheet trên Mobile)** được kích hoạt từ nút "Xuất biểu mẫu" tại màn hình `M06` (Báo cáo & Thống kê).
+- Mục tiêu của `M06b`: Cung cấp quy trình chọn kỳ báo cáo nhanh, tự động đếm số bản ghi phù hợp từ DB, cho phép chọn 1 trong 6 biểu mẫu đầu ra chuẩn ISO 15189, xem trước (Preview) layout in ấn thực tế của Khoa Sinh hóa - Bệnh viện Quân y 103 và xuất file đa định dạng (Excel .csv/.xlsx, In trực tiếp, Lưu PDF).
 
-Không cần một mockup riêng cho Admin Announcement nếu M07 có đủ hai mode: user inbox và admin compose/manage.
-
-**Kết luận:** 6 ảnh hiện tại đủ cho core UI, nhưng **chưa đủ để gọi toàn bộ P5 visual design là CLOSED** vì Notification Center và Incident Report là scope bắt buộc của P5 theo file 05.
+**Kết luận:** Bộ mockup P5 đã **ĐẦY ĐỦ VÀ KHÉP KÍN (CLOSED)** về mặt visual reference. Hermes/Codex bám sát cấu trúc các mockup này để hoàn thiện giao diện đạt độ hoàn thiện cao nhất.
 
 ---
 
@@ -219,7 +221,41 @@ Data contract:
 
 ---
 
-# 10. Canonical mobile navigation P5
+# 9.1. M06b — Màn hình phụ Xuất biểu mẫu (Preview & Export Modal) FINAL
+
+M06b là giao diện pop-up/modal trực tiếp trên màn hình M06 (Báo cáo & Thống kê), đóng vai trò trung tâm xuất biểu mẫu chính thức.
+
+### Cấu trúc thành phần M06b:
+1. **Header Modal:**
+   - Tag nhận diện: `KHOA SINH HÓA • BV 103`.
+   - Tiêu đề: `Xuất biểu mẫu` — phụ đề `Preview & Export`.
+   - Nút Đóng `✕`.
+2. **Bộ lọc kỳ báo cáo cần xuất:**
+   - Các trường chọn: `Tháng`, `Năm`, `Ngày` (hỗ trợ chọn ngày cụ thể hoặc `Cả tháng`), `Ca` (hỗ trợ `Cả ngày` hoặc từng ca: `Ca 1`, `Ca 2`, `Ca 3`, `Ca 4`).
+   - Phím tắt nhanh: `[📅] Hôm nay`, `[📅] Cả tháng`.
+3. **Chỉ số dữ liệu thực tế (Realtime Count Indicator):**
+   - Hiển thị số lượng bản ghi thực tế phù hợp từ database: `Dữ liệu thực tế từ hệ thống: X bản ghi phù hợp kỳ đã chọn`.
+4. **Bộ chọn 1 trong 6 biểu mẫu chuẩn đầu ra (Grid 2 cột dạng Card tương tác):**
+   - `BM.01/QL.HTAT.01` (HTAT): Nhiệt độ, độ ẩm phòng xét nghiệm.
+   - `BM.02/QL.HTAT.01` (HTAT): Theo dõi nhiệt độ tủ mát (2–8°C).
+   - `BM.03/QL.HTAT.01` (HTAT): Theo dõi nhiệt độ tủ đá (-30 đến -10°C).
+   - `BM.01/KNBM` (KNBM): Khử nhiễm bề mặt khu vực làm việc.
+   - `BM.06/QL.TRTB.01` (TRTB): Nhật ký hoạt động trang thiết bị (4 ca).
+   - `BM.02/QL.TRTB` (TRTB): Bảng theo dõi bảo dưỡng máy định kỳ.
+5. **Khu vực Xem trước trực quan (Live Form Preview):**
+   - Mô phỏng chính xác mẫu biên bản in ấn của Bệnh viện Quân y 103 - Khoa Sinh hóa.
+   - Hiển thị mã biểu mẫu, tiêu đề, ngày xuất, kỳ báo cáo, khu vực, người theo dõi (KTV) và trưởng khoa phê duyệt (BS).
+   - Bảng dữ liệu chi tiết thực tế (STT, Thời gian/Ca, Giá trị đo, Khu vực/Thiết bị, Ghi chú đạt/không đạt).
+6. **Thanh tác vụ xuất file (Export Actions):**
+   - Gợi ý: *Hỗ trợ In trực tiếp, Excel (.csv/.xlsx) và PDF*.
+   - Nút `[📊] Tải Excel (.csv / .xlsx)`.
+   - Nút `[🖨️] In phiếu / Lưu PDF`.
+   - Nút `Đóng`.
+
+### Data & Security Contract M06b:
+- Chỉ cho phép xuất file chính thức từ các kỳ có trạng thái `APPROVED`.
+- Nếu kỳ chưa duyệt hoặc không có bản ghi, hiển thị thông báo rõ ràng, không tạo số liệu giả lập.
+- Trên desktop/tablet hiển thị dưới dạng Dialog pop-up; trên mobile tự động co giãn thành Bottom Sheet tiện thao tác bằng một tay.
 
 Để 6 mockup không sinh ra 3 bottom-nav khác nhau, code FINAL dùng một navigation contract thống nhất:
 
