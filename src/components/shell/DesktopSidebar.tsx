@@ -15,6 +15,9 @@ import {
   FileText,
   Settings,
   ShieldCheck,
+  Bell,
+  CircleAlert,
+  Megaphone,
 } from "lucide-react";
 
 interface DesktopSidebarProps {
@@ -35,20 +38,22 @@ export function DesktopSidebar({
     { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },
     { label: "Nhập ca BM.06 toàn khoa", href: "/bm06", icon: FileSpreadsheet },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
-    { label: "Lịch sử & Tra cứu", href: "/history", icon: History },
+    { label: "Thông báo", href: "/notifications", icon: Bell },
+    { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },
   ];
 
   const reviewTasks = [
     { label: "Chờ duyệt kỳ", href: "/approvals", icon: CheckCircle2 },
     { label: "Dashboard toàn khoa", href: "/dashboard", icon: BarChart3 },
     { label: "Báo cáo & Xuất file", href: "/reports", icon: FileText },
-    { label: "Danh mục Biểu mẫu", href: "/forms", icon: Layers },
+    { label: "Sổ / Kỳ đã lưu", href: "/periods", icon: History },
   ];
 
   const adminTasks = [
-    { label: "Quản trị biểu mẫu", href: "/admin/templates", icon: Settings },
+    { label: "Quản trị dữ liệu nền", href: "/admin/master", icon: Settings },
     { label: "Quản trị thiết bị & Tủ", href: "/admin/assets", icon: Settings },
     { label: "Quản lý khu vực & Điểm đo", href: "/admin/locations", icon: Settings },
+    { label: "Admin Announcement", href: "/admin/announcements", icon: Megaphone },
   ];
 
   return (

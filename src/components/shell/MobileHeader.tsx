@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,7 @@ interface MobileHeaderProps {
   leftAction?: React.ReactNode;
   rightAction?: React.ReactNode;
   className?: string;
+  unreadCount?: number;
 }
 
 export function MobileHeader({
@@ -16,6 +18,7 @@ export function MobileHeader({
   leftAction,
   rightAction,
   className,
+  unreadCount = 0,
 }: MobileHeaderProps) {
   return (
     <header
@@ -33,13 +36,14 @@ export function MobileHeader({
       </div>
       <div className="flex items-center gap-2">
         {rightAction || (
-          <button
-            type="button"
-            className="grid min-h-11 min-w-11 place-items-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-100"
+          <Link
+            href="/notifications"
+            className="relative grid min-h-11 min-w-11 place-items-center rounded-full text-zinc-700 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
             aria-label="Thông báo"
           >
             <Bell className="w-5 h-5" />
-          </button>
+            {unreadCount > 0 ? <span className="absolute right-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white" aria-label={`${unreadCount} thông báo chưa đọc`}>{Math.min(unreadCount, 99)}</span> : null}
+          </Link>
         )}
       </div>
     </header>
