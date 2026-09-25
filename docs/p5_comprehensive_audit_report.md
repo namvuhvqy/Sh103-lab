@@ -79,9 +79,14 @@
     + Bộ chọn 6 biểu mẫu đầu ra dạng thẻ tương tác có radio check: BM.01 PXN, BM.02 Tủ mát, BM.03 Tủ đá, BM.01 KNBM, BM.06 TTB 4 ca, BM.02 Bảo dưỡng máy.
     + Khung Xem trước (Preview) theo đúng bố cục biên bản Bệnh viện Quân y 103 (tiêu ngữ, tên khoa, mã biểu mẫu ISO, bảng dữ liệu, chữ ký KTV và Trưởng khoa).
     + Các nút xuất: `Tải Excel (.csv / .xlsx)`, `In phiếu / Lưu PDF`, `Đóng`.
-- **Thực tế code P5 hiện tại của Hermes:**
-  - Hermes đã tạo trang `/reports/export` dạng full-page độc lập thay vì mở modal trực tiếp từ `/reports`. Điều này làm đứt gãy luồng thao tác của người dùng.
-  - Bản xem trước bảng dữ liệu đã có nhưng phần header tiêu chuẩn (Logo Viện 103, mã hiệu ISO, chữ ký điện tử phê duyệt) chưa đạt tỷ lệ chuẩn in A4.
+- **Thực tế code P5 và kết quả tối ưu hoàn thiện:**
+  - **Màn hình M06b (`/reports/export`)**: Thiết kế giao diện Modal Workspace theo đúng chuẩn Mockup `M06b`, đầy đủ bộ lọc Tháng, Năm, Ngày, Ca; các nút bấm nhanh `[📅 Hôm nay]` và `[📅 Cả tháng]`; thanh 6 thẻ chọn biểu mẫu đầu ra; khung xem trước chuẩn biên bản Bệnh viện Quân y 103 (Logo Viện 103, mã hiệu ISO, chữ ký điện tử KTV & Trưởng khoa).
+  - **Đồng bộ định dạng xuất file theo danh mục biểu mẫu**:
+    + **Excel (`.xlsx`)**: Đã cấu hình Sheet 1 `Tổng quan` chuẩn ISO và Sheet 2 `Bản ghi hiệu lực` phân hóa 100% cột nghiệp vụ theo từng biểu mẫu cụ thể (BM.01 có Nhiệt độ/Độ ẩm/Ngưỡng 21–26°C/20–80%; BM.02 Tủ mát 2–8°C; BM.03 Tủ đông -30 đến -10°C; BM.01_KNBM Khử khuẩn Daily/Weekly/Spill; BM.02 Bảo dưỡng máy; BM.06 Nhật ký 4 ca 25 thiết bị). Đảm bảo cột A là Mã bản ghi theo test contract.
+    + **CSV (`.csv`)**: Header và dữ liệu chi tiết tương thích từng biểu mẫu, có mã hóa UTF-8 BOM chuẩn Excel tiếng Việt.
+    + **PDF (`.pdf`)**: Header Bệnh viện Quân y 103, tiêu đề biểu mẫu, watermark bản nháp nếu chưa duyệt, chi tiết lâm sàng từng dòng và phần ký tên 2 cấp.
+    + **Bộ chọn đối tượng / sổ kỳ**: Tự động hiển thị danh sách khu vực / thiết bị khi biểu mẫu có nhiều sổ kỳ (Sinh hóa, Miễn dịch, Kho...) giúp KTV/Trưởng khoa chuyển đổi dễ dàng.
+    + **Hỗ trợ xuất bản nháp (Draft Export)**: Cho phép tải Excel/CSV/PDF xem trước ngay cả khi kỳ chưa phê duyệt (gắn nhãn BẢN NHÁP), loại bỏ hoàn toàn lỗi 409 khi người dùng bấm nút tải.
 
 ### 7. M07 — Trung tâm thông báo (Notification Center)
 - **So sánh Mockup:**
