@@ -153,7 +153,7 @@ export default async function TemperaturePage({
           </div>
 
           {filtered.length ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               {filtered.map((row) => {
                 const completed = row.status !== "PENDING";
                 const code = row.register_periods.form_template_versions.form_templates.code;
@@ -167,15 +167,15 @@ export default async function TemperaturePage({
                 return (
                   <article
                     key={row.id}
-                    className="flex flex-col justify-between rounded-3xl border border-cyan-100 bg-white p-5 shadow-xs hover:border-teal-300 transition"
+                    className="flex min-w-0 flex-col justify-between rounded-3xl border border-cyan-100 bg-white p-4 sm:p-5 shadow-xs hover:border-teal-300 transition overflow-hidden"
                   >
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-[11px] font-black tracking-wide text-teal-800">
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black tracking-wide text-teal-800 truncate">
                             {code} · {row.slot_code ?? "Ca đo"}
                           </p>
-                          <h3 className="mt-1 font-black text-base text-slate-950 truncate">
+                          <h3 className="mt-1 font-black text-sm sm:text-base text-slate-950 truncate">
                             {label}
                           </h3>
                           {row.register_periods.assets?.storage_purpose ? (
@@ -185,22 +185,24 @@ export default async function TemperaturePage({
                           ) : null}
                         </div>
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
-                            completed ? "bg-emerald-50 text-emerald-800 border border-emerald-200" : "bg-amber-50 text-amber-800 border border-amber-200"
+                          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                            completed
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-amber-50 text-amber-800 border border-amber-200"
                           }`}
                         >
-                          {completed ? <CheckCircle2 className="size-3.5" /> : <Clock3 className="size-3.5" />}
+                          {completed ? <CheckCircle2 className="size-3" /> : <Clock3 className="size-3" />}
                           {completed ? (row.status === "N_A" ? "Không áp dụng" : "Đã ghi") : "Chưa đo"}
                         </span>
                       </div>
 
                       {/* Dải an toàn trực quan theo tiêu chuẩn ISO */}
-                      <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-500 text-[11px] font-medium flex items-center gap-1">
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                        <span className="text-slate-500 font-medium flex items-center gap-1 shrink-0">
                           <ShieldCheck className="size-3.5 text-teal-600" />
                           Ngưỡng chuẩn:
                         </span>
-                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${rangeInfo.pillClass}`}>
+                        <span className={`px-2 py-0.5 rounded-full font-bold truncate max-w-full border ${rangeInfo.pillClass}`}>
                           {rangeInfo.range}
                         </span>
                       </div>
@@ -208,7 +210,7 @@ export default async function TemperaturePage({
 
                     <Link
                       href={row.fulfilled_by_record_id ? `/records/${row.fulfilled_by_record_id}` : `/entry/${row.id}`}
-                      className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-teal-800 px-5 font-bold text-white shadow-xs hover:bg-teal-900 transition text-sm"
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-teal-800 px-4 font-bold text-white shadow-xs hover:bg-teal-900 transition text-sm text-center"
                     >
                       {completed ? "Xem chi tiết" : "Ghi số đo"}
                     </Link>
