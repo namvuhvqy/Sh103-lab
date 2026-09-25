@@ -102,8 +102,8 @@ export async function getOfficialPeriodReport(periodId: string, filters?: { star
   const [{ data: period, error: periodError }, { data: records, error: recordsError }] = await Promise.all([periodQuery, recordsQuery.order("business_date").order("performed_at")]);
   if (periodError || recordsError) throw new Error("Không tải được dữ liệu xuất báo cáo");
   if (!period) return null;
-  if (period.status !== "APPROVED") return { period, records: [], official: false as const };
-  return { period, records: records ?? [], official: true as const };
+  const isOfficial = period.status === "APPROVED";
+  return { period, records: records ?? [], official: isOfficial, isDraft: !isOfficial };
 }
 
 export async function getExportWorkspace(filters: { templateCode?: string; year?: string; month?: string; day?: string; shift?: string; periodId?: string }) {
@@ -123,14 +123,42 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   type Period = { id: string; period_label: string | null; period_start: string; period_end: string; status: string; approved_at: string | null; locations: { name: string } | null; assets: { source_name: string } | null; form_template_versions: { id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } } };
   const typedPeriods = (periods ?? []) as unknown as Period[];
   const typedTemplates = (templates ?? []) as unknown as Array<{ id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } }>;
-  const templateCode = filters.templateCode ?? typedPeriods[0]?.form_template_versions.form_templates.code ?? typedTemplates[0]?.form_templates.code;
-  const matching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
-  const selectedPeriod = matching.find((period) => period.id === filters.periodId) ?? matching[0] ?? null;
+  const templateCode = filters.templateCode ?? typedTemplates[0]?.form_templates?.code ?? "BM.01/QL.HTAT.01";
+  
+  // Lọc các kỳ thuộc biểu mẫu đang chọn
+  let matching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
+  
+  // Nếu chưa có kỳ trong tháng hiện tại, tìm kỳ gần nhất của biểu mẫu đó để không bao giờ bị trắng màn hình
+  if (matching.length === 0) {
+    const { data: fallbackPeriods } = await supabase
+      .from("register_periods")
+      .select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind))")
+      .order("period_start", { ascending: false })
+      .limit(10);
+    if (fallbackPeriods && fallbackPeriods.length > 0) {
+      const typedFallback = fallbackPeriods as unknown as Period[];
+      matching = typedFallback.filter((p) => p.form_template_versions.form_templates.code === templateCode);
+      if (matching.length === 0 && typedFallback.length > 0) {
+        matching = typedFallback;
+      }
+    }
+  }
+
+  // Ưu tiên kỳ đã APPROVED, nếu không có lấy kỳ gần nhất (READY_FOR_REVIEW hoặc OPEN)
+  const approvedOnes = matching.filter((p) => p.status === "APPROVED");
+  const selectedPeriod = matching.find((period) => period.id === filters.periodId) 
+    ?? approvedOnes[0] 
+    ?? matching[0] 
+    ?? null;
+
   let records: unknown[] = [];
   if (selectedPeriod) {
-    let query = supabase.from("records").select("id,record_type,business_date,slot_code,performed_at,entered_at,is_na,na_reason,note,revision_no,is_effective,profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))").eq("period_id", selectedPeriod.id).eq("is_effective", true).gte("business_date", start).lte("business_date", end).order("business_date").order("performed_at");
+    let query = supabase.from("records").select("id,record_type,business_date,slot_code,performed_at,entered_at,is_na,na_reason,note,revision_no,is_effective,profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))").eq("period_id", selectedPeriod.id).eq("is_effective", true);
+    if (day) {
+      query = query.gte("business_date", start).lte("business_date", end);
+    }
     if (filters.shift && filters.shift !== "ALL") query = query.eq("slot_code", filters.shift);
-    const result = await query;
+    const result = await query.order("business_date").order("performed_at");
     if (result.error) throw new Error(`Không tải được preview: ${result.error.message}`);
     records = result.data ?? [];
   }
