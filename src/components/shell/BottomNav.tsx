@@ -21,11 +21,11 @@ export function BottomNav({ className, currentPath: pathOverride }: { className?
   const detectedPath = usePathname();
   const currentPath = pathOverride ?? detectedPath ?? "/";
   return (
-    <nav aria-label="Điều hướng chính" className={cn("fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-cyan-100 bg-white/95 px-1 pt-1 shadow-[0_-10px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl md:hidden", className)} style={{ paddingBottom: "max(0.35rem, env(safe-area-inset-bottom))" }}>
+    <nav data-app-chrome aria-label="Điều hướng chính" className={cn("fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-teal-100 bg-white/97 px-1.5 pt-1.5 shadow-[0_-8px_28px_rgba(15,118,110,0.12)] backdrop-blur-xl md:hidden", className)} style={{ paddingBottom: "max(0.45rem, env(safe-area-inset-bottom))" }}>
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const active = isActive(currentPath, tab.matches);
-        return <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center rounded-2xl px-1 text-[11px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600", active ? "bg-cyan-50 text-teal-800" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}><Icon aria-hidden="true" className={cn("mb-0.5 size-5", active ? "text-teal-700" : "text-slate-500")} /><span className="max-w-full truncate">{tab.label}</span></Link>;
+        return <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined} className={cn("flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl px-1 text-[10px] font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600", active ? "bg-teal-50 text-teal-800" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900")}><Icon aria-hidden="true" className={cn("mb-0.5 size-5", active ? "text-teal-700" : "text-slate-500")} /><span className="max-w-full truncate">{tab.label}</span></Link>;
       })}
     </nav>
   );

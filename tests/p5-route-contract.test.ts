@@ -20,10 +20,14 @@ describe("P5 M01-M06 route contract", () => {
     expect(home).toMatch(/OperationalBanner/);
   });
   it("provides authenticated official PDF and Excel export endpoints", () => {
-    expect(read("src/app/api/reports/[periodId]/csv/route.ts")).toMatch(/APPROVED/);
-    expect(read("src/app/api/reports/[periodId]/pdf/route.ts")).toMatch(/APPROVED/);
+    const csv = read("src/app/api/reports/[periodId]/csv/route.ts");
+    const pdf = read("src/app/api/reports/[periodId]/pdf/route.ts");
     const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
-    expect(xlsx).toMatch(/APPROVED/);
+    for (const route of [csv, pdf, xlsx]) {
+      expect(route).toMatch(/APPROVED/);
+      expect(route).toMatch(/search\.get\("start"\)/);
+      expect(route).toMatch(/search\.get\("shift"\)/);
+    }
     expect(xlsx).toContain("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   });
   it("joins BM.06 statuses through equipment shift details", () => {

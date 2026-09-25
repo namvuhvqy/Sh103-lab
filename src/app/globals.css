@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3f8f9;
+  --foreground: #102a36;
+  --clinical-primary: #087f7a;
+  --clinical-primary-strong: #075f5c;
+  --clinical-primary-soft: #e7f7f5;
+  --clinical-blue: #2563a9;
+  --clinical-border: #d7e8ea;
+  --clinical-card: #ffffff;
+  --clinical-muted: #607780;
+  --clinical-danger: #d9485f;
+  --clinical-warning: #d58b18;
 }
 
 @theme inline {
@@ -12,15 +21,47 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--background); }
+body {
+  min-width: 320px;
+  margin: 0;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, .09), transparent 25rem),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+button, a, select, input, textarea { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+
+.clinical-shell { background: transparent; }
+.clinical-card {
+  border: 1px solid var(--clinical-border);
+  border-radius: 1rem;
+  background: var(--clinical-card);
+  box-shadow: 0 8px 24px rgba(7, 95, 92, .055);
+}
+.clinical-page-title { font-size: clamp(1.35rem, 5vw, 2rem); font-weight: 850; letter-spacing: -.025em; color: #102a36; }
+.clinical-section-title { font-size: 1rem; font-weight: 800; color: #102a36; }
+.clinical-caption { font-size: .75rem; line-height: 1.35; color: var(--clinical-muted); }
+.safe-bottom { padding-bottom: max(.65rem, env(safe-area-inset-bottom)); }
+.safe-top { padding-top: env(safe-area-inset-top); }
+
+@media (max-width: 359px) {
+  .phone-grid-auto { grid-template-columns: 1fr !important; }
+  .phone-action-stack { grid-template-columns: 1fr !important; }
+  .phone-compact-hide { display: none !important; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media print {
+  [data-app-chrome], nav, header, .no-print { display: none !important; }
+  body { background: #fff; }
+  main { padding: 0 !important; max-width: none !important; }
+  .print-sheet { border: 0 !important; box-shadow: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

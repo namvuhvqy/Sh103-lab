@@ -32,10 +32,10 @@ export function AppShell({
   const isOnline = useOnlineStatus();
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 text-zinc-900">
+    <div className="clinical-shell flex min-h-dvh bg-transparent text-slate-900">
       <DesktopSidebar isAdmin={isAdmin} />
 
-      <div className="flex min-w-0 flex-1 flex-col pb-32 md:pb-0">
+      <div className="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <OfflineBanner isOffline={!isOnline} />
 
         <MobileHeader
@@ -46,7 +46,7 @@ export function AppShell({
           unreadCount={unreadCount}
         />
 
-        <main className={cn("flex-1 p-4 md:p-6 max-w-7xl w-full mx-auto", className)}>
+        <main className={cn("mx-auto w-full max-w-7xl flex-1 px-3.5 py-4 sm:px-5 md:p-6", className)}>
           {children}
         </main>
 

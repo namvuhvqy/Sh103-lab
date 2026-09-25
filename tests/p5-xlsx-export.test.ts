@@ -37,6 +37,16 @@ describe("official XLSX export", () => {
     expect(workbook.getWorksheet("Tổng quan")?.getCell("B6").value).toBe("ĐÃ PHÊ DUYỆT");
   });
 
+  it("passes workspace filters into the official report query", async () => {
+    getOfficialPeriodReport.mockResolvedValue({
+      official: true,
+      period: { status: "APPROVED", period_label: null, period_start: "2026-09-01", period_end: "2026-09-30", approved_at: null, locations: null, assets: null, form_template_versions: { version_label: "v1", form_templates: { code: "BM.01", name: "Theo dõi nhiệt độ" } } },
+      records: [],
+    });
+    await GET(new Request("https://example.test/api/reports/period-approved/xlsx?start=2026-09-25&end=2026-09-25&shift=SHIFT_2"), context);
+    expect(getOfficialPeriodReport).toHaveBeenCalledWith("period-approved", { start: "2026-09-25", end: "2026-09-25", shift: "SHIFT_2" });
+  });
+
   it("rejects non-approved periods", async () => {
     getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN" }, records: [] });
     const response = await GET(new Request("https://example.test"), context);

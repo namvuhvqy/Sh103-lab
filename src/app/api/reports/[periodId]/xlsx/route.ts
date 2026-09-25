@@ -3,9 +3,10 @@ import { getOfficialPeriodReport } from "@/lib/p5/operational-queries";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: Promise<{ periodId: string }> }) {
+export async function GET(request: Request, { params }: { params: Promise<{ periodId: string }> }) {
   const { periodId } = await params;
-  const report = await getOfficialPeriodReport(periodId);
+  const search = new URL(request.url).searchParams;
+  const report = await getOfficialPeriodReport(periodId, { start: search.get("start") ?? undefined, end: search.get("end") ?? undefined, shift: search.get("shift") ?? undefined });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
   // Official XLSX is generated only from an APPROVED period and effective records.
   if (!report.official || report.period.status !== "APPROVED") return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
