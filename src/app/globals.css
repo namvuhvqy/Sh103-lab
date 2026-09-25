@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f3f8f9;
-  --foreground: #102a36;
-  --clinical-primary: #087f7a;
-  --clinical-primary-strong: #075f5c;
-  --clinical-primary-soft: #e7f7f5;
-  --clinical-blue: #2563a9;
-  --clinical-border: #d7e8ea;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --clinical-primary: #0d9488;
+  --clinical-primary-strong: #0f766e;
+  --clinical-primary-soft: #f0fdfa;
+  --clinical-cyan: #06b6d4;
+  --clinical-blue: #0284c7;
+  --clinical-border: #e2e8f0;
+  --clinical-border-teal: #ccfbf1;
   --clinical-card: #ffffff;
-  --clinical-muted: #607780;
-  --clinical-danger: #d9485f;
-  --clinical-warning: #d58b18;
+  --clinical-muted: #64748b;
+  --clinical-danger: #e11d48;
+  --clinical-warning: #d97706;
+  --clinical-success: #059669;
 }
 
 @theme inline {
@@ -27,7 +30,8 @@ body {
   min-width: 320px;
   margin: 0;
   background:
-    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, .09), transparent 25rem),
+    radial-gradient(circle at 100% 0%, rgba(13, 148, 136, .06), transparent 28rem),
+    radial-gradient(circle at 0% 100%, rgba(6, 182, 212, .05), transparent 24rem),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
@@ -38,13 +42,13 @@ button, a { touch-action: manipulation; }
 
 .clinical-shell { background: transparent; }
 .clinical-card {
-  border: 1px solid var(--clinical-border);
-  border-radius: 1rem;
+  border: 1px solid #e6f4f2;
+  border-radius: 1.25rem;
   background: var(--clinical-card);
-  box-shadow: 0 8px 24px rgba(7, 95, 92, .055);
+  box-shadow: 0 4px 20px rgba(13, 148, 136, .05);
 }
-.clinical-page-title { font-size: clamp(1.35rem, 5vw, 2rem); font-weight: 850; letter-spacing: -.025em; color: #102a36; }
-.clinical-section-title { font-size: 1rem; font-weight: 800; color: #102a36; }
+.clinical-page-title { font-size: clamp(1.35rem, 5vw, 2rem); font-weight: 900; letter-spacing: -.025em; color: #0f172a; }
+.clinical-section-title { font-size: 1rem; font-weight: 850; color: #0f172a; }
 .clinical-caption { font-size: .75rem; line-height: 1.35; color: var(--clinical-muted); }
 .safe-bottom { padding-bottom: max(.65rem, env(safe-area-inset-bottom)); }
 .safe-top { padding-top: env(safe-area-inset-top); }
