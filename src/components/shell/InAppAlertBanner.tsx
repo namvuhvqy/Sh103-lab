@@ -1,20 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Bell, BellRing, X } from "lucide-react";
 
+type PushState = "unsupported" | NotificationPermission;
+
+function subscribeToNotificationPermission() {
+  return () => {};
+}
+
+function getPushState(): PushState {
+  return "Notification" in window ? Notification.permission : "unsupported";
+}
+
+function getServerPushState(): PushState {
+  return "unsupported";
+}
+
 export function InAppAlertBanner() {
   const [dismissed, setDismissed] = useState(false);
-  const [pushSupported] = useState(() => typeof window !== "undefined" && "Notification" in window);
-  const [pushGranted, setPushGranted] = useState(() => typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted");
+  const pushState = useSyncExternalStore(subscribeToNotificationPermission, getPushState, getServerPushState);
+  const [permissionOverride, setPermissionOverride] = useState<NotificationPermission | null>(null);
+  const effectivePermission = permissionOverride ?? pushState;
+  const pushSupported = pushState !== "unsupported";
+  const pushGranted = effectivePermission === "granted";
 
   const requestNotification = async () => {
     if (!pushSupported) return;
     try {
       const res = await Notification.requestPermission();
+      setPermissionOverride(res);
       if (res === "granted") {
-        setPushGranted(true);
         new Notification("Khoa Sinh hóa · Bệnh viện Quân y 103", {
           body: "Đã bật thông báo đẩy thành công! Bạn sẽ nhận thông báo ca trực và phê duyệt.",
           icon: "/icon-192.png",

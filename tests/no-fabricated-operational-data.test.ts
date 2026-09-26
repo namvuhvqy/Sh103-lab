@@ -27,4 +27,19 @@ describe("real operational data contract", () => {
     expect(quickDuty).not.toContain("đã được đồng bộ vào hệ thống");
     expect(quickDuty).toContain("Chưa tạo hồ sơ chính thức");
   });
+
+  it("never fabricates pass or normal values in official exports", () => {
+    const xlsx = source("src/app/api/reports/[periodId]/xlsx/route.ts");
+    const csv = source("src/app/api/reports/[periodId]/csv/route.ts");
+    const pdf = source("src/app/api/reports/[periodId]/pdf/route.ts");
+
+    for (const route of [xlsx, csv, pdf]) {
+      expect(route).not.toContain('?? "BT"');
+    }
+    expect(xlsx).not.toContain("?? 23.5");
+    expect(xlsx).not.toContain("?? 55");
+    expect(xlsx).not.toContain("?? defaultTemp");
+    expect(pdf).not.toContain('m?.result ?? "ĐẠT"');
+    expect(pdf).toMatch(/statuses[\s\S]*\.map\(\(status\)/);
+  });
 });

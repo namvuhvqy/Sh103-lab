@@ -23,11 +23,14 @@ type MaintenanceDetail = {
   result: string | null;
 };
 
+type EquipmentStatus = {
+  asset_display_order_snapshot: number;
+  status_code: string | null;
+  asset_label_snapshot: string | null;
+};
+
 type EquipmentShiftDetail = {
-  equipment_shift_statuses: {
-    status_code: string | null;
-    asset_label_snapshot: string | null;
-  } | null;
+  equipment_shift_statuses: EquipmentStatus[] | EquipmentStatus | null;
 };
 
 type ReportRecord = {
@@ -215,11 +218,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
         const matchingRecord = records.find(
           (r) => r.business_date === dateStr && (r.slot_code === shift.slot || r.slot_code === shift.label)
         );
-        const machineCells = HOSPITAL_MACHINES_25.map(() => {
-          if (!matchingRecord) return "";
-          const s = firstItem(matchingRecord.equipment_shift_details)?.equipment_shift_statuses;
-          return s?.status_code ?? "BT";
-        });
+        const shiftDetail = firstItem(matchingRecord?.equipment_shift_details ?? null);
+        const statuses = shiftDetail
+          ? (Array.isArray(shiftDetail.equipment_shift_statuses)
+              ? shiftDetail.equipment_shift_statuses
+              : shiftDetail.equipment_shift_statuses
+                ? [shiftDetail.equipment_shift_statuses]
+                : [])
+          : [];
+        const statusesByOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
+        const machineCells = HOSPITAL_MACHINES_25.map((machine) => statusesByOrder.get(machine.order) ?? "");
         rows.push([
           stt,
           dateStr,
