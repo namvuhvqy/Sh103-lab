@@ -8,6 +8,8 @@ import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { TEMPERATURE_AREAS } from "@/constants/areas";
 import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
 import { CheckCircle2, CircleAlert, Clock3, Thermometer, ShieldCheck } from "lucide-react";
+import { InlineTemperatureList } from "@/components/forms/InlineTemperatureList";
+import type { InlineOccurrence } from "@/components/forms/InlineTemperatureCard";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,7 @@ export default async function TemperaturePage({
   );
   const done = filtered.filter((row) => row.status !== "PENDING").length;
   type MeasurementRecord = {
+    id: string;
     performed_at: string | null;
     slot_code: string | null;
     measurement_details:
@@ -76,7 +79,36 @@ export default async function TemperaturePage({
       | { temperature_c: number | null; humidity_pct: number | null }
       | null;
   };
-  const chartPoints = (data.records as unknown as MeasurementRecord[]).flatMap((record) => {
+  const recordList = data.records as unknown as MeasurementRecord[];
+  const recordMap = new Map(recordList.map((r) => [r.id, r]));
+
+  const mappedOccurrences: InlineOccurrence[] = filtered.map((row) => {
+    let initialTemperature: number | null = null;
+    let initialHumidity: number | null = null;
+
+    if (row.fulfilled_by_record_id) {
+      const rec = recordMap.get(row.fulfilled_by_record_id);
+      if (rec?.measurement_details) {
+        const detail = Array.isArray(rec.measurement_details)
+          ? rec.measurement_details[0]
+          : rec.measurement_details;
+        initialTemperature = detail?.temperature_c ?? null;
+        initialHumidity = detail?.humidity_pct ?? null;
+      }
+    }
+
+    return {
+      id: row.id,
+      status: row.status,
+      slot_code: row.slot_code,
+      fulfilled_by_record_id: row.fulfilled_by_record_id,
+      initialTemperature,
+      initialHumidity,
+      register_periods: row.register_periods as unknown as InlineOccurrence["register_periods"],
+    };
+  });
+
+  const chartPoints = recordList.flatMap((record) => {
     const detail = Array.isArray(record.measurement_details)
       ? record.measurement_details[0]
       : record.measurement_details;
@@ -205,96 +237,8 @@ export default async function TemperaturePage({
           description="Không nội suy điểm đo còn thiếu — Grounded in real measurements"
         />
 
-        {/* Danh sách phiếu ca hiện tại */}
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-black text-slate-900">Phiếu ca hiện tại</h2>
-              <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                Ghi nhận theo slot: MORNING (08:00) và AFTERNOON (14:00)
-              </p>
-            </div>
-            <span className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
-              {filtered.length} điểm đo
-            </span>
-          </div>
-
-          {filtered.length ? (
-            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-              {filtered.map((row) => {
-                const completed = row.status !== "PENDING";
-                const code = row.register_periods.form_template_versions.form_templates.code;
-                const label =
-                  row.register_periods.locations?.name ??
-                  row.register_periods.assets?.source_name ??
-                  row.register_periods.form_template_versions.form_templates.name;
-
-                const rangeInfo = getSafeRangeInfo(code);
-
-                return (
-                  <article
-                    key={row.id}
-                    className="flex min-w-0 flex-col justify-between rounded-3xl border border-cyan-100 bg-white p-4 sm:p-5 shadow-xs hover:border-teal-300 transition overflow-hidden"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-black tracking-wide text-teal-800 truncate">
-                            {code} · {row.slot_code ?? "Ca đo"}
-                          </p>
-                          <h3 className="mt-1 font-black text-sm sm:text-base text-slate-950 truncate">
-                            {label}
-                          </h3>
-                          {row.register_periods.assets?.storage_purpose ? (
-                            <p className="mt-0.5 text-xs text-slate-500 truncate">
-                              {row.register_periods.assets.storage_purpose}
-                            </p>
-                          ) : null}
-                        </div>
-                        <span
-                          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${
-                            completed
-                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                              : "bg-amber-50 text-amber-800 border border-amber-200"
-                          }`}
-                        >
-                          {completed ? <CheckCircle2 className="size-3" /> : <Clock3 className="size-3" />}
-                          {completed ? (row.status === "N_A" ? "Không áp dụng" : "Đã ghi") : "Chưa đo"}
-                        </span>
-                      </div>
-
-                      {/* Dải an toàn trực quan theo tiêu chuẩn ISO */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1 text-[11px]">
-                        <span className="text-slate-500 font-medium flex items-center gap-1 shrink-0">
-                          <ShieldCheck className="size-3.5 text-teal-600" />
-                          Ngưỡng chuẩn:
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full font-bold truncate max-w-full border ${rangeInfo.pillClass}`}>
-                          {rangeInfo.range}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Link
-                      href={row.fulfilled_by_record_id ? `/records/${row.fulfilled_by_record_id}` : `/entry/${row.id}`}
-                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl bg-teal-800 px-4 font-bold text-white shadow-xs hover:bg-teal-900 transition text-sm text-center"
-                    >
-                      {completed ? "Xem chi tiết" : "Ghi số đo"}
-                    </Link>
-                  </article>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="mt-4">
-              <EmptyState
-                title="Không có điểm đo"
-                description="Không có nghĩa vụ phù hợp với bộ lọc hôm nay."
-                icon={<CircleAlert />}
-              />
-            </div>
-          )}
-        </section>
+        {/* Ghi nhận nhiệt độ trực tiếp (Inline Click-to-Edit Mobile tốc độ cao) */}
+        <InlineTemperatureList initialOccurrences={mappedOccurrences} />
       </div>
     </AppShell>
   );

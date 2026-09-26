@@ -67,16 +67,35 @@ export default function LoginPage() {
         {/* Cột phải: Form đăng nhập thanh lịch */}
         <section className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:col-span-5 lg:px-10 xl:px-16 bg-white text-slate-900">
           <div className="mx-auto w-full max-w-md space-y-6">
-            {/* Header cho mobile (hiển thị khi màn hình nhỏ) */}
-            <div className="lg:hidden flex items-center gap-3 mb-6 p-3 rounded-2xl bg-teal-50 border border-teal-100">
-              <HospitalLogo size="md" />
-              <div>
-                <p className="text-xs font-black uppercase text-slate-900">
-                  Bệnh viện Quân y 103
-                </p>
-                <p className="text-[11px] font-bold text-teal-700">
-                  Khoa Sinh hóa
-                </p>
+            {/* Banner Khoa Sinh Hóa Bệnh viện Quân y 103 trang trọng cho màn hình Mobile */}
+            <div className="lg:hidden relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-teal-950 to-slate-900 p-5 text-white shadow-xl border border-teal-500/30 mb-6">
+              <div className="absolute -right-6 -bottom-6 size-32 rounded-full bg-teal-500/10 blur-2xl pointer-events-none" />
+              <div className="relative z-10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <HospitalLogo size="md" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-teal-300">
+                        BỆNH VIỆN QUÂN Y 103
+                      </p>
+                      <h2 className="text-base font-black text-white leading-tight">
+                        Khoa Sinh hóa
+                      </h2>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-black text-emerald-300 border border-emerald-400/30">
+                    <ShieldCheck className="size-3" />
+                    ISO 15189
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-white/10">
+                  <p className="text-xs font-semibold text-slate-200 leading-snug">
+                    Hệ thống Quản lý Biểu mẫu &amp; Vận hành Phòng Xét nghiệm
+                  </p>
+                  <p className="mt-1 text-[10px] text-teal-200/70 font-medium">
+                    Học viện Quân y — Bộ Quốc phòng
+                  </p>
+                </div>
               </div>
             </div>
 
