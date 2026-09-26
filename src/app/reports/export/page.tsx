@@ -295,18 +295,36 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
           </div>
         </section>
 
-        {/* Bộ chọn Đối tượng / Khu vực khi biểu mẫu có nhiều sổ kỳ */}
-        {workspace.periods.length > 1 ? (
+        {/* Bộ chọn Đối tượng / Khu vực theo dõi (Khớp 100% biểu mẫu đang chọn) */}
+        {workspace.periods.length > 0 ? (
           <section className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 shadow-xs" aria-label="Bộ chọn đối tượng sổ kỳ">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
               <p className="text-xs font-black text-teal-900 uppercase tracking-wider">
                 Chọn khu vực / đối tượng theo dõi ({workspace.periods.length} sổ kỳ)
               </p>
               <span className="text-[11px] text-teal-700 font-semibold">
-                Đang xem: <b>{selected?.locations?.name ?? selected?.assets?.source_name ?? "Toàn khoa"}</b>
+                Đang xem: <b>{selected?.locations?.name ?? selected?.assets?.source_name ?? "Toàn khoa (Gộp 25 máy xét nghiệm)"}</b>
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
+              {workspace.periods.length > 1 ? (
+                <Link
+                  href={`/reports/export?${(() => {
+                    const allP = new URLSearchParams(query);
+                    allP.set("template", tCode);
+                    allP.delete("period");
+                    return allP;
+                  })()}`}
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs ${
+                    !params.period || params.period === selected?.id && !workspace.periods.some((p) => p.id === params.period)
+                      ? "bg-teal-700 text-white ring-2 ring-teal-500"
+                      : "bg-white border border-slate-200 text-slate-800 hover:border-teal-300 hover:bg-teal-50/30"
+                  }`}
+                >
+                  <Check className="size-3.5" />
+                  <span>Chọn tất cả ({workspace.periods.length} sổ kỳ)</span>
+                </Link>
+              ) : null}
               {workspace.periods.map((p) => {
                 const isCurrent = p.id === selected?.id;
                 const nextP = new URLSearchParams(query);
@@ -368,26 +386,23 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                 </div>
               ) : null}
 
-              {/* Header chuẩn in A4 của Viện 103 */}
+              {/* Header chuẩn in A4 của Viện 103 (Khớp 100% biểu mẫu gốc, không có logo ảnh) */}
               <div className="border-b border-slate-200 p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
-                  <div className="flex items-center gap-3">
-                    <HospitalLogo size="md" />
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-slate-900">
-                        BỆNH VIỆN QUÂN Y 103
-                      </p>
-                      <p className="text-xs font-bold text-teal-800 uppercase">
-                        KHOA SINH HÓA
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right text-[11px] text-slate-500">
-                    <p>
-                      Ngày xuất: <b>{new Date().toLocaleDateString("vi-VN")}</b>
+                <div className="flex flex-row justify-between items-start border-b border-slate-200 pb-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                      BỆNH VIỆN QUÂN Y 103
                     </p>
-                    <p>
-                      Kỳ báo cáo: <b>{workspace.start} – {workspace.end}</b> ({workspace.shift === "ALL" ? "Cả ngày" : workspace.shift.replace("SHIFT_", "Ca ")})
+                    <p className="text-xs font-bold text-slate-900 uppercase">
+                      BỘ MÔN KHOA SINH HÓA
+                    </p>
+                  </div>
+                  <div className="text-right text-xs">
+                    <p className="font-bold text-slate-900 uppercase">
+                      {selected?.form_template_versions?.form_templates?.code ?? tCode}
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      Phiên bản: {selected?.form_template_versions?.version_label ?? "4.0"}
                     </p>
                   </div>
                 </div>

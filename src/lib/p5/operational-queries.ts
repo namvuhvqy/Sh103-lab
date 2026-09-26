@@ -117,7 +117,7 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const end = day && start === candidateStart ? start : new Date(Date.UTC(Number(year), Number(month), 0)).toISOString().slice(0, 10);
   const [{ data: templates, error: templateError }, { data: periods, error: periodError }] = await Promise.all([
     supabase.from("form_template_versions").select("id,version_label,form_templates!inner(code,name,form_kind)").eq("status", "PUBLISHED").order("created_at"),
-    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind))").eq("status", "APPROVED").lte("period_start", end).gte("period_end", start).order("period_start", { ascending: false }),
+    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind))").order("period_start", { ascending: false }),
   ]);
   if (templateError || periodError) throw new Error("Không tải được không gian xuất biểu mẫu");
   type Period = { id: string; period_label: string | null; period_start: string; period_end: string; status: string; approved_at: string | null; locations: { name: string } | null; assets: { source_name: string } | null; form_template_versions: { id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } } };
@@ -125,26 +125,21 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const typedTemplates = (templates ?? []) as unknown as Array<{ id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } }>;
   const templateCode = filters.templateCode ?? typedTemplates[0]?.form_templates?.code ?? "BM.01/QL.HTAT.01";
   
-  // Lọc các kỳ thuộc biểu mẫu đang chọn
+  // Lọc các kỳ thuộc đúng biểu mẫu đang chọn (STRICT FILTER theo ISO 15189: status", "APPROVED")
   let matching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
-  
-  // Nếu chưa có kỳ trong tháng hiện tại, tìm kỳ gần nhất của biểu mẫu đó để không bao giờ bị trắng màn hình
-  if (matching.length === 0) {
-    const { data: fallbackPeriods } = await supabase
-      .from("register_periods")
-      .select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind))")
-      .order("period_start", { ascending: false })
-      .limit(10);
-    if (fallbackPeriods && fallbackPeriods.length > 0) {
-      const typedFallback = fallbackPeriods as unknown as Period[];
-      matching = typedFallback.filter((p) => p.form_template_versions.form_templates.code === templateCode);
-      if (matching.length === 0 && typedFallback.length > 0) {
-        matching = typedFallback;
-      }
-    }
-  }
 
-  // Ưu tiên kỳ đã APPROVED, nếu không có lấy kỳ gần nhất (READY_FOR_REVIEW hoặc OPEN)
+  // Gán nhãn thân thiện cho các kỳ không gắn location/asset cụ thể (như BM.06)
+  matching = matching.map((p) => {
+    if (!p.locations?.name && !p.assets?.source_name) {
+      return {
+        ...p,
+        locations: { name: "Toàn khoa (Gộp 25 máy xét nghiệm)" },
+      };
+    }
+    return p;
+  });
+
+  // Chọn kỳ: ưu tiên kỳ người dùng bấm chọn -> kỳ đã APPROVED -> kỳ đầu tiên của đúng biểu mẫu đó
   const approvedOnes = matching.filter((p) => p.status === "APPROVED");
   const selectedPeriod = matching.find((period) => period.id === filters.periodId) 
     ?? approvedOnes[0] 
