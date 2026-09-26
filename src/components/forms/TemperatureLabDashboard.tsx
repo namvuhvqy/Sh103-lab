@@ -9,12 +9,10 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Clock3, 
-  Filter, 
-  Layers,
-  Thermometer,
-  ShieldCheck
+  Filter,
+  Thermometer
 } from "lucide-react";
-import { QCTrendChart } from "@/components/p5/QCTrendChart";
+import { QCTrendChart, type QCTrendPoint } from "@/components/p5/QCTrendChart";
 import { InlineTemperatureList } from "@/components/forms/InlineTemperatureList";
 import { MobileActionSheet } from "@/components/ui/MobileActionSheet";
 import type { InlineOccurrence } from "@/components/forms/InlineTemperatureCard";
@@ -37,15 +35,17 @@ export interface TemperaturePoint {
 interface TemperatureLabDashboardProps {
   initialPoints: TemperaturePoint[];
   occurrences: InlineOccurrence[];
+  chartPoints: QCTrendPoint[];
   activeDate?: string;
-  activeShift?: string;
+
 }
 
 export function TemperatureLabDashboard({
   initialPoints,
   occurrences,
+  chartPoints,
   activeDate = "25/09/2026",
-  activeShift = "Ca 1 - Sáng",
+
 }: TemperatureLabDashboardProps) {
   // Tab chính chuẩn Mockup: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình]
   const [activeTab, setActiveTab] = useState<"overview" | "input" | "chart" | "report" | "config">("overview");
@@ -289,7 +289,7 @@ export function TemperatureLabDashboard({
           </div>
 
           {/* 4. Biểu Đồ Xu Hướng 24 Giờ Gần Nhất (Chuẩn Mockup Ảnh 2) */}
-          <QCTrendChart />
+          <QCTrendChart points={chartPoints} />
 
           {/* 5. Danh Sách Điểm Đo (16 Điểm) Khớp Mockup Ảnh 2 */}
           <section className="space-y-3">

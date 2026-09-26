@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ApprovalPeriod } from "@/lib/forms/workflow";
 import { batchApprovePeriodsAction } from "@/app/periods/actions";
-import { Check, CheckSquare, Square, CheckCircle2, Calendar, Clock, Filter, AlertCircle } from "lucide-react";
+import { Check, CheckSquare, Square, CheckCircle2, Filter, AlertCircle } from "lucide-react";
 
 export function BatchApprovalSection({
   periods,
@@ -15,10 +15,7 @@ export function BatchApprovalSection({
 }) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [timeFilter, setTimeFilter] = useState<"ALL" | "TODAY" | "WEEK" | "MONTH">("ALL");
-  const [isPending, startTransition] = useTransition();
-
-  // Chỉ cho phép chọn các kỳ ở trạng thái READY_FOR_REVIEW
-  const actionablePeriods = periods.filter((p) => p.status === "READY_FOR_REVIEW");
+  const isPending = false;
 
   // Bộ lọc theo thời gian (Ngày, Tuần, Tháng)
   const now = new Date();

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // One-off data extraction, seeding and operational utilities.
+    "scripts/**",
   ]),
 ]);
 

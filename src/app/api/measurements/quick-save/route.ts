@@ -1,219 +1,72 @@
 import { NextResponse } from "next/server";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+
+const finiteNumberOrNull = (value: unknown): number | null | undefined => {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { occurrenceId, temperature, humidity, note } = body;
+    const occurrenceId = typeof body.occurrenceId === "string" ? body.occurrenceId.trim() : "";
+    const temperature = finiteNumberOrNull(body.temperature);
+    const humidity = finiteNumberOrNull(body.humidity);
+    const note = typeof body.note === "string" && body.note.trim() ? body.note.trim().slice(0, 1000) : null;
 
     if (!occurrenceId) {
       return NextResponse.json({ success: false, error: "Thiếu occurrenceId" }, { status: 400 });
     }
-
-    const userClient = await createClient();
-    const { data: { user } } = await userClient.auth.getUser();
-    const supabase = createAdminClient();
-
-    // 1. Lấy thông tin ca đo
-    const { data: occ, error: occErr } = await supabase
-      .from("schedule_occurrences")
-      .select("id, period_id, business_date, slot_code, fulfilled_by_record_id, register_periods!inner(id, location_id, asset_id, form_version_id, form_template_versions!inner(form_templates!inner(code, name)))")
-      .eq("id", occurrenceId)
-      .single();
-
-    if (occErr || !occ) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy nghĩa vụ đo" }, { status: 404 });
+    if (temperature === undefined || humidity === undefined) {
+      return NextResponse.json({ success: false, error: "Giá trị đo không hợp lệ" }, { status: 400 });
+    }
+    if (temperature === null) {
+      return NextResponse.json({ success: false, error: "Nhiệt độ là bắt buộc" }, { status: 400 });
+    }
+    if (temperature < -100 || temperature > 100 || (humidity !== null && (humidity < 0 || humidity > 100))) {
+      return NextResponse.json({ success: false, error: "Giá trị đo ngoài miền hợp lệ" }, { status: 400 });
     }
 
-    const period = occ.register_periods as unknown as {
-      id: string;
-      location_id: string | null;
-      asset_id: string | null;
-      form_version_id: string;
-      form_template_versions: {
-        form_templates: {
-          code: string;
-          name: string;
-        };
-      };
-    };
+    const { data: recordId, error } = await supabase.rpc("save_measurement_record", {
+      target_occurrence_id: occurrenceId,
+      target_performed_at: new Date().toISOString(),
+      target_temperature: temperature,
+      target_humidity: humidity,
+      target_note: note,
+      target_is_na: false,
+      target_na_reason: null,
+    });
 
-    const templateCode = period.form_template_versions?.form_templates?.code || "";
-
-    // 2. Xác định ngưỡng chuẩn ISO 15189
-    let minTemp = 2;
-    let maxTemp = 8;
-    let minHum = 20;
-    let maxHum = 80;
-
-    if (templateCode.includes("BM.01")) {
-      minTemp = 21;
-      maxTemp = 26;
-      minHum = 20;
-      maxHum = 80;
-    } else if (templateCode.includes("BM.03")) {
-      minTemp = -30;
-      maxTemp = -10;
-    } else {
-      // BM.02 Tủ lạnh mát
-      minTemp = 2;
-      maxTemp = 8;
-    }
-
-    const numTemp = temperature != null ? Number(temperature) : null;
-    const numHum = humidity != null ? Number(humidity) : null;
-
-    let isTempAbnormal = false;
-    if (numTemp != null) {
-      isTempAbnormal = numTemp < minTemp || numTemp > maxTemp;
-    }
-
-    let isHumAbnormal = false;
-    if (numHum != null && templateCode.includes("BM.01")) {
-      isHumAbnormal = numHum < minHum || numHum > maxHum;
-    }
-
-    const isAbnormal = isTempAbnormal || isHumAbnormal;
-    const abnormalReason = isAbnormal
-      ? `Vượt ngưỡng chuẩn ISO: ${numTemp != null && isTempAbnormal ? `Nhiệt độ ${numTemp}°C (chuẩn ${minTemp}–${maxTemp}°C)` : ""} ${numHum != null && isHumAbnormal ? `Độ ẩm ${numHum}% (chuẩn ${minHum}–${maxHum}%)` : ""}`.trim()
-      : null;
-
-    let operatorUserId = user?.id || null;
-    if (!operatorUserId) {
-      const { data: fallbackUser } = await supabase
-        .from("profiles")
-        .select("user_id")
-        .eq("active", true)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      operatorUserId = fallbackUser?.user_id || "00000000-0000-0000-0000-000000000001";
-    }
-    const nowIso = new Date().toISOString();
-
-    // 3. Upsert vào bảng daily_temperature_logs
-    try {
-      const { error: upsertErr } = await supabase
-        .from("daily_temperature_logs")
-        .upsert(
-          {
-            occurrence_id: occ.id,
-            asset_id: period.asset_id,
-            location_id: period.location_id,
-            business_date: occ.business_date,
-            slot_code: occ.slot_code,
-            temperature_c: numTemp,
-            humidity_pct: numHum,
-            is_abnormal: isAbnormal,
-            abnormal_reason: abnormalReason,
-            note: note || null,
-            user_id: operatorUserId,
-            updated_at: nowIso,
-          },
-          { onConflict: "occurrence_id" }
-        );
-
-      if (upsertErr) {
-        console.warn("daily_temperature_logs upsert notice:", upsertErr.message);
-      }
-    } catch (logErr) {
-      console.warn("daily_temperature_logs catch:", logErr);
-    }
-
-    // 4. Đồng bộ vào records & measurement_details để đảm bảo xuất báo cáo A4, Excel, PDF hoạt động 100%
-    let recordId = occ.fulfilled_by_record_id;
-
-    if (recordId) {
-      // Cập nhật record hiện có
-      await supabase
-        .from("records")
-        .update({
-          note: note || null,
-          entered_by: operatorUserId,
-          updated_at: nowIso,
-        })
-        .eq("id", recordId);
-
-      await supabase
-        .from("measurement_details")
-        .upsert(
-          {
-            record_id: recordId,
-            temperature_c: numTemp,
-            humidity_pct: numHum,
-            temperature_min_snapshot: minTemp,
-            temperature_max_snapshot: maxTemp,
-            humidity_min_snapshot: templateCode.includes("BM.01") ? minHum : null,
-            humidity_max_snapshot: templateCode.includes("BM.01") ? maxHum : null,
-            temperature_abnormal: isTempAbnormal,
-            humidity_abnormal: isHumAbnormal,
-          },
-          { onConflict: "record_id" }
-        );
-    } else {
-      // Tạo mới record
-      const { data: newRec, error: newRecErr } = await supabase
-        .from("records")
-        .insert({
-          period_id: occ.period_id,
-          form_version_id: period.form_version_id,
-          record_type: "MEASUREMENT",
-          location_id: period.location_id,
-          asset_id: period.asset_id,
-          business_date: occ.business_date,
-          slot_code: occ.slot_code,
-          performed_at: nowIso,
-          entered_at: nowIso,
-          entered_by: operatorUserId,
-          is_na: false,
-          note: note || null,
-          record_state: "COMPLETED",
-          revision_no: 1,
-          is_effective: true,
-          lock_version: 1,
-        })
-        .select("id")
-        .single();
-
-      if (!newRecErr && newRec) {
-        recordId = newRec.id;
-
-        await supabase.from("measurement_details").insert({
-          record_id: recordId,
-          temperature_c: numTemp,
-          humidity_pct: numHum,
-          temperature_min_snapshot: minTemp,
-          temperature_max_snapshot: maxTemp,
-          humidity_min_snapshot: templateCode.includes("BM.01") ? minHum : null,
-          humidity_max_snapshot: templateCode.includes("BM.01") ? maxHum : null,
-          temperature_abnormal: isTempAbnormal,
-          humidity_abnormal: isHumAbnormal,
-        });
-
-        await supabase
-          .from("schedule_occurrences")
-          .update({
-            status: "FULFILLED",
-            fulfilled_by_record_id: recordId,
-          })
-          .eq("id", occ.id);
-      }
+    if (error || !recordId) {
+      const message = error?.message ?? "Không thể lưu số đo";
+      const denied = /scope denied|authentication required|permission denied/i.test(message);
+      const conflict = /already fulfilled|not writable/i.test(message);
+      const invalid = /required measurement values missing|not a measurement form/i.test(message);
+      return NextResponse.json(
+        { success: false, error: denied ? "Không có quyền ghi số đo" : conflict ? "Điểm đo đã được ghi" : invalid ? "Thiếu giá trị đo bắt buộc" : "Không thể lưu số đo" },
+        { status: denied ? 403 : conflict ? 409 : invalid ? 400 : 500 },
+      );
     }
 
     return NextResponse.json({
       success: true,
-      occurrenceId: occ.id,
+      occurrenceId,
       recordId,
-      temperature: numTemp,
-      humidity: numHum,
-      isAbnormal,
-      minTemp,
-      maxTemp,
-      badgeText: numTemp != null ? `Đã đo: ${numTemp}°C` : "Chưa đo",
-      abnormalReason,
+      temperature,
+      humidity,
     });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Lỗi không xác định";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  } catch (error) {
+    const malformedRequest = error instanceof SyntaxError;
+    return NextResponse.json(
+      { success: false, error: malformedRequest ? "Dữ liệu gửi lên không hợp lệ" : "Không thể lưu số đo" },
+      { status: malformedRequest ? 400 : 500 },
+    );
   }
 }

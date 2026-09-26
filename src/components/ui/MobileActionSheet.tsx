@@ -2,15 +2,12 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { 
   FileSpreadsheet, 
   Printer, 
   Edit3, 
   Home, 
   X, 
-  Plus, 
-  Download, 
   Layers,
   ChevronRight
 } from "lucide-react";
@@ -24,7 +21,6 @@ interface MobileActionSheetProps {
 
 export function MobileActionSheet({ onQuickInput, exportHref = "/reports/export", className }: MobileActionSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
 
   const handlePrint = () => {
     setIsOpen(false);

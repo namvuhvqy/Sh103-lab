@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { getReportPeriods } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { StatusDistribution } from "@/components/p5/OperationalChart";
-import { Download, FileBarChart, FileSpreadsheet, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
+import { Download, FileBarChart, FileSpreadsheet } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 

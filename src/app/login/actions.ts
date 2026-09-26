@@ -4,48 +4,23 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function loginAction(_previous: { ok: boolean; message?: string }, formData: FormData) {
-  let email = String(formData.get("email") ?? "").trim();
+  let email = String(formData.get("email") ?? "").trim().toLowerCase();
   const rawPassword = String(formData.get("password") ?? "");
-  if (!email || !rawPassword) return { ok: false, message: "Vui lòng nhập đầy đủ email và mật khẩu." };
+  if (!email || rawPassword.length < 5) {
+    return { ok: false, message: "Vui lòng nhập tài khoản và mật khẩu tối thiểu 5 ký tự." };
+  }
 
-  // Support usernames without domain or specific admin aliases
-  const cleanInput = email.toLowerCase();
-  if (cleanInput === "adminsinhhoa" || cleanInput === "admin" || cleanInput === "adminsinhhoa@sh103.hospital") {
+  if (email === "adminsinhhoa" || email === "admin") {
     email = "adminsinhhoa@sh103.hospital";
   } else if (!email.includes("@")) {
     email = `${email}@sh103.hospital`;
   }
 
   const supabase = await createClient();
-
-  // If password was 5 characters, normalize for Supabase 6-character requirement
-  const passwordToTry = rawPassword.length === 5 ? `${rawPassword}_sh` : rawPassword;
-  let { data, error } = await supabase.auth.signInWithPassword({ email, password: passwordToTry });
-
-  // Fallback to raw password if normalized failed
-  if (error && rawPassword.length === 5) {
-    const res = await supabase.auth.signInWithPassword({ email, password: rawPassword });
-    if (res.data?.user) {
-      data = res.data;
-      error = null;
-    }
-  }
-
-  // If logging in as admin and initial failed, allow default passwords
-  if (error && email === "adminsinhhoa@sh103.hospital") {
-    for (const altPass of ["adminsinhhoa", "12345", "admin123", "Adminsinhhoa"]) {
-      if (altPass !== rawPassword) {
-        const altNorm = altPass.length === 5 ? `${altPass}_sh` : altPass;
-        const res = await supabase.auth.signInWithPassword({ email, password: altNorm });
-        if (res.data?.user) {
-          data = res.data;
-          error = null;
-          break;
-        }
-      }
-    }
-  }
-
+  // Supabase Auth requires six characters; five-character hospital credentials
+  // are stored with the documented internal suffix and verified exactly once.
+  const password = rawPassword.length === 5 ? `${rawPassword}_sh` : rawPassword;
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data?.user) return { ok: false, message: "Thông tin đăng nhập không đúng." };
 
   const { data: profile } = await supabase.from("profiles").select("active").eq("user_id", data.user.id).maybeSingle();

@@ -49,7 +49,7 @@ describe("official XLSX export", () => {
 
   it("rejects non-approved periods", async () => {
     getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN" }, records: [] });
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?draft=true"), context);
     expect(response.status).toBe(409);
   });
 });

@@ -1,20 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Bell, BellRing, X, ExternalLink, ShieldCheck } from "lucide-react";
+import { Bell, BellRing, X } from "lucide-react";
 
-export function InAppAlertBanner({ unreadCount }: { unreadCount?: number }) {
+export function InAppAlertBanner() {
   const [dismissed, setDismissed] = useState(false);
-  const [pushSupported, setPushSupported] = useState(false);
-  const [pushGranted, setPushGranted] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setPushSupported(true);
-      setPushGranted(Notification.permission === "granted");
-    }
-  }, []);
+  const [pushSupported] = useState(() => typeof window !== "undefined" && "Notification" in window);
+  const [pushGranted, setPushGranted] = useState(() => typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted");
 
   const requestNotification = async () => {
     if (!pushSupported) return;

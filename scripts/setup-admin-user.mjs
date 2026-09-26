@@ -25,8 +25,11 @@ const adminClient = createClient(supabaseUrl, serviceKey, {
 });
 
 async function main() {
-  const email = "adminsinhhoa@sh103.hospital";
-  const targetPassword = process.argv[2] || "adminsinhhoa";
+  const email = process.env.ADMIN_EMAIL;
+  const targetPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!email || !targetPassword) {
+    throw new Error("ADMIN_EMAIL and ADMIN_INITIAL_PASSWORD are required");
+  }
 
   console.log(`Setting up user: ${email} with password length: ${targetPassword.length}`);
 

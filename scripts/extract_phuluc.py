@@ -92,38 +92,38 @@ markdown_content = """# Phụ lục: Danh mục Trang thiết bị, Tủ lạnh 
 
 > Quy tắc tài khoản:  
 > - **Username:** họ viết tắt + tên viết thường không dấu (Ví dụ: Huỳnh Quang Thuận -> `hqthuan`).  
-> - **Mật khẩu khởi tạo:** `12345` (tối thiểu 5 ký tự).  
+> - **Mật khẩu khởi tạo:** do quản trị viên cấp qua kênh bảo mật và bắt buộc đổi khi bàn giao.
 > - **Phân quyền:** STT 1–10 là Bác sĩ (gồm Chỉ huy BMK, Quản lý hồ sơ, Bác sĩ phụ trách; các Admin có quyền ngang nhau). STT 11–25 là Kỹ thuật viên.
 
-| STT | Họ và tên | Chức danh / Vai trò | Username | Email hệ thống | Phân quyền Admin | Mật khẩu mặc định |
+| STT | Họ và tên | Chức danh / Vai trò | Username | Email hệ thống | Phân quyền Admin | Trạng thái thông tin xác thực |
 |:---:|:---|:---|:---:|:---|:---:|:---:|
-| 1 | **Huỳnh Quang Thuận** | Chỉ huy BMK / Bác sĩ | `hqthuan` | `hqthuan@sh103.hospital` | **Admin** | `12345` |
-| 2 | Lê Thanh Hà | Bác sĩ | `ltha` | `ltha@sh103.hospital` | Thành viên | `12345` |
-| 3 | **Vũ Quang Hợp** | Chỉ huy BMK / Bác sĩ | `vqhop` | `vqhop@sh103.hospital` | **Admin** | `12345` |
-| 4 | Hoàng Thị Minh | Bác sĩ | `htminh` | `htminh@sh103.hospital` | Thành viên | `12345` |
-| 5 | Hồ Thị Hằng | Bác sĩ | `hthang` | `hthang@sh103.hospital` | Thành viên | `12345` |
-| 6 | Nguyễn Thị Mai Ly | Bác sĩ | `ntmly` | `ntmly@sh103.hospital` | Thành viên | `12345` |
-| 7 | **Đậu Văn Hoàng** | Bác sĩ / Quản trị | `dvhoang` | `dvhoang@sh103.hospital` | **Admin** | `12345` |
-| 8 | **Ngô Trung Hiếu** | Bác sĩ / Quản trị | `nthieu` | `nthieu@sh103.hospital` | **Admin** | `12345` |
-| 9 | Nguyễn Thành Long | Bác sĩ | `ntlong` | `ntlong@sh103.hospital` | Thành viên | `12345` |
-| 10 | Đàm Thị Phương Lan | Bác sĩ / Quản lý hồ sơ | `dtplan` | `dtplan@sh103.hospital` | Thành viên | `12345` |
-| 11 | Nguyễn Văn Cường | Kỹ thuật viên | `nvcuong` | `nvcuong@sh103.hospital` | Thành viên | `12345` |
-| 12 | Nguyễn Thị Bích Hạnh | Kỹ thuật viên | `ntbhanh` | `ntbhanh@sh103.hospital` | Thành viên | `12345` |
-| 13 | Nguyễn Thanh Thuỷ | Kỹ thuật viên | `ntthuy` | `ntthuy@sh103.hospital` | Thành viên | `12345` |
-| 14 | Phạm Thị Phương Thảo | Kỹ thuật viên | `ptpthao` | `ptpthao@sh103.hospital` | Thành viên | `12345` |
-| 15 | Tăng Thanh Thuỷ | Kỹ thuật viên | `ttthuy` | `ttthuy@sh103.hospital` | Thành viên | `12345` |
-| 16 | Nguyễn Xuân Hùng | Kỹ thuật viên | `nxhung` | `nxhung@sh103.hospital` | Thành viên | `12345` |
-| 17 | Nguyễn Thị Sinh | Kỹ thuật viên | `ntsinh` | `ntsinh@sh103.hospital` | Thành viên | `12345` |
-| 18 | Nguyễn Thị Minh Ngọc | Kỹ thuật viên | `ntmngoc` | `ntmngoc@sh103.hospital` | Thành viên | `12345` |
-| 19 | Lê Thị Thảo | Kỹ thuật viên | `ltthao` | `ltthao@sh103.hospital` | Thành viên | `12345` |
-| 20 | **Vũ Viết Nam** | Kỹ thuật viên / Quản trị | `vvnam` | `vvnam@sh103.hospital` | **Admin** | `12345` |
-| 21 | Nguyễn Văn Nhân | Kỹ thuật viên | `nvnhan` | `nvnhan@sh103.hospital` | Thành viên | `12345` |
-| 22 | Mai Thị Phương Thảo | Kỹ thuật viên | `mtpthao` | `mtpthao@sh103.hospital` | Thành viên | `12345` |
-| 23 | Nguyễn Minh Thư | Kỹ thuật viên | `nmthu` | `nmthu@sh103.hospital` | Thành viên | `12345` |
-| 24 | Cấn Thu Anh | Kỹ thuật viên | `ctanh` | `ctanh@sh103.hospital` | Thành viên | `12345` |
-| 25 | Lê Thị Hằng | Kỹ thuật viên | `lthang` | `lthang@sh103.hospital` | Thành viên | `12345` |
+| 1 | **Huỳnh Quang Thuận** | Chỉ huy BMK / Bác sĩ | `hqthuan` | `hqthuan@sh103.hospital` | **Admin** | Cấp riêng |
+| 2 | Lê Thanh Hà | Bác sĩ | `ltha` | `ltha@sh103.hospital` | Thành viên | Cấp riêng |
+| 3 | **Vũ Quang Hợp** | Chỉ huy BMK / Bác sĩ | `vqhop` | `vqhop@sh103.hospital` | **Admin** | Cấp riêng |
+| 4 | Hoàng Thị Minh | Bác sĩ | `htminh` | `htminh@sh103.hospital` | Thành viên | Cấp riêng |
+| 5 | Hồ Thị Hằng | Bác sĩ | `hthang` | `hthang@sh103.hospital` | Thành viên | Cấp riêng |
+| 6 | Nguyễn Thị Mai Ly | Bác sĩ | `ntmly` | `ntmly@sh103.hospital` | Thành viên | Cấp riêng |
+| 7 | **Đậu Văn Hoàng** | Bác sĩ / Quản trị | `dvhoang` | `dvhoang@sh103.hospital` | **Admin** | Cấp riêng |
+| 8 | **Ngô Trung Hiếu** | Bác sĩ / Quản trị | `nthieu` | `nthieu@sh103.hospital` | **Admin** | Cấp riêng |
+| 9 | Nguyễn Thành Long | Bác sĩ | `ntlong` | `ntlong@sh103.hospital` | Thành viên | Cấp riêng |
+| 10 | Đàm Thị Phương Lan | Bác sĩ / Quản lý hồ sơ | `dtplan` | `dtplan@sh103.hospital` | Thành viên | Cấp riêng |
+| 11 | Nguyễn Văn Cường | Kỹ thuật viên | `nvcuong` | `nvcuong@sh103.hospital` | Thành viên | Cấp riêng |
+| 12 | Nguyễn Thị Bích Hạnh | Kỹ thuật viên | `ntbhanh` | `ntbhanh@sh103.hospital` | Thành viên | Cấp riêng |
+| 13 | Nguyễn Thanh Thuỷ | Kỹ thuật viên | `ntthuy` | `ntthuy@sh103.hospital` | Thành viên | Cấp riêng |
+| 14 | Phạm Thị Phương Thảo | Kỹ thuật viên | `ptpthao` | `ptpthao@sh103.hospital` | Thành viên | Cấp riêng |
+| 15 | Tăng Thanh Thuỷ | Kỹ thuật viên | `ttthuy` | `ttthuy@sh103.hospital` | Thành viên | Cấp riêng |
+| 16 | Nguyễn Xuân Hùng | Kỹ thuật viên | `nxhung` | `nxhung@sh103.hospital` | Thành viên | Cấp riêng |
+| 17 | Nguyễn Thị Sinh | Kỹ thuật viên | `ntsinh` | `ntsinh@sh103.hospital` | Thành viên | Cấp riêng |
+| 18 | Nguyễn Thị Minh Ngọc | Kỹ thuật viên | `ntmngoc` | `ntmngoc@sh103.hospital` | Thành viên | Cấp riêng |
+| 19 | Lê Thị Thảo | Kỹ thuật viên | `ltthao` | `ltthao@sh103.hospital` | Thành viên | Cấp riêng |
+| 20 | **Vũ Viết Nam** | Kỹ thuật viên / Quản trị | `vvnam` | `vvnam@sh103.hospital` | **Admin** | Cấp riêng |
+| 21 | Nguyễn Văn Nhân | Kỹ thuật viên | `nvnhan` | `nvnhan@sh103.hospital` | Thành viên | Cấp riêng |
+| 22 | Mai Thị Phương Thảo | Kỹ thuật viên | `mtpthao` | `mtpthao@sh103.hospital` | Thành viên | Cấp riêng |
+| 23 | Nguyễn Minh Thư | Kỹ thuật viên | `nmthu` | `nmthu@sh103.hospital` | Thành viên | Cấp riêng |
+| 24 | Cấn Thu Anh | Kỹ thuật viên | `ctanh` | `ctanh@sh103.hospital` | Thành viên | Cấp riêng |
+| 25 | Lê Thị Hằng | Kỹ thuật viên | `lthang` | `lthang@sh103.hospital` | Thành viên | Cấp riêng |
 
-*(Tài khoản Quản trị chung: `Adminsinhhoa` / Mật khẩu `adminsinhhoa` hoặc `12345`)*
+> Không lưu mật khẩu hoặc tài khoản quản trị dùng chung trong tài liệu nguồn. Mọi thông tin xác thực cũ từng được công bố phải được thu hồi và cấp lại.
 """
 
 with open("docs/PHU_LUC_DANH_MUC_TTB_NHAN_SU.md", "w", encoding="utf-8") as f:

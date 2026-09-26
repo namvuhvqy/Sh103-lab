@@ -69,9 +69,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
 
-  const allowDraft = search.get("draft") === "true";
   const isApproved = report.official && report.period?.status === "APPROVED";
-  if (!isApproved && !allowDraft) {
+  if (!isApproved) {
     return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
   }
 
@@ -434,8 +433,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   const bytes = await workbook.xlsx.writeBuffer();
   const safeCode = templateCode.replace(/[\/\\?%*:|"<>]/g, "_");
   const periodSlug = (period.period_label ?? `${period.period_start}_${period.period_end}`).replace(/[\/\\?%*:|"<> ]/g, "_");
-  const prefix = isApproved ? "" : "[BAN_NHAP]_";
-  const filename = `${prefix}${safeCode}_${periodSlug}.xlsx`;
+  const filename = `${safeCode}_${periodSlug}.xlsx`;
 
   return new Response(Buffer.from(bytes), {
     headers: {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { shiftProgress } from "@/lib/forms/domain";
-import { Zap, RotateCcw, Info, CheckCircle2, AlertOctagon, HelpCircle } from "lucide-react";
+import { Zap, RotateCcw, HelpCircle } from "lucide-react";
 
 export type ShiftAsset = { id: string; sourceOrder: number; name: string; locationCode: string };
 

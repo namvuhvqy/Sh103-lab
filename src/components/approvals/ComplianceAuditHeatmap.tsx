@@ -145,8 +145,6 @@ export function ComplianceAuditHeatmap() {
                   const d = dates[i];
                   const isFull = status === "FULL";
                   const isPartial = status === "PARTIAL";
-                  const isEmpty = status === "EMPTY";
-
                   const cellColor = isFull
                     ? "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                     : isPartial

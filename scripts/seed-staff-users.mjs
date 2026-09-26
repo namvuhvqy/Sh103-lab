@@ -63,8 +63,10 @@ async function seed() {
 
   const existingMap = new Map((users || []).map((u) => [u.email, u]));
 
-  // Default password "12345" normalized for Supabase 6-char requirement
-  const passwordForSupabase = "12345_sh";
+  const passwordForSupabase = process.env.STAFF_INITIAL_PASSWORD;
+  if (!passwordForSupabase) {
+    throw new Error("STAFF_INITIAL_PASSWORD is required; never commit a shared default password");
+  }
 
   for (const staff of STAFF_MEMBERS) {
     const email = `${staff.username}@sh103.hospital`;

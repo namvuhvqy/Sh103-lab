@@ -63,6 +63,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     shift: search.get("shift") ?? undefined,
   });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
+  if (!(report.official && report.period?.status === "APPROVED")) {
+    return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
+  }
 
   type Period = {
     period_label: string | null;
@@ -109,12 +112,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   draw(`Kỳ theo dõi: ${period.period_label ?? `${period.period_start} – ${period.period_end}`}`);
   draw(`Đối tượng: ${period.locations?.name ?? period.assets?.source_name ?? "Toàn khoa Sinh hóa"}`);
 
-  const isApproved = report.official || period.status === "APPROVED";
-  if (isApproved) {
-    draw(`Trạng thái: ĐÃ PHÊ DUYỆT ĐIỆN TỬ (Chính thức) lúc ${period.approved_at ?? ""}`, 10, rgb(0.04, 0.48, 0.24));
-  } else {
-    draw("TRẠNG THÁI: BẢN NHÁP — CHƯA PHÊ DUYỆT (CHỈ DÙNG ĐỂ KIỂM TRA NỘI BỘ)", 10, rgb(0.85, 0.15, 0.15));
-  }
+  draw(`Trạng thái: ĐÃ PHÊ DUYỆT ĐIỆN TỬ (Chính thức) lúc ${period.approved_at ?? ""}`, 10, rgb(0.04, 0.48, 0.24));
   y -= 8;
 
   draw(`DỮ LIỆU LÂM SÀNG THỰC TẾ (${records.length} bản ghi)`, 11, rgb(0.05, 0.58, 0.53));

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Thermometer, Droplets, ShieldCheck, Check, Loader2, AlertTriangle, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,21 +40,28 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     ? "-30°C đến -10°C"
     : "2°C – 8°C";
 
+  const recovery = (() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const pending = localStorage.getItem(`lab103_temp_${occurrence.id}`);
+      return pending ? JSON.parse(pending) as { temp?: number | null; hum?: number | null } : null;
+    } catch {
+      return null;
+    }
+  })();
   const [tempVal, setTempVal] = useState<string>(
-    occurrence.initialTemperature != null ? String(occurrence.initialTemperature) : ""
+    occurrence.initialTemperature != null ? String(occurrence.initialTemperature) : recovery?.temp != null ? String(recovery.temp) : ""
   );
   const [humVal, setHumVal] = useState<string>(
-    occurrence.initialHumidity != null ? String(occurrence.initialHumidity) : ""
+    occurrence.initialHumidity != null ? String(occurrence.initialHumidity) : recovery?.hum != null ? String(recovery.hum) : ""
   );
 
   const [isSaving, setIsSaving] = useState(false);
-  const [lastSavedTemp, setLastSavedTemp] = useState<number | null>(
-    occurrence.initialTemperature ?? null
-  );
-  const [lastSavedHum, setLastSavedHum] = useState<number | null>(
-    occurrence.initialHumidity ?? null
-  );
+  const [lastSavedTemp, setLastSavedTemp] = useState<number | null>(occurrence.initialTemperature ?? null);
+  const [lastSavedHum, setLastSavedHum] = useState<number | null>(occurrence.initialHumidity ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [pendingSync, setPendingSync] = useState(Boolean(recovery));
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tempInputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +86,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
           // Rung nhẹ 1 nhịp xác nhận
           navigator.vibrate(50);
         }
-      } catch (e) {
+      } catch {
         // Trình duyệt không cấp quyền vibrate
       }
     }
@@ -98,13 +105,20 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
             JSON.stringify({ temp, hum, updatedAt: new Date().toISOString() })
           );
         }
-      } catch (e) {
+      } catch {
         // localStorage có thể bị khóa ở môi trường private
       }
 
-      setIsSaving(true);
       setSaveSuccess(false);
+      setSaveError(null);
 
+      if (isEnv && temp !== null && hum === null) {
+        setPendingSync(true);
+        setSaveError("Cần nhập độ ẩm");
+        return;
+      }
+
+      setIsSaving(true);
       try {
         const res = await fetch("/api/measurements/quick-save", {
           method: "POST",
@@ -115,47 +129,25 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
             humidity: hum,
           }),
         });
+        const data = await res.json().catch(() => ({ success: false, error: "Không thể đọc phản hồi" }));
+        if (!res.ok || !data.success) throw new Error(data.error || "Không thể đồng bộ số đo");
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setLastSavedTemp(temp);
-            setLastSavedHum(hum);
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 2500);
-
-            if (temp !== null) {
-              triggerHaptic(data.isAbnormal);
-            }
-
-            if (onSaved) {
-              onSaved(occurrence.id, temp, hum);
-            }
-          }
-        } else {
-          // Lưu dự phòng cục bộ thành công
-          setLastSavedTemp(temp);
-          setLastSavedHum(hum);
-          setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 2000);
-          if (onSaved) {
-            onSaved(occurrence.id, temp, hum);
-          }
-        }
-      } catch (err) {
-        console.warn("Lưu qua API gián đoạn, đã lưu cục bộ an toàn:", err);
         setLastSavedTemp(temp);
         setLastSavedHum(hum);
+        setPendingSync(false);
         setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 2000);
-        if (onSaved) {
-          onSaved(occurrence.id, temp, hum);
-        }
+        try { localStorage.removeItem(`lab103_temp_${occurrence.id}`); } catch {}
+        setTimeout(() => setSaveSuccess(false), 2500);
+        if (temp !== null) triggerHaptic(isAbnormal);
+        onSaved?.(occurrence.id, temp, hum);
+      } catch (err) {
+        setPendingSync(true);
+        setSaveError(err instanceof Error ? err.message : "Chưa thể đồng bộ số đo");
       } finally {
         setIsSaving(false);
       }
     },
-    [occurrence.id, lastSavedTemp, lastSavedHum, triggerHaptic, onSaved]
+    [occurrence.id, lastSavedTemp, lastSavedHum, triggerHaptic, onSaved, isAbnormal, isEnv]
   );
 
   // Debounce khi gõ số để lưu tự động
@@ -250,7 +242,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-800 border border-emerald-300">
                   <Check className="size-3 text-emerald-600 stroke-[3]" />
-                  Đã đo: {numTemp}°C
+                  Bình thường: {numTemp}°C
                 </span>
               )
             ) : (
@@ -284,7 +276,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
                 <Thermometer className="size-3.5 text-teal-700" />
                 Nhiệt độ (°C)
               </span>
-              {saveSuccess && <span className="text-[10px] font-bold text-emerald-700">✓ Đã lưu</span>}
+              {saveSuccess ? <span className="text-[10px] font-bold text-emerald-700">✓ Đã lưu</span> : pendingSync ? <span className="text-[10px] font-bold text-amber-700" title={saveError ?? undefined}>{saveError === "Cần nhập độ ẩm" ? saveError : "Chờ đồng bộ"}</span> : null}
             </label>
             <div className="relative flex items-center">
               <input
@@ -353,7 +345,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
 
         {/* Trợ giúp thao tác nhanh: Chạm để sửa ngay */}
         <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-          <span>{isTempEntered ? "Chạm con số để sửa ngay · Tự động lưu" : "Gõ số đo · Tự lưu khi xong"}</span>
+          <span>{pendingSync ? "Đã giữ cục bộ · Chạm ra ngoài để thử đồng bộ lại" : isTempEntered ? "Chạm con số để sửa ngay · Tự động lưu" : "Gõ số đo · Tự lưu khi xong"}</span>
           {isAbnormal && (
             <span className="font-bold text-rose-700 flex items-center gap-1">
               <span className="size-1.5 rounded-full bg-rose-600 animate-ping" />

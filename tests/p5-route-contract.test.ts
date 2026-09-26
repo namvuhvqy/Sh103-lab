@@ -25,6 +25,8 @@ describe("P5 M01-M06 route contract", () => {
     const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
     for (const route of [csv, pdf, xlsx]) {
       expect(route).toMatch(/APPROVED/);
+      expect(route).toMatch(/status: 409/);
+      expect(route).not.toMatch(/allowDraft|draft=true/);
       expect(route).toMatch(/search\.get\("start"\)/);
       expect(route).toMatch(/search\.get\("shift"\)/);
     }

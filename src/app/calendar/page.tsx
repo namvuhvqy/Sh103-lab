@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
 import { vietnamParts, currentShift } from "@/lib/forms/domain";
 import { getTodayTasks } from "@/lib/forms/queries";
-import { Calendar, Clock, Users, ShieldAlert, CheckCircle2, ChevronLeft, ChevronRight, FileText, ArrowRight } from "lucide-react";
+import { Calendar, Clock, ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 

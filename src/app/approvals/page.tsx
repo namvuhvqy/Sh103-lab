@@ -8,7 +8,7 @@ import { getPeriods } from "@/lib/forms/queries";
 import { getApprovalQueue, getCurrentAccess, getPendingCorrections } from "@/lib/forms/workflow";
 import { BatchApprovalSection } from "@/components/approvals/BatchApprovalSection";
 import { ComplianceAuditHeatmap } from "@/components/approvals/ComplianceAuditHeatmap";
-import { CheckCircle2, Clock3, RotateCcw, ShieldCheck, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock3, RotateCcw, ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 

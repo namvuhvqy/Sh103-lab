@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { InlineTemperatureCard, InlineOccurrence } from "./InlineTemperatureCard";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CircleAlert, CheckCircle2, Clock3 } from "lucide-react";
+import { CircleAlert } from "lucide-react";
 
 interface InlineTemperatureListProps {
   initialOccurrences: InlineOccurrence[];

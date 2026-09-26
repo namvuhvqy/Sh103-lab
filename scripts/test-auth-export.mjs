@@ -14,9 +14,12 @@ const key = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(url, key);
 
 async function testAuthExport() {
+  const email = process.env.E2E_EMAIL;
+  const password = process.env.E2E_PASSWORD;
+  if (!email || !password) throw new Error("E2E_EMAIL and E2E_PASSWORD are required");
   const { data: auth, error } = await supabase.auth.signInWithPassword({
-    email: "hqthuan@sh103.hospital",
-    password: "12345_sh",
+    email,
+    password,
   });
 
   if (error || !auth.session) {

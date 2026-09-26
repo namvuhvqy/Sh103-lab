@@ -25,8 +25,12 @@ try {
 }
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
-const EMAIL = "namvuhvqy@gmail.com";
-const PASSWORD = "Sh103!P3-Handover#7mQ2";
+const EMAIL = process.env.E2E_EMAIL;
+const PASSWORD = process.env.E2E_PASSWORD;
+
+if (!EMAIL || !PASSWORD) {
+  throw new Error("E2E_EMAIL and E2E_PASSWORD are required");
+}
 
 async function main() {
   console.log("==================================================================");

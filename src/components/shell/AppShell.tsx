@@ -38,7 +38,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <OfflineBanner isOffline={!isOnline} />
-        <InAppAlertBanner unreadCount={unreadCount} />
+        <InAppAlertBanner />
 
         <MobileHeader
           title={headerTitle}

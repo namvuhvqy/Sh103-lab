@@ -63,6 +63,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
   const isApproved = report.official && report.period?.status === "APPROVED";
+  if (!isApproved) {
+    return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
+  }
 
   type Period = {
     period_label: string | null;
@@ -212,7 +215,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
         const matchingRecord = records.find(
           (r) => r.business_date === dateStr && (r.slot_code === shift.slot || r.slot_code === shift.label)
         );
-        const machineCells = HOSPITAL_MACHINES_25.map((m) => {
+        const machineCells = HOSPITAL_MACHINES_25.map(() => {
           if (!matchingRecord) return "";
           const s = firstItem(matchingRecord.equipment_shift_details)?.equipment_shift_statuses;
           return s?.status_code ?? "BT";
@@ -247,7 +250,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     ["BỆNH VIỆN QUÂN Y 103 · KHOA SINH HÓA"],
     [`Biểu mẫu: ${period.form_template_versions.form_templates.code} — ${period.form_template_versions.form_templates.name}`],
     [`Kỳ báo cáo: ${period.period_label ?? `${period.period_start} – ${period.period_end}`}`],
-    [`Trạng thái: ${report.official ? "ĐÃ PHÊ DUYỆT (CHÍNH THỨC)" : "BẢN NHÁP — CHƯA PHÊ DUYỆT"}`],
+    ["Trạng thái: ĐÃ PHÊ DUYỆT (CHÍNH THỨC)"],
     [],
   ];
 
@@ -257,8 +260,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
 
   const safeCode = templateCode.replace(/[\/\\?%*:|"<>]/g, "_");
   const periodSlug = (period.period_label ?? `${period.period_start}_${period.period_end}`).replace(/[\/\\?%*:|"<> ]/g, "_");
-  const prefix = report.official ? "" : "[BAN_NHAP]_";
-  const filename = `${prefix}${safeCode}_${periodSlug}.csv`;
+  const filename = `${safeCode}_${periodSlug}.csv`;
 
   return new Response(body, {
     headers: {

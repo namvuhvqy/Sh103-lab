@@ -9,46 +9,31 @@ import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 import {
   ShieldCheck,
   CheckCircle2,
-  Calendar,
   Users,
   Thermometer,
-  Snowflake,
   Sparkles,
   ClipboardCheck,
   ArrowRight,
-  Info,
 } from "lucide-react";
 
 export default function QuickDutyPage() {
   const [submitted, setSubmitted] = useState(false);
-  const [ktv1, setKtv1] = useState("KTV Nguyễn Văn A");
-  const [ktv2, setKtv2] = useState("KTV Trần Thị B");
+  const [ktv1, setKtv1] = useState("");
+  const [ktv2, setKtv2] = useState("");
 
   // State 1: BM.01 (5 khu vực)
-  const [temps, setTemps] = useState<Record<string, { temp: string; humidity: string }>>({
-    NUOC_TIEU: { temp: "23.5", humidity: "55" },
-    SINH_HOA: { temp: "24.0", humidity: "58" },
-    MIEN_DICH: { temp: "23.0", humidity: "52" },
-    AUTOMATION: { temp: "23.8", humidity: "54" },
-    LOC_NUOC_RO: { temp: "24.2", humidity: "56" },
-  });
+  const [temps, setTemps] = useState<Record<string, { temp: string; humidity: string }>>({});
 
   // State 2: BM.02 & BM.03 (Tủ lạnh)
-  const [fridgeMat, setFridgeMat] = useState("4.5");
-  const [fridgeDa, setFridgeDa] = useState("-22.0");
+  const [fridgeMat, setFridgeMat] = useState("");
+  const [fridgeDa, setFridgeDa] = useState("");
 
   // State 3: BM.01_KNBM (Khử nhiễm)
-  const [dailyDone, setDailyDone] = useState(true);
+  const [dailyDone, setDailyDone] = useState(false);
   const [spillDone, setSpillDone] = useState(false);
 
   // State 4: BM.06 (25 máy)
-  const [machineStatuses, setMachineStatuses] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    HOSPITAL_MACHINES_25.forEach((m) => {
-      init[m.code] = "BT";
-    });
-    return init;
-  });
+  const [machineStatuses, setMachineStatuses] = useState<Record<string, string>>({});
 
   const handleSetAllMachines = (status: string) => {
     const updated = { ...machineStatuses };
@@ -101,10 +86,10 @@ export default function QuickDutyPage() {
           <div className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-6 text-center space-y-3 animate-fadeIn">
             <CheckCircle2 className="mx-auto size-12 text-emerald-600" />
             <h2 className="text-xl font-black text-emerald-950">
-              Kíp trực đã hoàn tất bàn giao 4 biểu mẫu thành công!
+              Đã kiểm tra dữ liệu chuẩn bị của kíp trực
             </h2>
             <p className="text-xs text-emerald-800 max-w-md mx-auto">
-              Dữ liệu của BM.01 (5 khu vực), BM.02, BM.03, BM.01_KNBM và BM.06 (25 máy) đã được đồng bộ vào hệ thống và sẵn sàng để Lãnh đạo phê duyệt.
+              Chưa tạo hồ sơ chính thức. Hãy mở từng workflow BM.01–BM.03, BM.01_KNBM và BM.06 để lưu, ký và gửi duyệt theo đúng thẩm quyền.
             </p>
             <div className="flex justify-center gap-3 pt-2">
               <Link
@@ -178,7 +163,7 @@ export default function QuickDutyPage() {
                           type="number"
                           step="0.1"
                           required
-                          value={temps[area.code]?.temp ?? "23.5"}
+                          value={temps[area.code]?.temp ?? ""}
                           onChange={(e) =>
                             setTemps((prev) => ({
                               ...prev,
@@ -193,7 +178,7 @@ export default function QuickDutyPage() {
                         <input
                           type="number"
                           required
-                          value={temps[area.code]?.humidity ?? "55"}
+                          value={temps[area.code]?.humidity ?? ""}
                           onChange={(e) =>
                             setTemps((prev) => ({
                               ...prev,
@@ -316,7 +301,7 @@ export default function QuickDutyPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 max-h-[360px] overflow-y-auto p-1 border rounded-xl bg-slate-50">
                 {HOSPITAL_MACHINES_25.map((m) => {
-                  const current = machineStatuses[m.code] ?? "BT";
+                  const current = machineStatuses[m.code] ?? "";
                   return (
                     <div
                       key={m.code}
@@ -367,7 +352,7 @@ export default function QuickDutyPage() {
                 className="w-full min-h-12 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-black text-sm flex items-center justify-center gap-2 transition shadow-sm"
               >
                 <CheckCircle2 className="size-5" />
-                <span>Hoàn tất &amp; Ký nhận bàn giao kíp trực 4 biểu mẫu</span>
+                <span>Kiểm tra dữ liệu chuẩn bị</span>
               </button>
             </div>
           </form>
