@@ -5,6 +5,7 @@ import { SegmentedControl } from "@/components/p5/SegmentedControl";
 import { OperationalChart } from "@/components/p5/OperationalChart";
 import { getTemperatureOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
+import { TEMPERATURE_AREAS } from "@/constants/areas";
 import { CheckCircle2, CircleAlert, Clock3, Thermometer, ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -129,6 +130,32 @@ export default async function TemperaturePage({
             { label: "Tủ lạnh / Tủ đá", href: "/temperature?group=storage" },
           ]}
         />
+
+        {/* 5 Khu vực giám sát nhiệt độ chuẩn Viện 103 */}
+        {group === "environment" ? (
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-wider text-teal-900">
+                5 Khu vực theo dõi nhiệt độ &amp; độ ẩm (BM.01)
+              </h2>
+              <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                Ngưỡng chuẩn: 21–26°C · 20–80%
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+              {TEMPERATURE_AREAS.map((a) => (
+                <div
+                  key={a.code}
+                  className="rounded-xl border border-teal-100 bg-white p-3 text-center shadow-xs transition hover:border-teal-300"
+                >
+                  <p className="text-xs font-black text-slate-900">{a.name}</p>
+                  <p className="mt-1 text-[10px] font-bold text-teal-700">{a.normTemp}</p>
+                  <p className="text-[10px] text-slate-500">{a.normHumidity}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {/* Biểu đồ xu hướng */}
         <OperationalChart

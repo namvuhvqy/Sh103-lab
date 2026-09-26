@@ -49,3 +49,18 @@ export const AREAS: AreaConfig[] = [
     href: "/areas/NHAN_BENH_PHAM",
   },
 ];
+
+export interface TemperatureAreaConfig {
+  code: string;
+  name: string;
+  normTemp: string;
+  normHumidity: string;
+}
+
+export const TEMPERATURE_AREAS: TemperatureAreaConfig[] = [
+  { code: "NUOC_TIEU", name: "Khu vực Nước tiểu", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "SINH_HOA", name: "Khu vực Sinh hóa", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "MIEN_DICH", name: "Khu vực Miễn dịch", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "AUTOMATION", name: "Hệ Automation", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "LOC_NUOC_RO", name: "Lọc nước RO", normTemp: "21–26°C", normHumidity: "20–80%" },
+];

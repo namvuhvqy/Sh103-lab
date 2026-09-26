@@ -7,7 +7,7 @@ import { getAreaSummaries } from "@/lib/forms/queries";
 import { getCurrentBm06 } from "@/lib/forms/context";
 import { getCurrentAccess } from "@/lib/forms/workflow";
 import { getOperationalDashboard } from "@/lib/p5/operational-queries";
-import { Activity, Bell, ClipboardCheck, FileBarChart, ShieldAlert, Sparkles, TestTube2, Thermometer } from "lucide-react";
+import { Activity, Bell, ClipboardCheck, FileBarChart, ShieldAlert, Sparkles, TestTube2, Thermometer, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function Home() {
       : { title: "Vận hành ổn định", description: "Các nghĩa vụ hiện tại đã được xử lý, không ghi nhận máy H.", href: "/dashboard", cta: "Xem Dashboard", tone: "success" as const };
 
   const modules = [
+    { href: "/quick-duty", label: "Kíp trực 24/7 & Lễ", description: "Nhập 4 biểu mẫu · 2 người", icon: Users },
     { href: "/temperature", label: "Nhiệt độ & độ ẩm", description: "BM.01 · BM.02 · BM.03", icon: Thermometer },
     { href: "/equipment", label: "Thiết bị & BM.06", description: "25 máy · 4 ca/ngày", icon: TestTube2 },
     { href: "/decontamination", label: "Khử nhiễm bề mặt", description: "Daily · Weekly · Spill", icon: Sparkles },

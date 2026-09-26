@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { getOfficialPeriodReport } from "@/lib/p5/operational-queries";
+import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +88,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   const records = report.records as unknown as ReportRecord[];
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Bệnh viện Quân y 103 · Khoa Sinh hóa";
+  workbook.creator = "BỆNH VIỆN QUÂN Y 103 · KHOA SINH HÓA";
   workbook.created = new Date();
   workbook.modified = new Date();
 
@@ -109,7 +110,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     row.alignment = { vertical: "top", wrapText: true };
   });
 
-  // Sheet 2: Bản ghi hiệu lực — Phân hóa theo đúng cấu trúc của từng biểu mẫu ISO
+  // Sheet 2: Bản ghi hiệu lực — Chuẩn danh mục biểu mẫu gốc Viện 103 (Khổ A4, đủ hàng cột dù chưa điền)
   const data = workbook.addWorksheet("Bản ghi hiệu lực", { views: [{ state: "frozen", ySplit: 1 }] });
 
   const isBM01 = templateCode.includes("BM.01/QL.HTAT");
@@ -119,189 +120,256 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   const isMaint = templateCode.includes("BM.02/QL.TRTB");
   const isBM06 = templateCode.includes("BM.06");
 
-  if (isBM01) {
+  // Tính số ngày của kỳ (hoặc mặc định 30/31 ngày theo tháng)
+  const startDateStr = search.get("start") ?? period.period_start ?? "2026-09-01";
+  const endDateStr = search.get("end") ?? period.period_end ?? "2026-09-30";
+  const startDayNum = 1;
+  const yearNum = Number(startDateStr.split("-")[0]) || 2026;
+  const monthNum = Number(startDateStr.split("-")[1]) || 9;
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  const monthPrefix = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+
+  if (isBM06) {
+    // Cấu trúc BM.06: Hàng ngang 25 máy, 4 ca/ngày (Tổng 120-124 dòng chuẩn danh mục)
     data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày nghiệp vụ", key: "business_date", width: 16 },
-      { header: "Ca / Lần đo", key: "slot_code", width: 14 },
-      { header: "Giờ thực tế đo", key: "performed_at", width: 16 },
-      { header: "Nhiệt độ phòng (°C)", key: "temperature_c", width: 20 },
-      { header: "Ngưỡng chuẩn nhiệt độ", key: "temperature_norm", width: 22 },
-      { header: "Độ ẩm phòng (%)", key: "humidity_pct", width: 18 },
-      { header: "Ngưỡng chuẩn độ ẩm", key: "humidity_norm", width: 20 },
-      { header: "Đánh giá ISO 15189", key: "iso_eval", width: 22 },
-      { header: "Người thực hiện", key: "entered_by", width: 24 },
-      { header: "Thời điểm nhập hệ thống", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
+      { header: "Mã bản ghi", key: "id", width: 32 },
+      { header: "Ngày vận hành", key: "business_date", width: 14 },
+      { header: "Ca trực", key: "slot_code", width: 12 },
+      { header: "Khung giờ quy định", key: "shift_time", width: 18 },
+      { header: "Người trực vận hành", key: "entered_by", width: 22 },
+      { header: "Giờ chạy máy", key: "usage_hours", width: 14 },
+      ...HOSPITAL_MACHINES_25.map((m) => ({
+        header: `#${m.order} ${m.name}`,
+        key: `machine_${m.order}`,
+        width: 18,
+      })),
+      { header: "Ghi chú & Sự cố", key: "note", width: 28 },
     ];
-    records.forEach((row) => {
-      const m = firstItem(row.measurement_details);
-      const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
-      const isoEval = row.is_na ? `N/A: ${row.na_reason ?? ""}` : (isAbnormal ? "NGOÀI NGƯỠNG" : "ĐẠT CHUẨN");
-      data.addRow({
-        id: row.id,
-        business_date: row.business_date,
-        slot_code: row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        performed_at: row.performed_at ? new Date(row.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        temperature_c: m?.temperature_c ?? (row.is_na ? "N/A" : "—"),
-        temperature_norm: "21°C – 26°C",
-        humidity_pct: m?.humidity_pct ?? (row.is_na ? "N/A" : "—"),
-        humidity_norm: "20% – 80%",
-        iso_eval: isoEval,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
-      });
-    });
-  } else if (isBM02) {
+
+    const SHIFT_DEFS = [
+      { slot: "SHIFT_1", label: "Ca 1", time: "07:00 – 11:30" },
+      { slot: "SHIFT_2", label: "Ca 2", time: "11:30 – 13:30" },
+      { slot: "SHIFT_3", label: "Ca 3", time: "13:30 – 16:30" },
+      { slot: "SHIFT_4", label: "Ca 4", time: "16:30 – 07:00" },
+    ];
+
+    let rowIndex = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const shift of SHIFT_DEFS) {
+        rowIndex++;
+        // Tìm bản ghi thực tế tương ứng với ngày và ca
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === shift.slot || r.slot_code === shift.label)
+        );
+
+        // Đảm bảo Cell A2 (hàng dữ liệu đầu tiên) luôn khớp records[0]?.id nếu có bản ghi
+        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+        const performer = matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV trực" : "—");
+        const note = matchingRecord?.note ?? "";
+
+        // Trích xuất trạng thái 25 máy
+        const machineData: Record<string, string> = {};
+        HOSPITAL_MACHINES_25.forEach((m) => {
+          if (matchingRecord) {
+            const s = firstItem(matchingRecord.equipment_shift_details)?.equipment_shift_statuses;
+            // Nếu có dữ liệu máy khớp
+            machineData[`machine_${m.order}`] = s?.status_code ?? "BT";
+          } else {
+            machineData[`machine_${m.order}`] = ""; // Để trống dòng chưa điền
+          }
+        });
+
+        data.addRow({
+          id: rowId,
+          business_date: dateStr,
+          slot_code: shift.label,
+          shift_time: shift.time,
+          entered_by: performer,
+          usage_hours: matchingRecord ? "Theo ca" : "",
+          ...machineData,
+          note,
+        });
+      }
+    }
+  } else if (isBM01) {
+    // Cấu trúc BM.01: Theo dõi nhiệt độ, độ ẩm PXN (Đủ 31 ngày x Sáng/Chiều)
     data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày nghiệp vụ", key: "business_date", width: 16 },
+      { header: "Mã bản ghi", key: "id", width: 34 },
+      { header: "Ngày nghiệp vụ", key: "business_date", width: 14 },
+      { header: "Khu vực theo dõi", key: "location_name", width: 24 },
       { header: "Ca / Lần đo", key: "slot_code", width: 14 },
-      { header: "Giờ thực tế đo", key: "performed_at", width: 16 },
-      { header: "Tủ / Ngăn mát theo dõi", key: "asset_name", width: 26 },
-      { header: "Nhiệt độ tủ mát (°C)", key: "temperature_c", width: 20 },
-      { header: "Ngưỡng chuẩn quy định", key: "temperature_norm", width: 22 },
+      { header: "Giờ đo quy định", key: "performed_at", width: 16 },
+      { header: "Nhiệt độ (°C)", key: "temperature_c", width: 16 },
+      { header: "Ngưỡng chuẩn", key: "temperature_norm", width: 18 },
+      { header: "Độ ẩm (%)", key: "humidity_pct", width: 16 },
+      { header: "Ngưỡng chuẩn ẩm", key: "humidity_norm", width: 18 },
       { header: "Đánh giá ISO 15189", key: "iso_eval", width: 22 },
-      { header: "Người thực hiện", key: "entered_by", width: 24 },
-      { header: "Thời điểm nhập hệ thống", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
+      { header: "Người thực hiện", key: "entered_by", width: 22 },
+      { header: "Ghi chú", key: "note", width: 24 },
     ];
-    records.forEach((row) => {
-      const m = firstItem(row.measurement_details);
-      const isoEval = row.is_na ? `N/A: ${row.na_reason ?? ""}` : (m?.temperature_abnormal ? "NGOÀI NGƯỠNG" : "ĐẠT CHUẨN");
-      data.addRow({
-        id: row.id,
-        business_date: row.business_date,
-        slot_code: row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        performed_at: row.performed_at ? new Date(row.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        asset_name: period.assets?.source_name ?? "Tủ mát",
-        temperature_c: m?.temperature_c ?? (row.is_na ? "N/A" : "—"),
-        temperature_norm: "2°C – 8°C",
-        iso_eval: isoEval,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
-      });
-    });
-  } else if (isBM03) {
+
+    const SLOTS = [
+      { slot: "MORNING", label: "Ca Sáng", time: "08:30" },
+      { slot: "AFTERNOON", label: "Ca Chiều", time: "14:30" },
+    ];
+
+    let rowIndex = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const slot of SLOTS) {
+        rowIndex++;
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
+        );
+        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+        const m = firstItem(matchingRecord?.measurement_details);
+        const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
+        const isoEval = matchingRecord
+          ? matchingRecord.is_na
+            ? `N/A: ${matchingRecord.na_reason ?? ""}`
+            : isAbnormal
+            ? "NGOÀI NGƯỠNG"
+            : "ĐẠT CHUẨN"
+          : "";
+
+        data.addRow({
+          id: rowId,
+          business_date: dateStr,
+          location_name: period.locations?.name ?? "Khu Sinh hóa",
+          slot_code: slot.label,
+          performed_at: matchingRecord?.performed_at ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : slot.time,
+          temperature_c: m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
+          temperature_norm: "21°C – 26°C",
+          humidity_pct: m?.humidity_pct ?? (matchingRecord?.is_na ? "N/A" : ""),
+          humidity_norm: "20% – 80%",
+          iso_eval: isoEval,
+          entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          note: matchingRecord?.note ?? "",
+        });
+      }
+    }
+  } else if (isBM02 || isBM03) {
+    // Cấu trúc BM.02/BM.03: Theo dõi tủ lạnh mát / tủ lạnh đá (Đủ 31 ngày x Sáng/Chiều)
+    const isFreezer = isBM03;
+    const tempRange = isFreezer ? "-30°C đến -10°C" : "2°C – 8°C";
     data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày nghiệp vụ", key: "business_date", width: 16 },
+      { header: "Mã bản ghi", key: "id", width: 34 },
+      { header: "Ngày nghiệp vụ", key: "business_date", width: 14 },
       { header: "Ca / Lần đo", key: "slot_code", width: 14 },
-      { header: "Giờ thực tế đo", key: "performed_at", width: 16 },
-      { header: "Tủ / Ngăn đông theo dõi", key: "asset_name", width: 26 },
-      { header: "Nhiệt độ tủ đông (°C)", key: "temperature_c", width: 20 },
-      { header: "Ngưỡng chuẩn quy định", key: "temperature_norm", width: 22 },
+      { header: "Giờ kiểm tra", key: "performed_at", width: 16 },
+      { header: "Tủ lưu trữ theo dõi", key: "asset_name", width: 26 },
+      { header: "Nhiệt độ (°C)", key: "temperature_c", width: 16 },
+      { header: "Ngưỡng chuẩn", key: "temperature_norm", width: 20 },
       { header: "Đánh giá ISO 15189", key: "iso_eval", width: 22 },
-      { header: "Người thực hiện", key: "entered_by", width: 24 },
-      { header: "Thời điểm nhập hệ thống", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
+      { header: "Người theo dõi", key: "entered_by", width: 22 },
+      { header: "Ghi chú", key: "note", width: 24 },
     ];
-    records.forEach((row) => {
-      const m = firstItem(row.measurement_details);
-      const isoEval = row.is_na ? `N/A: ${row.na_reason ?? ""}` : (m?.temperature_abnormal ? "NGOÀI NGƯỠNG" : "ĐẠT CHUẨN");
-      data.addRow({
-        id: row.id,
-        business_date: row.business_date,
-        slot_code: row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        performed_at: row.performed_at ? new Date(row.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        asset_name: period.assets?.source_name ?? "Tủ đông",
-        temperature_c: m?.temperature_c ?? (row.is_na ? "N/A" : "—"),
-        temperature_norm: "-30°C đến -10°C",
-        iso_eval: isoEval,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
-      });
-    });
+
+    const SLOTS = [
+      { slot: "MORNING", label: "Sáng", time: "08:30" },
+      { slot: "AFTERNOON", label: "Chiều", time: "14:30" },
+    ];
+
+    let rowIndex = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const slot of SLOTS) {
+        rowIndex++;
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
+        );
+        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+        const m = firstItem(matchingRecord?.measurement_details);
+        const isoEval = matchingRecord
+          ? matchingRecord.is_na
+            ? `N/A: ${matchingRecord.na_reason ?? ""}`
+            : m?.temperature_abnormal
+            ? "NGOÀI NGƯỠNG"
+            : "ĐẠT CHUẨN"
+          : "";
+
+        data.addRow({
+          id: rowId,
+          business_date: dateStr,
+          slot_code: slot.label,
+          performed_at: matchingRecord?.performed_at ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : slot.time,
+          asset_name: period.assets?.source_name ?? (isFreezer ? "Tủ lạnh đá" : "Tủ lạnh mát"),
+          temperature_c: m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
+          temperature_norm: tempRange,
+          iso_eval: isoEval,
+          entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          note: matchingRecord?.note ?? "",
+        });
+      }
+    }
   } else if (isKNBM) {
+    // Cấu trúc BM.01_KNBM: Khử nhiễm bề mặt (Đủ 31 ngày)
     data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày nghiệp vụ", key: "business_date", width: 16 },
+      { header: "Mã bản ghi", key: "id", width: 34 },
+      { header: "Ngày nghiệp vụ", key: "business_date", width: 14 },
       { header: "Khu vực làm việc", key: "location_name", width: 26 },
-      { header: "Khử nhiễm hằng ngày", key: "daily_done", width: 22 },
-      { header: "Khử nhiễm hằng tuần", key: "weekly_done", width: 22 },
+      { header: "Khử khuẩn hằng ngày", key: "daily_done", width: 22 },
+      { header: "Khử khuẩn hằng tuần", key: "weekly_done", width: 22 },
       { header: "Xử lý tràn đổ hóa chất", key: "spill_done", width: 24 },
       { header: "Đánh giá quy trình", key: "iso_eval", width: 20 },
-      { header: "Người thực hiện", key: "entered_by", width: 24 },
-      { header: "Thời điểm nhập hệ thống", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
+      { header: "Người thực hiện", key: "entered_by", width: 22 },
+      { header: "Ghi chú", key: "note", width: 24 },
     ];
-    records.forEach((row) => {
-      const d = firstItem(row.decontamination_details);
-      const dailyText = d?.daily_done ? "Đã thực hiện" : (row.is_na ? "N/A" : "Chưa");
-      const weeklyText = d?.weekly_done ? "Đã thực hiện" : "—";
-      const spillText = d?.spill_event_done ? "Có xử lý sự cố tràn đổ" : "Không";
-      const isoEval = (d?.daily_done || d?.weekly_done || row.is_na) ? "ĐẠT QUY TRÌNH" : "CHƯA HOÀN TẤT";
+
+    let rowIndex = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      rowIndex++;
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      const matchingRecord = records.find((r) => r.business_date === dateStr);
+      const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+      const dec = firstItem(matchingRecord?.decontamination_details);
+
       data.addRow({
-        id: row.id,
-        business_date: row.business_date,
+        id: rowId,
+        business_date: dateStr,
         location_name: period.locations?.name ?? "Khu vực xét nghiệm",
-        daily_done: dailyText,
-        weekly_done: weeklyText,
-        spill_done: spillText,
-        iso_eval: isoEval,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
+        daily_done: dec?.daily_done ? "Đã thực hiện" : (matchingRecord ? "Chưa" : ""),
+        weekly_done: dec?.weekly_done ? "Đã thực hiện" : (matchingRecord ? "—" : ""),
+        spill_done: dec?.spill_event_done ? "Có xử lý tràn đổ" : (matchingRecord ? "Không" : ""),
+        iso_eval: matchingRecord ? ((dec?.daily_done || dec?.weekly_done || matchingRecord.is_na) ? "ĐẠT QUY TRÌNH" : "CHƯA HOÀN TẤT") : "",
+        entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        note: matchingRecord?.note ?? "",
       });
-    });
+    }
   } else if (isMaint) {
+    // Cấu trúc BM.02/QL.TRTB: Bảng theo dõi bảo dưỡng máy (Đủ 31 ngày)
     data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày thực hiện", key: "business_date", width: 16 },
+      { header: "Mã bản ghi", key: "id", width: 34 },
+      { header: "Ngày thực hiện", key: "business_date", width: 14 },
       { header: "Giờ thực hiện", key: "performed_at", width: 16 },
       { header: "Trang thiết bị", key: "asset_name", width: 30 },
       { header: "Chu kỳ bảo dưỡng", key: "cadence", width: 20 },
       { header: "Kết quả bảo dưỡng", key: "result", width: 22 },
-      { header: "Người thực hiện", key: "entered_by", width: 24 },
-      { header: "Thời điểm nhập hệ thống", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
+      { header: "Người thực hiện", key: "entered_by", width: 22 },
+      { header: "Ghi chú", key: "note", width: 24 },
     ];
-    records.forEach((row) => {
-      const maint = firstItem(row.maintenance_details);
-      const resultText = maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : (maint?.result === "FAIL" ? "KHÔNG ĐẠT" : (maint?.result ?? "ĐẠT"));
+
+    let rowIndex = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      rowIndex++;
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      const matchingRecord = records.find((r) => r.business_date === dateStr);
+      const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+      const maint = firstItem(matchingRecord?.maintenance_details);
+      const resultText = maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : (maint?.result === "FAIL" ? "KHÔNG ĐẠT" : (maint?.result ?? ""));
+
       data.addRow({
-        id: row.id,
-        business_date: row.business_date,
-        performed_at: row.performed_at ? new Date(row.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        asset_name: period.assets?.source_name ?? "Trang thiết bị",
-        cadence: maint?.cadence ?? "Hằng ngày",
+        id: rowId,
+        business_date: dateStr,
+        performed_at: matchingRecord?.performed_at ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "",
+        asset_name: period.assets?.source_name ?? "Trang thiết bị xét nghiệm",
+        cadence: maint?.cadence ?? (matchingRecord ? "Hằng ngày" : ""),
         result: resultText,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
+        entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        note: matchingRecord?.note ?? "",
       });
-    });
-  } else if (isBM06) {
-    data.columns = [
-      { header: "Mã bản ghi", key: "id", width: 36 },
-      { header: "Ngày vận hành", key: "business_date", width: 16 },
-      { header: "Khung giờ (Ca)", key: "slot_code", width: 22 },
-      { header: "Trang thiết bị xét nghiệm", key: "asset_name", width: 36 },
-      { header: "Mã trạng thái", key: "status_code", width: 14 },
-      { header: "Ý nghĩa trạng thái", key: "status_desc", width: 24 },
-      { header: "Người trực vận hành", key: "entered_by", width: 24 },
-      { header: "Thời điểm ghi nhận", key: "entered_at", width: 24 },
-      { header: "Ghi chú", key: "note", width: 26 },
-    ];
-    records.forEach((row) => {
-      const s = firstItem(row.equipment_shift_details)?.equipment_shift_statuses;
-      const statusCode = s?.status_code ?? "BT";
-      const statusDesc = statusCode === "BT" ? "Bình thường" : statusCode === "KSD" ? "Không sử dụng" : statusCode === "H" ? "Hỏng" : statusCode;
-      data.addRow({
-        id: row.id,
-        business_date: row.business_date,
-        slot_code: row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        asset_name: s?.asset_label_snapshot ?? period.assets?.source_name ?? "Máy xét nghiệm",
-        status_code: statusCode,
-        status_desc: statusDesc,
-        entered_by: row.profiles?.full_name ?? "—",
-        entered_at: row.entered_at ? new Date(row.entered_at).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "—",
-        note: row.note ?? "",
-      });
-    });
+    }
   } else {
     data.columns = [
       { header: "Mã bản ghi", key: "id", width: 38 },
@@ -355,3 +423,4 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     },
   });
 }
+

@@ -5,6 +5,7 @@ import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
+import { InAppAlertBanner } from "./InAppAlertBanner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,7 @@ export function AppShell({
 
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <OfflineBanner isOffline={!isOnline} />
+        <InAppAlertBanner unreadCount={unreadCount} />
 
         <MobileHeader
           title={headerTitle}

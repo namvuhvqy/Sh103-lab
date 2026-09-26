@@ -34,6 +34,7 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
+    { label: "Kíp trực 24/7 & Lễ", href: "/quick-duty", icon: ShieldCheck },
     { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
     { label: "Lịch công việc", href: "/calendar", icon: Calendar },
     { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },

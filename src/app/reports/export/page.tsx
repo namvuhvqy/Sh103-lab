@@ -5,6 +5,7 @@ import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import { getExportWorkspace } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { PrintButton } from "@/components/p5/PrintButton";
+import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 import {
   CalendarDays,
   Check,
@@ -418,154 +419,223 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
 
               {/* Bảng dữ liệu preview theo từng biểu mẫu */}
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[620px] border-collapse text-xs">
+                <table className="w-full min-w-[700px] border-collapse text-xs">
                   <thead className="bg-slate-50 text-slate-700">
                     {tCode.includes("BM.01/QL.HTAT") ? (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Thời gian</th>
-                        <th className="border p-2.5 font-bold">Nhiệt độ (°C)</th>
-                        <th className="border p-2.5 font-bold">Độ ẩm (%)</th>
-                        <th className="border p-2.5 font-bold">Khu vực</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ca đo</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Giờ đo</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Nhiệt độ (°C)</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Chuẩn nhiệt độ</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Độ ẩm (%)</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Chuẩn độ ẩm</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Đánh giá ISO</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Người thực hiện</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     ) : tCode.includes("BM.02/QL.HTAT") || tCode.includes("BM.03/QL.HTAT") ? (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Thời gian</th>
-                        <th className="border p-2.5 font-bold">Tủ lưu trữ</th>
-                        <th className="border p-2.5 font-bold">Nhiệt độ (°C)</th>
-                        <th className="border p-2.5 font-bold">Đánh giá ngưỡng</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ca đo</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Giờ đo</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Tủ lưu trữ</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Nhiệt độ (°C)</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Đánh giá ngưỡng</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Người thực hiện</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     ) : tCode.includes("BM.01_KNBM") || tCode.includes("KNBM") ? (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Ngày</th>
-                        <th className="border p-2.5 font-bold">Khu vực</th>
-                        <th className="border p-2.5 font-bold">Hằng ngày</th>
-                        <th className="border p-2.5 font-bold">Hằng tuần</th>
-                        <th className="border p-2.5 font-bold">Xử lý tràn đổ</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Khu vực</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Hằng ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Hằng tuần</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Xử lý tràn đổ</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Đánh giá</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Người thực hiện</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     ) : tCode.includes("BM.02/QL.TRTB") ? (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Ngày</th>
-                        <th className="border p-2.5 font-bold">Trang thiết bị</th>
-                        <th className="border p-2.5 font-bold">Chu kỳ bảo dưỡng</th>
-                        <th className="border p-2.5 font-bold">Kết quả</th>
-                        <th className="border p-2.5 font-bold">Người thực hiện</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Trang thiết bị</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Chu kỳ</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Kết quả bảo dưỡng</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Người thực hiện</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     ) : tCode.includes("BM.06") ? (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Trang thiết bị</th>
-                        <th className="border p-2.5 font-bold">Ca trực</th>
-                        <th className="border p-2.5 font-bold">Trạng thái (BT/KSD/H)</th>
-                        <th className="border p-2.5 font-bold">Người trực ca</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-1.5 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-1.5 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-1.5 font-bold whitespace-nowrap">Ca</th>
+                        <th className="border p-1.5 font-bold whitespace-nowrap">Khung giờ</th>
+                        {HOSPITAL_MACHINES_25.map((m) => (
+                          <th key={m.order} className="border p-1 font-bold whitespace-nowrap text-[10px] min-w-[36px] text-center" title={`${m.order}. ${m.name} (${m.model})`}>
+                            M{m.order}
+                          </th>
+                        ))}
+                        <th className="border p-1.5 font-bold whitespace-nowrap">Người trực</th>
+                        <th className="border p-1.5 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     ) : (
                       <tr>
-                        <th className="border p-2.5 font-bold">STT</th>
-                        <th className="border p-2.5 font-bold">Ngày</th>
-                        <th className="border p-2.5 font-bold">Ca / Giờ</th>
-                        <th className="border p-2.5 font-bold">Người ghi</th>
-                        <th className="border p-2.5 font-bold">Ghi chú</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">STT</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ngày</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ca / Giờ</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Người ghi</th>
+                        <th className="border p-2 font-bold whitespace-nowrap">Ghi chú</th>
                       </tr>
                     )}
                   </thead>
                   <tbody>
-                    {records.slice(0, 10).map((row, index) => {
-                      const m = firstItem(row.measurement_details);
-                      const d = firstItem(row.decontamination_details);
-                      const maint = firstItem(row.maintenance_details);
-                      const s = firstItem(row.equipment_shift_details)?.equipment_shift_statuses;
+                    {tCode.includes("BM.06") ? (
+                      // BM.06: Hiển thị ma trận hàng ngang 25 máy x 4 ca/ngày
+                      (() => {
+                        const SHIFTS = [
+                          { slot: "SHIFT_1", label: "Ca 1", time: "07:00–11:30" },
+                          { slot: "SHIFT_2", label: "Ca 2", time: "11:30–13:30" },
+                          { slot: "SHIFT_3", label: "Ca 3", time: "13:30–16:30" },
+                          { slot: "SHIFT_4", label: "Ca 4", time: "16:30–07:00" },
+                        ];
+                        const daysToRender = workspace.day ? [Number(workspace.day)] : Array.from({ length: 15 }, (_, i) => i + 1);
+                        let stt = 0;
 
-                      if (tCode.includes("BM.01/QL.HTAT")) {
-                        return (
-                          <tr key={row.id} className="text-center hover:bg-slate-50">
-                            <td className="border p-2 font-medium">{index + 1}</td>
-                            <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
-                            <td className="border p-2 font-bold">{m?.temperature_c ?? "—"}</td>
-                            <td className="border p-2 font-bold">{m?.humidity_pct ?? "—"}</td>
-                            <td className="border p-2 text-slate-700">{selected.locations?.name ?? "Khu vực xét nghiệm"}</td>
-                            <td className="border p-2 text-slate-600">
-                              {row.note ?? (m?.temperature_abnormal || m?.humidity_abnormal ? "Ngoài ngưỡng" : "Đạt")}
-                            </td>
-                          </tr>
-                        );
-                      }
+                        return daysToRender.flatMap((d) => {
+                          const dateStr = `${workspace.year}-${workspace.month}-${String(d).padStart(2, "0")}`;
+                          return SHIFTS.filter((s) => workspace.shift === "ALL" || workspace.shift === s.slot).map((s) => {
+                            stt++;
+                            const match = records.find(
+                              (r) => r.business_date === dateStr && (r.slot_code === s.slot || r.slot_code === s.label)
+                            );
+                            return (
+                              <tr key={`${dateStr}_${s.slot}`} className="text-center hover:bg-slate-50">
+                                <td className="border p-1 font-medium text-slate-500">{stt}</td>
+                                <td className="border p-1 font-semibold text-slate-800">{d}</td>
+                                <td className="border p-1 font-bold text-teal-800">{s.label}</td>
+                                <td className="border p-1 text-[11px] text-slate-500">{s.time}</td>
+                                {HOSPITAL_MACHINES_25.map((m) => {
+                                  const eqDetail = firstItem(match?.equipment_shift_details)?.equipment_shift_statuses;
+                                  const status = match ? (eqDetail?.status_code ?? "BT") : "";
+                                  const badgeClass = status === "H" ? "bg-rose-100 text-rose-800 font-black" : status === "KSD" ? "bg-slate-100 text-slate-600 font-bold" : status === "BT" ? "bg-emerald-50 text-emerald-800 font-bold" : "text-slate-300";
+                                  return (
+                                    <td key={m.order} className="border p-1 text-[11px]">
+                                      {status ? <span className={`inline-block px-1 py-0.5 rounded text-[10px] ${badgeClass}`}>{status}</span> : <span className="text-slate-200">·</span>}
+                                    </td>
+                                  );
+                                })}
+                                <td className="border p-1 text-slate-700">{match?.profiles?.full_name ?? (match ? "KTV" : "—")}</td>
+                                <td className="border p-1 text-slate-500 text-[11px]">{match?.note ?? ""}</td>
+                              </tr>
+                            );
+                          });
+                        });
+                      })()
+                    ) : tCode.includes("BM.01/QL.HTAT") ? (
+                      // BM.01: Theo dõi nhiệt độ 5 khu vực (Sáng/Chiều)
+                      (() => {
+                        const SLOTS = [
+                          { slot: "MORNING", label: "Sáng", time: "08:30" },
+                          { slot: "AFTERNOON", label: "Chiều", time: "14:30" },
+                        ];
+                        const daysToRender = workspace.day ? [Number(workspace.day)] : Array.from({ length: 15 }, (_, i) => i + 1);
+                        let stt = 0;
+                        return daysToRender.flatMap((d) => {
+                          const dateStr = `${workspace.year}-${workspace.month}-${String(d).padStart(2, "0")}`;
+                          return SLOTS.map((slot) => {
+                            stt++;
+                            const match = records.find(
+                              (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
+                            );
+                            const m = firstItem(match?.measurement_details);
+                            const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
+                            return (
+                              <tr key={`${dateStr}_${slot.slot}`} className="text-center hover:bg-slate-50">
+                                <td className="border p-1.5 font-medium">{stt}</td>
+                                <td className="border p-1.5 font-semibold text-slate-800">{d}</td>
+                                <td className="border p-1.5 font-bold text-teal-800">{slot.label}</td>
+                                <td className="border p-1.5 text-slate-500">{slot.time}</td>
+                                <td className="border p-1.5 font-black text-slate-900">{m?.temperature_c ?? (match ? "—" : "")}</td>
+                                <td className="border p-1.5 text-slate-500">21 – 26°C</td>
+                                <td className="border p-1.5 font-black text-slate-900">{m?.humidity_pct ?? (match ? "—" : "")}</td>
+                                <td className="border p-1.5 text-slate-500">20 – 80%</td>
+                                <td className="border p-1.5 font-bold">{match ? (isAbnormal ? <span className="text-rose-600">Ngoài ngưỡng</span> : <span className="text-emerald-700">Đạt</span>) : ""}</td>
+                                <td className="border p-1.5 text-slate-700">{match?.profiles?.full_name ?? (match ? "KTV" : "—")}</td>
+                                <td className="border p-1.5 text-slate-500">{match?.note ?? ""}</td>
+                              </tr>
+                            );
+                          });
+                        });
+                      })()
+                    ) : (
+                      // Các biểu mẫu khác: hiển thị tối thiểu 10 dòng pre-printed
+                      records.slice(0, 15).map((row, index) => {
+                        const m = firstItem(row.measurement_details);
+                        const d = firstItem(row.decontamination_details);
+                        const maint = firstItem(row.maintenance_details);
 
-                      if (tCode.includes("BM.02/QL.HTAT") || tCode.includes("BM.03/QL.HTAT")) {
-                        return (
-                          <tr key={row.id} className="text-center hover:bg-slate-50">
-                            <td className="border p-2 font-medium">{index + 1}</td>
-                            <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
-                            <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Tủ lạnh"}</td>
-                            <td className="border p-2 font-bold">{m?.temperature_c ?? "—"}</td>
-                            <td className="border p-2 text-slate-600">
-                              {m?.temperature_abnormal ? "Ngoài ngưỡng" : "Đạt dải chuẩn"}
-                            </td>
-                            <td className="border p-2 text-slate-600">{row.note ?? "Bình thường"}</td>
-                          </tr>
-                        );
-                      }
+                        if (tCode.includes("BM.02/QL.HTAT") || tCode.includes("BM.03/QL.HTAT")) {
+                          return (
+                            <tr key={row.id} className="text-center hover:bg-slate-50">
+                              <td className="border p-2 font-medium">{index + 1}</td>
+                              <td className="border p-2">{row.business_date}</td>
+                              <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
+                              <td className="border p-2 text-slate-500">08:30</td>
+                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Tủ lạnh"}</td>
+                              <td className="border p-2 font-bold">{m?.temperature_c ?? "—"}</td>
+                              <td className="border p-2 text-slate-600">{m?.temperature_abnormal ? "Ngoài ngưỡng" : "Đạt dải chuẩn"}</td>
+                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? "KTV"}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? "Bình thường"}</td>
+                            </tr>
+                          );
+                        }
 
-                      if (tCode.includes("BM.01_KNBM") || tCode.includes("KNBM")) {
+                        if (tCode.includes("BM.01_KNBM") || tCode.includes("KNBM")) {
+                          return (
+                            <tr key={row.id} className="text-center hover:bg-slate-50">
+                              <td className="border p-2 font-medium">{index + 1}</td>
+                              <td className="border p-2">{row.business_date}</td>
+                              <td className="border p-2 text-slate-700">{selected.locations?.name ?? "PXN"}</td>
+                              <td className="border p-2 font-semibold">{d?.daily_done ? "Đã lau" : "—"}</td>
+                              <td className="border p-2 font-semibold">{d?.weekly_done ? "Đã lau" : "—"}</td>
+                              <td className="border p-2">{d?.spill_event_done ? "Có xử lý" : "Không"}</td>
+                              <td className="border p-2 font-bold text-emerald-700">Đạt quy trình</td>
+                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? "KTV"}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? "Hoàn thành"}</td>
+                            </tr>
+                          );
+                        }
+
+                        if (tCode.includes("BM.02/QL.TRTB")) {
+                          return (
+                            <tr key={row.id} className="text-center hover:bg-slate-50">
+                              <td className="border p-2 font-medium">{index + 1}</td>
+                              <td className="border p-2">{row.business_date}</td>
+                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Máy xét nghiệm"}</td>
+                              <td className="border p-2">{maint?.cadence ?? "Hằng ngày"}</td>
+                              <td className="border p-2 font-bold text-emerald-700">{maint?.result ?? "ĐẠT"}</td>
+                              <td className="border p-2">{row.profiles?.full_name ?? "KTV"}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? "Đạt chuẩn"}</td>
+                            </tr>
+                          );
+                        }
+
                         return (
                           <tr key={row.id} className="text-center hover:bg-slate-50">
                             <td className="border p-2 font-medium">{index + 1}</td>
                             <td className="border p-2">{row.business_date}</td>
-                            <td className="border p-2 text-slate-700">{selected.locations?.name ?? "PXN"}</td>
-                            <td className="border p-2 font-semibold">{d?.daily_done ? "Đã lau" : "—"}</td>
-                            <td className="border p-2 font-semibold">{d?.weekly_done ? "Đã lau" : "—"}</td>
-                            <td className="border p-2">{d?.spill_event_done ? "Có xử lý" : "Không"}</td>
-                            <td className="border p-2 text-slate-600">{row.note ?? "Hoàn thành"}</td>
+                            <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
+                            <td className="border p-2">{row.profiles?.full_name ?? "—"}</td>
+                            <td className="border p-2 text-slate-600">{row.note ?? "Đạt"}</td>
                           </tr>
                         );
-                      }
-
-                      if (tCode.includes("BM.02/QL.TRTB")) {
-                        return (
-                          <tr key={row.id} className="text-center hover:bg-slate-50">
-                            <td className="border p-2 font-medium">{index + 1}</td>
-                            <td className="border p-2">{row.business_date}</td>
-                            <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Máy xét nghiệm"}</td>
-                            <td className="border p-2">{maint?.cadence ?? "Hằng ngày"}</td>
-                            <td className="border p-2 font-bold text-emerald-700">{maint?.result ?? "ĐẠT"}</td>
-                            <td className="border p-2">{row.profiles?.full_name ?? "KTV"}</td>
-                            <td className="border p-2 text-slate-600">{row.note ?? "Đạt chuẩn"}</td>
-                          </tr>
-                        );
-                      }
-
-                      if (tCode.includes("BM.06")) {
-                        const statusColor = s?.status_code === "H" ? "text-rose-600 font-bold" : s?.status_code === "KSD" ? "text-slate-500" : "text-emerald-700 font-bold";
-                        return (
-                          <tr key={row.id} className="text-center hover:bg-slate-50">
-                            <td className="border p-2 font-medium">{index + 1}</td>
-                            <td className="border p-2 text-slate-800 font-bold">{s?.asset_label_snapshot ?? selected.assets?.source_name ?? "Máy xét nghiệm"}</td>
-                            <td className="border p-2">{row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "Ca 1"}</td>
-                            <td className={`border p-2 ${statusColor}`}>{s?.status_code ?? "BT"}</td>
-                            <td className="border p-2">{row.profiles?.full_name ?? "KTV trực"}</td>
-                            <td className="border p-2 text-slate-600">{row.note ?? "Vận hành ổn định"}</td>
-                          </tr>
-                        );
-                      }
-
-                      return (
-                        <tr key={row.id} className="text-center hover:bg-slate-50">
-                          <td className="border p-2 font-medium">{index + 1}</td>
-                          <td className="border p-2">{row.business_date}</td>
-                          <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
-                          <td className="border p-2">{row.profiles?.full_name ?? "—"}</td>
-                          <td className="border p-2 text-slate-600">{row.note ?? "Đạt"}</td>
-                        </tr>
-                      );
-                    })}
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

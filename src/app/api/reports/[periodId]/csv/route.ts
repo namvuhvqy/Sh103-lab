@@ -1,4 +1,5 @@
 import { getOfficialPeriodReport } from "@/lib/p5/operational-queries";
+import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 
 export const dynamic = "force-dynamic";
 
@@ -80,86 +81,154 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   const templateCode = period.form_template_versions.form_templates.code;
   const records = report.records as unknown as ReportRecord[];
 
+  const startDateStr = search.get("start") ?? period.period_start ?? "2026-09-01";
+  const startDayNum = 1;
+  const yearNum = Number(startDateStr.split("-")[0]) || 2026;
+  const monthNum = Number(startDateStr.split("-")[1]) || 9;
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  const monthPrefix = `${yearNum}-${String(monthNum).padStart(2, "0")}`;
+
   let header: string[] = [];
   let rows: (string | number)[][] = [];
 
   if (templateCode.includes("BM.01/QL.HTAT")) {
-    header = ["STT", "Ngày", "Ca / Giờ đo", "Nhiệt độ (°C)", "Độ ẩm (%)", "Đánh giá ISO", "Người thực hiện", "Ghi chú"];
-    rows = records.map((row, index) => {
-      const m = firstItem(row.measurement_details);
-      const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
-      return [
-        index + 1,
-        row.business_date,
-        row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        m?.temperature_c ?? (row.is_na ? "N/A" : "—"),
-        m?.humidity_pct ?? (row.is_na ? "N/A" : "—"),
-        row.is_na ? `N/A: ${row.na_reason ?? ""}` : (isAbnormal ? "Ngoài ngưỡng cảnh báo" : "Đạt chuẩn"),
-        row.profiles?.full_name ?? "—",
-        row.note ?? "",
-      ];
-    });
+    header = ["STT", "Ngày", "Ca / Lần đo", "Giờ đo", "Nhiệt độ (°C)", "Độ ẩm (%)", "Đánh giá ISO", "Người thực hiện", "Ghi chú"];
+    const SLOTS = [
+      { slot: "MORNING", label: "Ca Sáng", time: "08:30" },
+      { slot: "AFTERNOON", label: "Ca Chiều", time: "14:30" },
+    ];
+    let stt = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const slot of SLOTS) {
+        stt++;
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
+        );
+        const m = firstItem(matchingRecord?.measurement_details);
+        const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
+        rows.push([
+          stt,
+          dateStr,
+          slot.label,
+          matchingRecord?.performed_at ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : slot.time,
+          m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
+          m?.humidity_pct ?? (matchingRecord?.is_na ? "N/A" : ""),
+          matchingRecord ? (matchingRecord.is_na ? `N/A: ${matchingRecord.na_reason ?? ""}` : isAbnormal ? "Ngoài ngưỡng" : "Đạt chuẩn") : "",
+          matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          matchingRecord?.note ?? "",
+        ]);
+      }
+    }
   } else if (templateCode.includes("BM.02/QL.HTAT") || templateCode.includes("BM.03/QL.HTAT")) {
     const isFreezer = templateCode.includes("BM.03");
     const safeRule = isFreezer ? "Đạt (-30°C đến -10°C)" : "Đạt (2°C đến 8°C)";
-    header = ["STT", "Ngày", "Ca / Giờ đo", "Tên tủ lưu trữ", "Nhiệt độ (°C)", "Đánh giá ngưỡng", "Người thực hiện", "Ghi chú"];
-    rows = records.map((row, index) => {
-      const m = firstItem(row.measurement_details);
-      return [
-        index + 1,
-        row.business_date,
-        row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        period.assets?.source_name ?? "Tủ chuyên dụng",
-        m?.temperature_c ?? (row.is_na ? "N/A" : "—"),
-        row.is_na ? `N/A: ${row.na_reason ?? ""}` : (m?.temperature_abnormal ? "Ngoài dải an toàn" : safeRule),
-        row.profiles?.full_name ?? "—",
-        row.note ?? "",
-      ];
-    });
+    header = ["STT", "Ngày", "Ca / Lần đo", "Tên tủ lưu trữ", "Nhiệt độ (°C)", "Đánh giá ngưỡng", "Người thực hiện", "Ghi chú"];
+    const SLOTS = [
+      { slot: "MORNING", label: "Sáng", time: "08:30" },
+      { slot: "AFTERNOON", label: "Chiều", time: "14:30" },
+    ];
+    let stt = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const slot of SLOTS) {
+        stt++;
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
+        );
+        const m = firstItem(matchingRecord?.measurement_details);
+        rows.push([
+          stt,
+          dateStr,
+          slot.label,
+          period.assets?.source_name ?? (isFreezer ? "Tủ lạnh đá" : "Tủ lạnh mát"),
+          m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
+          matchingRecord ? (matchingRecord.is_na ? `N/A: ${matchingRecord.na_reason ?? ""}` : m?.temperature_abnormal ? "Ngoài dải an toàn" : safeRule) : "",
+          matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          matchingRecord?.note ?? "",
+        ]);
+      }
+    }
   } else if (templateCode.includes("BM.01_KNBM") || templateCode.includes("KNBM")) {
     header = ["STT", "Ngày", "Khu vực", "Khử khuẩn hằng ngày", "Khử khuẩn hằng tuần", "Xử lý tràn đổ", "Người thực hiện", "Ghi chú"];
-    rows = records.map((row, index) => {
-      const d = firstItem(row.decontamination_details);
-      return [
-        index + 1,
-        row.business_date,
+    let stt = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      stt++;
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      const matchingRecord = records.find((r) => r.business_date === dateStr);
+      const dec = firstItem(matchingRecord?.decontamination_details);
+      rows.push([
+        stt,
+        dateStr,
         period.locations?.name ?? "Khu vực xét nghiệm",
-        d?.daily_done ? "Đã thực hiện" : "—",
-        d?.weekly_done ? "Đã thực hiện" : "—",
-        d?.spill_event_done ? "Có xử lý" : "Không có",
-        row.profiles?.full_name ?? "—",
-        row.note ?? "",
-      ];
-    });
+        dec?.daily_done ? "Đã thực hiện" : (matchingRecord ? "Chưa" : ""),
+        dec?.weekly_done ? "Đã thực hiện" : (matchingRecord ? "—" : ""),
+        dec?.spill_event_done ? "Có xử lý" : (matchingRecord ? "Không có" : ""),
+        matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        matchingRecord?.note ?? "",
+      ]);
+    }
   } else if (templateCode.includes("BM.02/QL.TRTB")) {
     header = ["STT", "Ngày", "Tên thiết bị", "Chu kỳ bảo dưỡng", "Kết quả bảo dưỡng", "Người thực hiện", "Ghi chú"];
-    rows = records.map((row, index) => {
-      const m = firstItem(row.maintenance_details);
-      return [
-        index + 1,
-        row.business_date,
+    let stt = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      stt++;
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      const matchingRecord = records.find((r) => r.business_date === dateStr);
+      const maint = firstItem(matchingRecord?.maintenance_details);
+      rows.push([
+        stt,
+        dateStr,
         period.assets?.source_name ?? "Thiết bị xét nghiệm",
-        m?.cadence === "DAILY" ? "Hằng ngày" : m?.cadence === "WEEKLY" ? "Hằng tuần" : m?.cadence === "MONTHLY" ? "Hằng tháng" : (m?.cadence ?? "—"),
-        m?.result === "PASS" ? "ĐẠT YÊU CẦU" : (m?.result ?? "ĐẠT"),
-        row.profiles?.full_name ?? "—",
-        row.note ?? "",
-      ];
-    });
+        maint?.cadence === "DAILY" ? "Hằng ngày" : maint?.cadence === "WEEKLY" ? "Hằng tuần" : maint?.cadence === "MONTHLY" ? "Hằng tháng" : (maint?.cadence ?? (matchingRecord ? "Hằng ngày" : "")),
+        maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : (maint?.result ?? (matchingRecord ? "ĐẠT" : "")),
+        matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        matchingRecord?.note ?? "",
+      ]);
+    }
   } else if (templateCode.includes("BM.06")) {
-    header = ["STT", "Tên thiết bị", "Ngày", "Ca trực", "Trạng thái máy", "Người trực ca", "Ghi chú"];
-    rows = records.map((row, index) => {
-      const s = firstItem(row.equipment_shift_details)?.equipment_shift_statuses;
-      const statusText = s?.status_code === "BT" ? "BT (Bình thường)" : s?.status_code === "KSD" ? "KSD (Không sử dụng)" : s?.status_code === "H" ? "H (Hỏng)" : (s?.status_code ?? "BT");
-      return [
-        index + 1,
-        s?.asset_label_snapshot ?? period.assets?.source_name ?? "Máy xét nghiệm",
-        row.business_date,
-        row.slot_code ? row.slot_code.replace("SHIFT_", "Ca ") : "—",
-        statusText,
-        row.profiles?.full_name ?? "—",
-        row.note ?? "",
-      ];
-    });
+    // Cấu trúc BM.06 hàng ngang 25 máy, 4 ca/ngày
+    header = [
+      "STT",
+      "Ngày vận hành",
+      "Ca trực",
+      "Khung giờ",
+      "Người trực ca",
+      "Giờ chạy máy",
+      ...HOSPITAL_MACHINES_25.map((m) => `#${m.order} ${m.name}`),
+      "Ghi chú",
+    ];
+    const SHIFT_DEFS = [
+      { slot: "SHIFT_1", label: "Ca 1", time: "07:00 – 11:30" },
+      { slot: "SHIFT_2", label: "Ca 2", time: "11:30 – 13:30" },
+      { slot: "SHIFT_3", label: "Ca 3", time: "13:30 – 16:30" },
+      { slot: "SHIFT_4", label: "Ca 4", time: "16:30 – 07:00" },
+    ];
+    let stt = 0;
+    for (let d = startDayNum; d <= daysInMonth; d++) {
+      const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
+      for (const shift of SHIFT_DEFS) {
+        stt++;
+        const matchingRecord = records.find(
+          (r) => r.business_date === dateStr && (r.slot_code === shift.slot || r.slot_code === shift.label)
+        );
+        const machineCells = HOSPITAL_MACHINES_25.map((m) => {
+          if (!matchingRecord) return "";
+          const s = firstItem(matchingRecord.equipment_shift_details)?.equipment_shift_statuses;
+          return s?.status_code ?? "BT";
+        });
+        rows.push([
+          stt,
+          dateStr,
+          shift.label,
+          shift.time,
+          matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV trực" : "—"),
+          matchingRecord ? "Theo ca" : "",
+          ...machineCells,
+          matchingRecord?.note ?? "",
+        ]);
+      }
+    }
   } else {
     header = ["STT", "Ngày", "Ca / Thời gian", "Loại bản ghi", "Thời điểm thực hiện", "Người thực hiện", "Ghi chú"];
     rows = records.map((row, index) => [

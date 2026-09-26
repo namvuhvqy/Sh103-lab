@@ -53,3 +53,36 @@ export async function approveCorrectionAction(form: FormData) {
   revalidatePath("/approvals");
   redirect("/approvals?saved=correction-approved");
 }
+
+export async function batchApprovePeriodsAction(form: FormData) {
+  const periodIdsRaw = text(form, "periodIds");
+  const periodIds = periodIdsRaw ? periodIdsRaw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  if (!periodIds.length) fail("/approvals", "Vui lòng chọn ít nhất 1 kỳ để phê duyệt");
+
+  const supabase = await createClient();
+  let successCount = 0;
+  const errors: string[] = [];
+
+  for (const id of periodIds) {
+    const { data: p } = await supabase.from("register_periods").select("lock_version,status").eq("id", id).single();
+    if (p && p.status === "READY_FOR_REVIEW") {
+      const { error } = await supabase.rpc("approve_period", {
+        target_period_id: id,
+        target_expected_lock: p.lock_version,
+      });
+      if (!error) {
+        successCount++;
+      } else {
+        errors.push(error.message);
+      }
+    }
+  }
+
+  revalidatePath("/approvals");
+  revalidatePath("/reports");
+  if (errors.length && successCount === 0) {
+    fail("/approvals", `Phê duyệt thất bại: ${errors[0]}`);
+  }
+  redirect(`/approvals?saved=batch_approved_${successCount}`);
+}
+
