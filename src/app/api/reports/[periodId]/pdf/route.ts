@@ -24,11 +24,14 @@ type MaintenanceDetail = {
   result: string | null;
 };
 
+type EquipmentStatus = {
+  asset_display_order_snapshot: number;
+  status_code: string | null;
+  asset_label_snapshot: string | null;
+};
+
 type EquipmentShiftDetail = {
-  equipment_shift_statuses: {
-    status_code: string | null;
-    asset_label_snapshot: string | null;
-  } | null;
+  equipment_shift_statuses: EquipmentStatus[] | EquipmentStatus | null;
 };
 
 type ReportRecord = {
@@ -133,10 +136,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       draw(`${row.business_date} · Khu vực: ${period.locations?.name ?? "PXN"} · Ngày: ${d?.daily_done ? "Đạt" : "—"} · Tuần: ${d?.weekly_done ? "Đạt" : "—"} · KTV: ${row.profiles?.full_name ?? "—"}`);
     } else if (templateCode.includes("BM.02/QL.TRTB")) {
       const m = firstItem(row.maintenance_details);
-      draw(`${row.business_date} · Máy: ${period.assets?.source_name ?? "Thiết bị"} · Chu kỳ: ${m?.cadence ?? "—"} · Kết quả: ${m?.result ?? "ĐẠT"} · KTV: ${row.profiles?.full_name ?? "—"}`);
+      draw(`${row.business_date} · Máy: ${period.assets?.source_name ?? "Thiết bị"} · Chu kỳ: ${m?.cadence ?? "—"} · Kết quả: ${m?.result ?? "—"} · KTV: ${row.profiles?.full_name ?? "—"}`);
     } else if (templateCode.includes("BM.06")) {
-      const s = firstItem(row.equipment_shift_details)?.equipment_shift_statuses;
-      draw(`${row.business_date} · ${slot} · Máy: ${s?.asset_label_snapshot ?? period.assets?.source_name ?? "Máy"} · Trạng thái: ${s?.status_code ?? "BT"} · KTV: ${row.profiles?.full_name ?? "—"}`);
+      const shiftDetail = firstItem(row.equipment_shift_details);
+      const statuses = shiftDetail
+        ? (Array.isArray(shiftDetail.equipment_shift_statuses)
+            ? shiftDetail.equipment_shift_statuses
+            : shiftDetail.equipment_shift_statuses
+              ? [shiftDetail.equipment_shift_statuses]
+              : [])
+        : [];
+      draw(`${row.business_date} · ${slot} · KTV: ${row.profiles?.full_name ?? "—"} · ${statuses.length}/25 máy`);
+      statuses
+        .slice()
+        .sort((a, b) => a.asset_display_order_snapshot - b.asset_display_order_snapshot)
+        .map((status) => `#${status.asset_display_order_snapshot} ${status.asset_label_snapshot ?? "Máy"}: ${status.status_code ?? "—"}`)
+        .forEach((status) => draw(`  ${status}`, 9));
     } else {
       draw(`${row.business_date} · ${slot} · ${row.record_type} · KTV: ${row.profiles?.full_name ?? "—"}`);
     }
