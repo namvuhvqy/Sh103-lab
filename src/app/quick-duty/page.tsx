@@ -8,7 +8,6 @@ import { TEMPERATURE_AREAS } from "@/constants/areas";
 import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 import {
   ShieldCheck,
-  Zap,
   CheckCircle2,
   Calendar,
   Users,
@@ -59,13 +58,6 @@ export default function QuickDutyPage() {
     setMachineStatuses(updated);
   };
 
-  const handleApplyAllStandard = () => {
-    setFridgeMat("4.5");
-    setFridgeDa("-22.0");
-    setDailyDone(true);
-    handleSetAllMachines("BT");
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
@@ -98,20 +90,10 @@ export default function QuickDutyPage() {
                   Nhập tập trung 4 Biểu mẫu kíp trực
                 </h1>
                 <p className="text-xs text-slate-500">
-                  Hôm nay: <b className="text-slate-800">{today}</b> · Không cần chuyển tab, hoàn tất trong dưới 60 giây.
+                  Hôm nay: <b className="text-slate-800">{today}</b> · Nhập dữ liệu đo lường thực tế theo quy định ISO 15189.
                 </p>
               </div>
             </div>
-
-            <button
-              type="button"
-              onClick={handleApplyAllStandard}
-              className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 px-4 text-xs font-bold text-white transition shadow-xs"
-              title="Điền nhanh các giá trị đạt chuẩn quy định cho toàn bộ biểu mẫu trực"
-            >
-              <Zap className="size-3.5" />
-              ⚡ Điền nhanh đạt chuẩn toàn bộ
-            </button>
           </div>
         </section>
 

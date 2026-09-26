@@ -18,13 +18,13 @@ export async function loginAction(_previous: { ok: boolean; message?: string }, 
 
   const supabase = await createClient();
 
-  // Try direct login first
-  let { data, error } = await supabase.auth.signInWithPassword({ email, password: rawPassword });
+  // If password was 5 characters, normalize for Supabase 6-character requirement
+  const passwordToTry = rawPassword.length === 5 ? `${rawPassword}_sh` : rawPassword;
+  let { data, error } = await supabase.auth.signInWithPassword({ email, password: passwordToTry });
 
-  // If password was 5 characters, try normalized version
+  // Fallback to raw password if normalized failed
   if (error && rawPassword.length === 5) {
-    const normalized = `${rawPassword}_sh`;
-    const res = await supabase.auth.signInWithPassword({ email, password: normalized });
+    const res = await supabase.auth.signInWithPassword({ email, password: rawPassword });
     if (res.data?.user) {
       data = res.data;
       error = null;

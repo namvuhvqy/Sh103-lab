@@ -6,6 +6,7 @@ import { StatusDistribution } from "@/components/p5/OperationalChart";
 import { getEquipmentOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { SHIFT_DEFINITIONS } from "@/lib/forms/domain";
+import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
 import { Activity, CircleAlert, TestTube2, Wrench, Sparkles } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -286,6 +287,52 @@ export default async function EquipmentPage() {
                 </Link>
               );
             })}
+          </div>
+        </section>
+
+        {/* Danh mục 13 Tủ bảo quản / Tủ lạnh theo Phụ lục */}
+        <section className="overflow-hidden rounded-3xl border border-sky-100 bg-white shadow-sm">
+          <div className="border-b border-sky-100 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-sky-50 to-indigo-50/30">
+            <div>
+              <h2 className="text-xl font-black text-slate-900">
+                Danh mục 13 Tủ bảo quản / Tủ lạnh &amp; Tủ đá
+              </h2>
+              <p className="text-xs font-semibold text-slate-500">
+                Theo Phụ lục quy chuẩn BM.02/QL.HTAT.01 (Tủ mát) &amp; BM.03/QL.HTAT.01 (Tủ đá)
+              </p>
+            </div>
+            <Link
+              href="/temperature?group=storage"
+              className="inline-flex min-h-9 items-center justify-center rounded-xl bg-teal-700 px-4 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition"
+            >
+              Ghi nhật ký nhiệt độ tủ lạnh
+            </Link>
+          </div>
+          <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {HOSPITAL_FRIDGES_13.map((f) => (
+              <div
+                key={f.code}
+                className="rounded-2xl border border-slate-200 bg-slate-50/50 p-3.5 transition hover:border-teal-300 hover:bg-white shadow-2xs"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-black text-slate-600">{f.code}</span>
+                  <span
+                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      f.type === "FREEZER"
+                        ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                        : "bg-sky-50 text-sky-800 border-sky-200"
+                    }`}
+                  >
+                    {f.tempRange}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs font-black text-slate-950 leading-snug">{f.name}</p>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-200/60 pt-1.5">
+                  <span>{f.locationName}</span>
+                  <span className="font-semibold text-teal-700">{f.trackingDevice}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       </div>

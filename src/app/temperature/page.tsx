@@ -6,6 +6,7 @@ import { OperationalChart } from "@/components/p5/OperationalChart";
 import { getTemperatureOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { TEMPERATURE_AREAS } from "@/constants/areas";
+import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
 import { CheckCircle2, CircleAlert, Clock3, Thermometer, ShieldCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -155,7 +156,46 @@ export default async function TemperaturePage({
               ))}
             </div>
           </section>
-        ) : null}
+        ) : (
+          <section className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-wider text-teal-900">
+                13 Tủ bảo quản / Tủ lạnh &amp; Tủ đá (BM.02 &amp; BM.03)
+              </h2>
+              <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                Danh mục Phụ lục TTB
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+              {HOSPITAL_FRIDGES_13.map((f) => (
+                <div
+                  key={f.code}
+                  className="rounded-2xl border border-sky-100 bg-white p-3.5 shadow-xs transition hover:border-teal-300"
+                >
+                  <div className="flex items-start justify-between gap-1">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wide">
+                      {f.code}
+                    </span>
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                        f.type === "FREEZER"
+                          ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                          : "bg-sky-50 text-sky-800 border-sky-200"
+                      }`}
+                    >
+                      {f.tempRange}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-black text-slate-900 leading-snug">{f.name}</p>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-1.5">
+                    <span>{f.locationName}</span>
+                    <span className="font-semibold text-teal-700">{f.trackingDevice}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Biểu đồ xu hướng */}
         <OperationalChart
