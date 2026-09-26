@@ -25,12 +25,14 @@ interface DesktopSidebarProps {
   currentPath?: string;
   className?: string;
   isAdmin?: boolean;
+  unreadCount?: number;
 }
 
 export function DesktopSidebar({
   currentPath = "/",
   className,
   isAdmin = false,
+  unreadCount = 0,
 }: DesktopSidebarProps) {
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
@@ -38,9 +40,9 @@ export function DesktopSidebar({
     { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
     { label: "Lịch công việc", href: "/calendar", icon: Calendar },
     { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },
-    { label: "Nhập ca BM.06 toàn khoa", href: "/bm06", icon: FileSpreadsheet },
+    { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
-    { label: "Thông báo", href: "/notifications", icon: Bell },
+    { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },
     { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },
   ];
 
@@ -129,7 +131,14 @@ export function DesktopSidebar({
                   )}
                 >
                   <Icon className="w-4 h-4 text-zinc-500" />
-                  <span>{item.label}</span>
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.count && item.count > 0 ? (
+                    <span className="ml-auto flex items-center justify-center">
+                      <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[10px] font-black text-white shadow-xs">
+                        {Math.min(item.count, 99)}
+                      </span>
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

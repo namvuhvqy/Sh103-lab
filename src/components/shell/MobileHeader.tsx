@@ -46,11 +46,14 @@ export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAct
               >
                 <Bell className="size-5" />
                 {unreadCount > 0 ? (
-                  <span
-                    className="absolute right-1 top-1 grid min-h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white ring-2 ring-white"
-                    aria-label={`${unreadCount} thông báo chưa đọc`}
-                  >
-                    {Math.min(unreadCount, 99)}
+                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
+                    <span
+                      className="relative grid min-h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white ring-2 ring-white shadow-xs"
+                      aria-label={`${unreadCount} thông báo chưa đọc`}
+                    >
+                      {Math.min(unreadCount, 99)}
+                    </span>
                   </span>
                 ) : null}
               </Link>

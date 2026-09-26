@@ -15,9 +15,9 @@ describe("P5 clinical UI contract", () => {
     expect(screen.getByRole("link", { name: "Nhiệt độ" })).toHaveAttribute("aria-current", "page");
   });
   it("renders KPI with textual status and drill-down", () => {
-    render(<KpiCard label="BM.06 ca hiện tại" value="24/25" status="Còn 1 máy" tone="warning" href="/equipment" />);
+    render(<KpiCard label="Nhật ký trang thiết bị" value="24/25" status="Còn 1 máy" tone="warning" href="/equipment" />);
     expect(screen.getByText("Còn 1 máy")).toBeVisible();
-    expect(screen.getByRole("link", { name: /BM.06 ca hiện tại/ })).toHaveAttribute("href", "/equipment");
+    expect(screen.getByRole("link", { name: /Nhật ký trang thiết bị/ })).toHaveAttribute("href", "/equipment");
   });
   it("renders an operational banner with a direct workflow CTA", () => {
     render(<OperationalBanner title="Còn 2 điểm chưa ghi" description="Ca sáng" href="/temperature" cta="Ghi số đo" tone="warning" />);

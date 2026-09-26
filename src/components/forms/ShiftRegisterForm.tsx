@@ -184,12 +184,12 @@ export function ShiftRegisterForm({
                 ) : null}
               </div>
 
-              {/* 3 nút chọn trạng thái touch-friendly (>=44px trên mobile) */}
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* 3 nút chọn trạng thái touch-friendly (>=44px trên mobile) với animation trượt mượt mà */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100/80 border border-slate-200/60">
                 {[
-                  ["BT", "Bình thường", "border-teal-600 bg-teal-700 text-white shadow-xs"],
-                  ["KSD", "Không sử dụng", "border-slate-600 bg-slate-700 text-white shadow-xs"],
-                  ["H", "Hỏng", "border-rose-600 bg-rose-700 text-white shadow-xs"],
+                  ["BT", "Bình thường", "border-teal-700 bg-teal-700 text-white shadow-xs ring-1 ring-teal-500/30"],
+                  ["KSD", "Không sử dụng", "border-slate-700 bg-slate-700 text-white shadow-xs ring-1 ring-slate-500/30"],
+                  ["H", "Hỏng", "border-rose-700 bg-rose-700 text-white shadow-xs ring-1 ring-rose-500/40"],
                 ].map(([code, label, activeStyle]) => {
                   const isSelected = current === code;
                   return (
@@ -198,10 +198,10 @@ export function ShiftRegisterForm({
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => setStatuses((s) => ({ ...s, [asset.id]: code }))}
-                      className={`min-h-11 rounded-xl border px-1 text-xs font-bold transition flex items-center justify-center gap-1 ${
+                      className={`min-h-11 rounded-lg border px-1 text-xs font-bold transition-all duration-150 active:scale-95 flex items-center justify-center gap-1 select-none ${
                         isSelected
                           ? activeStyle
-                          : "border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-100"
+                          : "border-transparent bg-white/70 text-slate-700 hover:bg-white"
                       }`}
                       title={`${code} — ${label}`}
                     >
@@ -216,8 +216,8 @@ export function ShiftRegisterForm({
         })}
       </div>
 
-      {/* Thông tin vận hành bổ sung */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+      {/* Thông tin vận hành bổ sung - Tối ưu Input Ergonomics */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block text-xs font-bold text-slate-700">
             Lượng sử dụng trong ca
@@ -227,8 +227,9 @@ export function ShiftRegisterForm({
               type="number"
               min="0"
               step="0.1"
+              inputMode="decimal"
               defaultValue="4.5"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
               placeholder="VD: 4.5"
             />
           </label>
@@ -237,7 +238,7 @@ export function ShiftRegisterForm({
             <select
               name="usageUnit"
               defaultValue="HOURS"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 bg-white"
+              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 bg-white"
             >
               <option value="HOURS">Số giờ chạy thực tế</option>
               <option value="SHIFTS">Số ca trực</option>
@@ -250,15 +251,15 @@ export function ShiftRegisterForm({
           <textarea
             name="note"
             rows={2}
-            className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+            className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
             placeholder="Ghi nhận các lưu ý đặc biệt, lỗi máy hoặc cảnh báo hóa chất nếu có..."
           />
         </label>
       </div>
 
-      {/* Sticky Bottom Actions */}
+      {/* Sticky Bottom Actions - Nền kính mờ backdrop-blur-md & active:scale-95 */}
       <div
-        className={`sticky bottom-20 z-20 grid gap-3 rounded-2xl border border-teal-100 bg-white/95 p-3 shadow-lg backdrop-blur ${
+        className={`sticky bottom-16 md:bottom-4 z-20 grid gap-3 rounded-2xl md:rounded-3xl border border-teal-200/80 bg-white/90 p-3 shadow-[0_-8px_30px_rgba(15,118,110,0.12)] backdrop-blur-md transition-all ${
           areaCode ? "grid-cols-1" : "grid-cols-2"
         }`}
       >
@@ -266,7 +267,7 @@ export function ShiftRegisterForm({
           name="intent"
           value="draft"
           disabled={Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
-          className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 transition"
+          className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 active:scale-95 transition-all select-none shadow-xs"
         >
           {areaCode ? "Lưu nháp khu vực" : "Lưu nháp"}
         </button>
@@ -275,7 +276,7 @@ export function ShiftRegisterForm({
             name="intent"
             value="finalize"
             disabled={!progress.canFinalize}
-            className="min-h-12 rounded-xl bg-teal-700 hover:bg-teal-800 font-bold text-white disabled:bg-slate-200 disabled:text-slate-400 transition shadow-sm"
+            className="min-h-12 rounded-xl bg-teal-700 hover:bg-teal-800 font-bold text-white disabled:bg-slate-200 disabled:text-slate-400 active:scale-95 transition-all select-none shadow-xs shadow-teal-700/20"
           >
             Hoàn tất ca
           </button>

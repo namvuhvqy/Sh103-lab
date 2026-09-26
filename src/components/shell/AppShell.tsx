@@ -34,7 +34,7 @@ export function AppShell({
 
   return (
     <div className="clinical-shell flex min-h-dvh bg-transparent text-slate-900">
-      <DesktopSidebar isAdmin={isAdmin} />
+      <DesktopSidebar isAdmin={isAdmin} unreadCount={unreadCount} />
 
       <div className="flex min-w-0 flex-1 flex-col pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <OfflineBanner isOffline={!isOnline} />

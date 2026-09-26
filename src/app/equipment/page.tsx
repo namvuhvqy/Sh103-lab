@@ -142,7 +142,7 @@ export default async function EquipmentPage() {
             href="/bm06"
             className="inline-flex min-h-11 items-center rounded-2xl bg-teal-800 px-6 font-bold text-white shadow-sm hover:bg-teal-900 transition"
           >
-            Nhập BM.06 ca hiện tại
+            Nhật ký trang thiết bị
           </Link>
           <Link
             href="/areas"
