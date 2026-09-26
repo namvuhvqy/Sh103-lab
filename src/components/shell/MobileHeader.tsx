@@ -1,6 +1,9 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
 
@@ -14,15 +17,34 @@ interface MobileHeaderProps {
 }
 
 export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAction, rightAction, className, unreadCount = 0 }: MobileHeaderProps) {
+  const pathname = usePathname();
+  const isSubpage = Boolean(pathname && pathname !== "/");
   const displaySubtitle = subtitle ?? "Hệ thống quản lý biểu mẫu ISO 15189";
+
   return (
     <header data-app-chrome className={cn("safe-top sticky top-0 z-30 border-b border-teal-100/80 bg-white/95 backdrop-blur-xl md:hidden shadow-xs", className)}>
-      <div className="mx-auto flex min-h-[4.25rem] w-full items-center justify-between gap-3 px-4 py-2">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="mx-auto flex min-h-[4.25rem] w-full items-center justify-between gap-2.5 px-3.5 py-2">
+        <div className="flex min-w-0 items-center gap-2.5">
           {leftAction ?? (
-            <Link href="/" className="shrink-0">
-              <HospitalLogo size="md" />
-            </Link>
+            isSubpage ? (
+              <div className="flex items-center gap-1 shrink-0">
+                <Link
+                  href="/"
+                  className="grid size-8 place-items-center rounded-xl bg-slate-100 text-teal-800 hover:bg-teal-50 transition active:scale-95"
+                  aria-label="Về trang chủ"
+                  title="Quay lại màn hình chính"
+                >
+                  <ChevronLeft className="size-5" />
+                </Link>
+                <Link href="/" className="shrink-0">
+                  <HospitalLogo size="sm" />
+                </Link>
+              </div>
+            ) : (
+              <Link href="/" className="shrink-0">
+                <HospitalLogo size="md" />
+              </Link>
+            )
           )}
           <div className="min-w-0">
             <p className="truncate text-[9px] font-black uppercase tracking-wider text-teal-800">

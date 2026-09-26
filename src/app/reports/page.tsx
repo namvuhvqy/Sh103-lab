@@ -57,22 +57,19 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       unreadCount={unread}
     >
       <div className="space-y-6">
-        {/* Segmented Controls trên cùng theo chuẩn Mockup M06 */}
-        <div className="flex overflow-x-auto gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+        {/* Thanh điều hướng Báo cáo & Thống kê ISO 15189 */}
+        <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
           <Link href="/reports" className="px-4 py-2 rounded-xl bg-teal-700 text-white shadow-xs shrink-0">
-            Tổng quan
+            Tổng quan báo cáo
           </Link>
-          <Link href="/temperature" className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 shrink-0">
-            Nhiệt độ &amp; Độ ẩm
+          <Link href="/reports/export" className="px-4 py-2 rounded-xl text-slate-700 hover:text-teal-900 hover:bg-white/60 shrink-0">
+            Xuất biểu mẫu ISO (Excel / PDF)
           </Link>
-          <Link href="/equipment" className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 shrink-0">
-            Thiết bị 4 ca
+          <Link href="/periods" className="px-4 py-2 rounded-xl text-slate-700 hover:text-teal-900 hover:bg-white/60 shrink-0">
+            47 Sổ kỳ &amp; Theo dõi
           </Link>
-          <Link href="/decontamination" className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 shrink-0">
-            Khử nhiễm
-          </Link>
-          <Link href="/tasks" className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 shrink-0">
-            Bảo dưỡng
+          <Link href="/approvals" className="px-4 py-2 rounded-xl text-slate-700 hover:text-teal-900 hover:bg-white/60 shrink-0">
+            Phê duyệt &amp; Đính chính
           </Link>
         </div>
 

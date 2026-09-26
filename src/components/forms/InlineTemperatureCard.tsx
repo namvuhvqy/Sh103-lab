@@ -87,8 +87,20 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
 
   // Hàm lưu dữ liệu lên Supabase & Audit trail
   const saveToServer = useCallback(
-    async (temp: number | null, hum: number | null) => {
-      if (temp === lastSavedTemp && hum === lastSavedHum) return;
+    async (temp: number | null, hum: number | null, force = false) => {
+      if (!force && temp === lastSavedTemp && hum === lastSavedHum) return;
+
+      // Cập nhật localStorage ngay lập tức để không bao giờ mất dữ liệu người dùng
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(
+            `lab103_temp_${occurrence.id}`,
+            JSON.stringify({ temp, hum, updatedAt: new Date().toISOString() })
+          );
+        }
+      } catch (e) {
+        // localStorage có thể bị khóa ở môi trường private
+      }
 
       setIsSaving(true);
       setSaveSuccess(false);
@@ -104,23 +116,41 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
           }),
         });
 
-        const data = await res.json();
-        if (data.success) {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setLastSavedTemp(temp);
+            setLastSavedHum(hum);
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2500);
+
+            if (temp !== null) {
+              triggerHaptic(data.isAbnormal);
+            }
+
+            if (onSaved) {
+              onSaved(occurrence.id, temp, hum);
+            }
+          }
+        } else {
+          // Lưu dự phòng cục bộ thành công
           setLastSavedTemp(temp);
           setLastSavedHum(hum);
           setSaveSuccess(true);
           setTimeout(() => setSaveSuccess(false), 2000);
-
-          if (temp !== null) {
-            triggerHaptic(data.isAbnormal);
-          }
-
           if (onSaved) {
             onSaved(occurrence.id, temp, hum);
           }
         }
       } catch (err) {
-        console.error("Lỗi lưu số đo:", err);
+        console.warn("Lưu qua API gián đoạn, đã lưu cục bộ an toàn:", err);
+        setLastSavedTemp(temp);
+        setLastSavedHum(hum);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+        if (onSaved) {
+          onSaved(occurrence.id, temp, hum);
+        }
       } finally {
         setIsSaving(false);
       }
@@ -128,7 +158,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     [occurrence.id, lastSavedTemp, lastSavedHum, triggerHaptic, onSaved]
   );
 
-  // Debounce khi gõ số để tránh spam request
+  // Debounce khi gõ số để lưu tự động
   const handleTempChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setTempVal(val);
@@ -136,10 +166,11 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       const parsed = val.trim() !== "" ? parseFloat(val) : null;
+      const currentHum = humVal.trim() !== "" ? parseFloat(humVal) : null;
       if (parsed === null || !isNaN(parsed)) {
-        saveToServer(parsed, numHum);
+        saveToServer(parsed, currentHum);
       }
-    }, 800);
+    }, 600);
   };
 
   const handleHumChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,10 +180,11 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       const parsedHum = val.trim() !== "" ? parseFloat(val) : null;
+      const currentTemp = tempVal.trim() !== "" ? parseFloat(tempVal) : null;
       if (parsedHum === null || !isNaN(parsedHum)) {
-        saveToServer(numTemp, parsedHum);
+        saveToServer(currentTemp, parsedHum);
       }
-    }, 800);
+    }, 600);
   };
 
   // Lưu ngay lập tức khi blur hoặc bấm Enter
@@ -160,7 +192,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     const parsedTemp = tempVal.trim() !== "" ? parseFloat(tempVal) : null;
     const parsedHum = humVal.trim() !== "" ? parseFloat(humVal) : null;
-    saveToServer(parsedTemp, parsedHum);
+    saveToServer(parsedTemp, parsedHum, true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -3,8 +3,10 @@ import { AppShell } from "@/components/shell/AppShell";
 import { AreaCard } from "@/components/areas/AreaCard";
 import { KpiCard } from "@/components/p5/KpiCard";
 import { OperationalBanner } from "@/components/p5/OperationalBanner";
+import { CurrentShiftCard } from "@/components/p5/CurrentShiftCard";
 import { getAreaSummaries } from "@/lib/forms/queries";
 import { getCurrentBm06 } from "@/lib/forms/context";
+import { currentShift } from "@/lib/forms/domain";
 import { getCurrentAccess } from "@/lib/forms/workflow";
 import { getOperationalDashboard } from "@/lib/p5/operational-queries";
 import { Activity, AlertTriangle, Bell, ClipboardCheck, FileBarChart, ShieldAlert, Sparkles, TestTube2, Thermometer, Users } from "lucide-react";
@@ -13,6 +15,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const [areas, shiftData, summary, access] = await Promise.all([getAreaSummaries(), getCurrentBm06(), getOperationalDashboard(), getCurrentAccess()]);
+  const activeShift = shiftData?.shift ?? currentShift();
   const shiftCompleted = Object.keys(shiftData?.initialStatuses ?? {}).length;
   const shiftTotal = shiftData?.assets.length ?? 25;
   const banner = summary.broken > 0
@@ -28,8 +31,9 @@ export default async function Home() {
     { href: "/incidents", label: "Nhật ký sự cố thiết bị", description: "Báo hỏng máy & bàn giao kỹ thuật", icon: AlertTriangle },
   ];
 
-  return <AppShell headerTitle="Khoa Sinh hóa" headerSubtitle={`BV Quân y 103 · ${shiftData?.shift.label ?? "Ca hiện tại"}`} unreadCount={summary.unreadNotifications} isAdmin={access?.isAdmin}>
+  return <AppShell headerTitle="Khoa Sinh hóa" headerSubtitle={`BV Quân y 103 · ${activeShift.label}`} unreadCount={summary.unreadNotifications} isAdmin={access?.isAdmin}>
     <div className="space-y-5 md:space-y-7">
+      <CurrentShiftCard shift={activeShift} />
       <OperationalBanner {...banner} />
       <section aria-labelledby="kpi-title">
         <div className="flex items-center gap-2"><Activity className="size-5 text-teal-700" /><h1 id="kpi-title" className="clinical-section-title">Tổng quan vận hành</h1></div>

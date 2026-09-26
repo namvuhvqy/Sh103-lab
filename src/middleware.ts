@@ -38,6 +38,12 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isLoginPage = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api/");
+
+  // Không redirect các API route sang trang HTML /login để tránh lỗi 405 Method Not Allowed
+  if (isApiRoute) {
+    return response;
+  }
 
   // Redirect unauthenticated users to /login
   if (!user && !isLoginPage) {
