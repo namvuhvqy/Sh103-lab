@@ -22,8 +22,8 @@ export function LoginForm({ action }: { action: LoginAction }) {
       </div>
 
       <label className="block text-sm font-medium text-zinc-800">
-        Email / Tên đăng nhập
-        <input name="email" type="email" autoComplete="username" required className="mt-2 min-h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100" />
+        Tài khoản / Email
+        <input name="email" type="text" autoComplete="username" required placeholder="Tên đăng nhập hoặc email (VD: hqthuan)..." className="mt-2 min-h-12 w-full rounded-xl border border-zinc-300 bg-white px-3.5 text-sm font-medium outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20" />
       </label>
 
       <label className="block text-sm font-medium text-zinc-800">

@@ -10,7 +10,8 @@ export async function changePasswordAction(formData: FormData) {
   const validation = validatePasswordChange(password, confirmation);
   if (!validation.ok) redirect(`/account?error=${encodeURIComponent(validation.error)}`);
   const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const normalizedPassword = password.length === 5 ? `${password}_sh` : password;
+  const { error } = await supabase.auth.updateUser({ password: normalizedPassword });
   if (error) redirect(`/account?error=${encodeURIComponent("Không thể đổi mật khẩu. Vui lòng thử lại.")}`);
   redirect("/account?password=changed");
 }

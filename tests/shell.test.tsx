@@ -38,12 +38,12 @@ describe("P1 Shell & Navigation Requirements", () => {
     expect(screen.getByText("Khu Nhận bệnh phẩm")).toBeInTheDocument();
   });
 
-  it("renders BottomNav with 5 main navigation tabs", () => {
+  it("renders the canonical P5 BottomNav with 5 tabs", () => {
     render(<BottomNav currentPath="/" />);
-    expect(screen.getByText("Trang chủ")).toBeInTheDocument();
-    expect(screen.getByText("Hôm nay")).toBeInTheDocument();
-    expect(screen.getByText("Khu vực")).toBeInTheDocument();
-    expect(screen.getByText("Lịch sử")).toBeInTheDocument();
+    expect(screen.getByText("Tổng quan")).toBeInTheDocument();
+    expect(screen.getByText("Nhiệt độ")).toBeInTheDocument();
+    expect(screen.getByText("Thiết bị")).toBeInTheDocument();
+    expect(screen.getByText("Khử nhiễm")).toBeInTheDocument();
     expect(screen.getByText("Thêm")).toBeInTheDocument();
   });
 

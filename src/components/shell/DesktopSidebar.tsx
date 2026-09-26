@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { AREAS } from "@/constants/areas";
 import { cn } from "@/lib/utils";
+import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import {
   Home,
   CheckSquare,
@@ -15,40 +16,48 @@ import {
   FileText,
   Settings,
   ShieldCheck,
+  Bell,
+  CircleAlert,
+  Megaphone,
 } from "lucide-react";
 
 interface DesktopSidebarProps {
   currentPath?: string;
   className?: string;
   isAdmin?: boolean;
+  unreadCount?: number;
 }
 
 export function DesktopSidebar({
   currentPath = "/",
   className,
   isAdmin = false,
+  unreadCount = 0,
 }: DesktopSidebarProps) {
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
+    { label: "Kíp trực 24/7 & Lễ", href: "/quick-duty", icon: ShieldCheck },
     { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
     { label: "Lịch công việc", href: "/calendar", icon: Calendar },
     { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },
-    { label: "Nhập ca BM.06 toàn khoa", href: "/bm06", icon: FileSpreadsheet },
+    { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
-    { label: "Lịch sử & Tra cứu", href: "/history", icon: History },
+    { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },
+    { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },
   ];
 
   const reviewTasks = [
     { label: "Chờ duyệt kỳ", href: "/approvals", icon: CheckCircle2 },
     { label: "Dashboard toàn khoa", href: "/dashboard", icon: BarChart3 },
     { label: "Báo cáo & Xuất file", href: "/reports", icon: FileText },
-    { label: "Danh mục Biểu mẫu", href: "/forms", icon: Layers },
+    { label: "Sổ / Kỳ đã lưu", href: "/periods", icon: History },
   ];
 
   const adminTasks = [
-    { label: "Quản trị biểu mẫu", href: "/admin/templates", icon: Settings },
+    { label: "Quản trị dữ liệu nền", href: "/admin/master", icon: Settings },
     { label: "Quản trị thiết bị & Tủ", href: "/admin/assets", icon: Settings },
     { label: "Quản lý khu vực & Điểm đo", href: "/admin/locations", icon: Settings },
+    { label: "Admin Announcement", href: "/admin/announcements", icon: Megaphone },
   ];
 
   return (
@@ -58,13 +67,12 @@ export function DesktopSidebar({
         className
       )}
     >
-      <div className="flex items-center gap-2 px-2 py-3 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-base shadow-xs">
-          SH
-        </div>
-        <div>
-          <h1 className="font-bold text-sm text-zinc-900 leading-tight">SH103 Sinh Hóa</h1>
-          <p className="text-[11px] text-zinc-500">Quản lý biểu mẫu PXN</p>
+      <div className="flex items-center gap-3 px-2 py-3 mb-4 rounded-2xl bg-teal-50/70 border border-teal-100/80">
+        <HospitalLogo size="md" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 truncate">BV Quân y 103</p>
+          <h1 className="font-black text-sm text-teal-900 leading-tight truncate">Khoa Sinh Hóa</h1>
+          <p className="text-[10px] font-semibold text-teal-700 truncate">Hệ thống biểu mẫu PXN</p>
         </div>
       </div>
 
@@ -123,7 +131,14 @@ export function DesktopSidebar({
                   )}
                 >
                   <Icon className="w-4 h-4 text-zinc-500" />
-                  <span>{item.label}</span>
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.count && item.count > 0 ? (
+                    <span className="ml-auto flex items-center justify-center">
+                      <span className="grid min-h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[10px] font-black text-white shadow-xs">
+                        {Math.min(item.count, 99)}
+                      </span>
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

@@ -21,12 +21,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       </dl>
       <section className="mt-6 rounded-2xl border bg-white p-5">
         <h2 className="text-lg font-bold">Đổi mật khẩu</h2>
-        <p className="mt-1 text-sm text-zinc-600">Mật khẩu mới phải có ít nhất 12 ký tự.</p>
+        <p className="mt-1 text-sm text-zinc-600">Mật khẩu mới phải có ít nhất 5 ký tự.</p>
         {query.error ? <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-800">{query.error}</p> : null}
         {query.password === "changed" ? <p role="status" className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Đã đổi mật khẩu.</p> : null}
         <form action={changePasswordAction} className="mt-4 grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-semibold">Mật khẩu mới<input name="password" type="password" minLength={12} required autoComplete="new-password" className="mt-2 min-h-11 w-full rounded-xl border px-3"/></label>
-          <label className="text-sm font-semibold">Xác nhận mật khẩu<input name="confirmation" type="password" minLength={12} required autoComplete="new-password" className="mt-2 min-h-11 w-full rounded-xl border px-3"/></label>
+          <label className="text-sm font-semibold">Mật khẩu mới<input name="password" type="password" minLength={5} required autoComplete="new-password" className="mt-2 min-h-11 w-full rounded-xl border px-3"/></label>
+          <label className="text-sm font-semibold">Xác nhận mật khẩu<input name="confirmation" type="password" minLength={5} required autoComplete="new-password" className="mt-2 min-h-11 w-full rounded-xl border px-3"/></label>
           <button className="min-h-11 rounded-xl bg-teal-700 px-5 font-semibold text-white sm:col-span-2">Cập nhật mật khẩu</button>
         </form>
       </section>
