@@ -138,6 +138,13 @@ Toàn bộ 9 mockup đã hoàn thiện và đồng bộ đầy đủ, chính th�
 ## 5. Lưu ý quản trị tài liệu
 
 - Các file `_FINAL.md` và addendum 05/06 trong danh sách trên là Source of Truth cho phạm vi tương ứng.
+- **Quyết định Owner mới nhất (Owner Decisions):**
+  - **Tính bất biến của bằng chứng nguồn (Source evidence immutability):** Toàn bộ tài liệu nguồn gốc/lịch sử không bị chỉnh sửa hồi tố, ngoại trừ quy trình ban hành biểu mẫu mới có thẩm quyền (BM.06 v4.1 thay thế v4.0 hiện hành, giữ v4.0 lịch sử).
+  - **Phiên bản BM.06:** Giữ nguyên v4.0 lịch sử và áp dụng v4.1 làm biểu mẫu hiện hành.
+  - **Chuẩn hóa 5 khu vực BM.01:** BM.01 chỉ áp dụng chính thức cho đúng 5 khu vực làm việc xét nghiệm (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`). Vị trí `KHO` là vị trí phụ trợ theo dõi nhiệt độ lưu trữ hóa chất/lưu mẫu, không phải là khu vực làm việc BM.01.
+  - **Định danh người dùng & Danh sách nhân sự:** Không sử dụng `staff_number`. Định danh duy nhất là `user_id` (UUID), số thứ tự trong Phụ lục (STT) chỉ là thứ tự hiển thị/nguồn. Loại trừ tài khoản TEST `TS.BS Vũ Văn Nam` khỏi danh sách nhân sự chính thức.
+  - **BM.06 Lượng sử dụng (Quantity-of-use):** Lượng sử dụng được chuẩn hóa trực tiếp qua 4 khung giờ ca cố định (`SHIFT_1` 07:00–11:30, `SHIFT_2` 11:30–13:30, `SHIFT_3` 13:30–16:30, `SHIFT_4` 16:30–07:00 ngày hôm sau; `business_date` tính theo ngày bắt đầu ca). Không yêu cầu nhập số lượng sử dụng thủ công, không áp dụng default số hay bulk BT. Database giữ các trường số cũ ở trạng thái nullable để tương thích ngược.
+  - **Quick Duty Orchestrator:** Không tạo bản ghi tổng hợp (no super-record); điều phối và tổng hợp trạng thái thực tế từ 25 bản ghi thiết bị độc lập.
 - Không commit secret; mọi biến môi trường/credential để trong env phù hợp.
 - Không hard-code dữ liệu demo chỉ để đạt giao diện giống ảnh tham chiếu.
 - Không merge/deploy Production chỉ dựa vào screenshot; phải có Preview thật + test evidence + UAT gate tương ứng.

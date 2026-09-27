@@ -71,15 +71,15 @@ Tuy nhiên:
 - không cache dữ liệu nghiệp vụ nhạy cảm vào Service Worker;
 - không để PWA làm sai lịch sử nhập liệu.
 
-## 1.5. Dữ liệu đã phê duyệt là bất biến
+## 1.5. Dữ liệu đã phê duyệt là bất biến & Bằng chứng nguồn gốc bất biến
 
-Bản đã phê duyệt:
-
-- không update trực tiếp;
-- không delete;
-- muốn sửa phải tạo bản đính chính;
-- bản gốc vẫn tồn tại;
-- báo cáo phải biết đâu là bản hiện hành.
+- **Bằng chứng nguồn gốc (Source evidence immutability):** Toàn bộ tài liệu nguồn gốc/lịch sử không bị chỉnh sửa hồi tố, ngoại trừ quy trình ban hành biểu mẫu mới có thẩm quyền (BM.06 v4.1 ban hành thay thế v4.0 hiện hành, giữ v4.0 lịch sử).
+- Bản đã phê duyệt:
+  - không update trực tiếp;
+  - không delete;
+  - muốn sửa phải tạo bản đính chính;
+  - bản gốc vẫn tồn tại;
+  - báo cáo phải biết đâu là bản hiện hành.
 
 ## 1.6. Phân quyền thực thi ở database/backend
 
@@ -400,12 +400,18 @@ auth.users.id
        │
        ▼
 profiles
-- user_id
+- user_id (UUID primary key)
 - full_name
 - business_role
 - is_admin
 - active
+- display_order (STT hiển thị từ Phụ lục, không dùng staff_number)
 ```
+
+**Quy tắc định danh & nhân sự:**
+- Hệ thống định danh người dùng bằng `user_id` (UUID), không sử dụng `staff_number`.
+- Số thứ tự trong Phụ lục (STT) chỉ đóng vai trò thứ tự hiển thị hoặc phân loại nguồn, không phải mã định danh.
+- Loại trừ tài khoản TEST `TS.BS Vũ Văn Nam` khỏi danh sách nhân sự chính thức của hệ thống.
 
 `business_role` chỉ có:
 
@@ -1005,8 +1011,9 @@ Chuẩn hóa **5 khu vực làm việc** theo kiến trúc điều hướng Area
 3. `NUOC_TIEU`: Khu vực làm xét nghiệm Nước tiểu (4 máy)
 4. `LY_TAM`: Khu vực Ly tâm (4 máy)
 5. `NHAN_BENH_PHAM`: Khu vực Nhận bệnh phẩm (0 máy, chỉ theo dõi khử nhiễm bề mặt BM.01_KNBM)
-Và vị trí lưu trữ phụ trợ:
-6. `KHO`: Kho hóa chất / Kho lưu mẫu (Nhiệt độ phòng BM.01 và tủ lưu trữ)
+
+Và vị trí lưu trữ phụ trợ (không phải khu vực làm việc BM.01):
+6. `KHO`: Kho hóa chất / Kho lưu mẫu (Theo dõi nhiệt độ môi trường kho và tủ bảo quản)
 
 Schema:
 
@@ -1021,7 +1028,7 @@ created_at timestamptz not null default now()
 updated_at timestamptz not null default now()
 ```
 
-Không hard-code danh sách khu vực trong giao diện client; nạp động từ bảng `locations` theo thứ tự `sort_order`.
+Không hard-code danh sách khu vực trong giao diện client; nạp động từ bảng `locations` theo thứ tự `sort_order`. Khu vực làm việc chính thức cho BM.01 gồm đúng 5 khu vực trên; `KHO` chỉ đóng vai trò phụ trợ cho kiểm soát nhiệt độ kho bảo quản.
 
 ## 15.2. `assets`
 
@@ -1531,26 +1538,22 @@ Nếu Version sau cần, mở rộng schema bằng migration sau.
 
 # 23. BM.06
 
-## 23.1. `equipment_shift_details`
+## 23.1. `equipment_shift_details` và Quy tắc Lượng sử dụng
 
-Một record = một ngày + một khung giờ.
+Một record = một ngày + một khung giờ (`SHIFT_1` 07:00–11:30, `SHIFT_2` 11:30–13:30, `SHIFT_3` 13:30–16:30, `SHIFT_4` 16:30–07:00 ngày hôm sau; `business_date` tính theo ngày bắt đầu ca).
 
 ```text
 record_id uuid PK/FK
-usage_value numeric nullable
-usage_unit text nullable
+usage_value numeric nullable -- Legacy compatibility: nullable, không bắt buộc nhập số
+usage_unit text nullable    -- Legacy compatibility: nullable, không bắt buộc nhập đơn vị
 ```
 
-Nguồn có “số giờ/số ca”.
-
-`usage_unit` tối thiểu hỗ trợ:
-
-- `HOURS`
-- `SHIFTS`
-
-Nếu nguồn thực tế ở Pilot cho thấy cần cách ghi khác, thay đổi phải đi qua đặc tả/migration; không nhét chuỗi tùy ý vào cột số.
-
-Trường lượng sử dụng không được dùng để thay thế status từng máy.
+**Quyết định Owner mới nhất:**
+- **Lượng sử dụng (Quantity-of-use):** Chuẩn hóa trực tiếp thông qua 4 khung ca cố định theo lịch phân ca của khoa.
+- **Không yêu cầu nhập số lượng sử dụng thủ công:** Không hiển thị ô nhập số/đơn vị sử dụng, không đặt giá trị default số, không có cơ chế bulk BT tự động.
+- **Tương thích ngược cơ sở dữ liệu:** Các cột số cũ (`usage_value`, `usage_unit`) được giữ ở trạng thái nullable trong database để tương thích với dữ liệu và schema kế thừa mà không làm vỡ cấu trúc.
+- **Quick Duty Orchestrator:** Cơ chế điều phối ca trực không sinh ra bản ghi tổng hợp giả (no super-record); hệ thống quản lý và tổng hợp trạng thái độc lập từ 25 bản ghi thiết bị riêng biệt.
+- **Phiên bản biểu mẫu:** Giữ nguyên phiên bản BM.06 v4.0 trong dữ liệu lịch sử; áp dụng BM.06 v4.1 cho các kỳ hiện hành.
 
 ## 23.2. `equipment_shift_statuses`
 

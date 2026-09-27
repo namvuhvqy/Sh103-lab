@@ -200,7 +200,8 @@ Dành cho KTV và Bác sĩ:
 
 Menu `Thêm` bao gồm:
 - Lịch công việc (`/calendar`)
-- Công việc chung toàn khoa (`/general-tasks` — Nhiệt độ PXN, Tủ lạnh/đá)
+- Phiên làm việc / Nhập nhanh (`/quick-duty` — gom Nhiệt độ PXN BM.01, Tủ lạnh/đá BM.02/03, KNBM, BM.06)
+- Nhiệt độ & Độ ẩm (`/temperature`)
 - Nhập ca BM.06 toàn khoa 25 máy (`/bm06`)
 - Sổ theo kỳ (`/periods`)
 - Danh mục biểu mẫu (`/forms`)
@@ -220,9 +221,10 @@ Menu `Thêm` bao gồm:
 
 ### Công việc hàng ngày
 - Trang chủ (`/`)
+- Phiên làm việc / Nhập nhanh (`/quick-duty`)
 - Việc hôm nay (`/tasks`)
+- Nhiệt độ & Độ ẩm (`/temperature`)
 - Lịch công việc (`/calendar`)
-- Công việc chung toàn khoa (`/general-tasks`)
 - Nhập ca BM.06 toàn khoa (`/bm06`)
 - Sổ / Kỳ theo dõi (`/periods`)
 - Lịch sử & Tra cứu (`/history`)
@@ -731,11 +733,11 @@ Quản lý tập trung các biểu mẫu theo dõi không gắn cố định và
 **Route:** `/bm06/:occurrenceId` (hoặc `/bm06`)
 
 Header:
-- Mã tài liệu: BM.06/QL.TRTB.01; Phiên bản: 4.0;
+- Mã tài liệu: BM.06/QL.TRTB.01; Phiên bản hiện hành: 4.1. Bản 4.0 chỉ hiển thị khi xem dữ liệu lịch sử đã tạo theo v4.0;
 - Ngày thực hiện;
 - Khung giờ ca (1 trong 4 ca quy định);
 - Người ghi nhận;
-- Lượng sử dụng (Số giờ/số ca hoạt động);
+- Lượng sử dụng = khung giờ/ca hoạt động cố định; không có input số giờ hoặc đơn vị sử dụng;
 - Ghi chú ca trực.
 
 Bố cục phân nhóm theo 4 Khu vực làm việc:
@@ -752,7 +754,7 @@ Mỗi máy:
 Mobile:
 - Card compact;
 - Thanh tiến độ: `X / 25 máy đã có trạng thái`;
-- Có nút `Đánh dấu tất cả BT` (bắt buộc confirm);
+- Không có nút `Đánh dấu tất cả BT`; từng máy phải được người dùng xác nhận `BT`, `KSD` hoặc `H`;
 - Nút `Lưu nháp` (Draft) — cho phép lưu khi chưa đủ 25 máy;
 - Nút `Hoàn tất ca` (Finalize) — chỉ kích hoạt khi đủ 25/25 máy có trạng thái;
 - Trạng thái `H` được lưu nhận diện máy hỏng, không tự ý phát sinh báo cáo sự cố (ngoài MVP).

@@ -1182,13 +1182,9 @@ S06:
 - 25 máy;
 - progress 0–25;
 - segmented BT/KSD/H;
-- bulk save.
-
-Có thể có:
-
-`Đánh dấu tất cả BT`
-
-nhưng phải confirm, không auto-default.
+- lưu nháp/finalize toàn ca qua một transaction, nhưng không có bulk-fill trạng thái.
+- không có `Đánh dấu tất cả BT`, không status mặc định; người dùng xác nhận từng máy.
+- lượng sử dụng được biểu diễn bằng ca/khung giờ cố định; không nhập numeric usage.
 
 ## 19.5. Completion
 
@@ -1247,7 +1243,7 @@ Không Complete khi:
 
 ## 20.5. S08 Lịch, S09 Việc chung & S11 Sổ/Kỳ theo dõi
 - Lịch công việc (`/calendar`): Day/Week/Month, lọc theo khu vực;
-- Việc chung toàn khoa (`/general-tasks`): BM.01 môi trường, BM.02/03 tủ lạnh;
+- Nhiệt độ & Độ ẩm (`/temperature`): BM.01 môi trường, BM.02/03 tủ lạnh; `/general-tasks` là route cũ và redirect 308 về `/temperature`;
 - Sổ/Kỳ (`/periods/:periodId`):
   + Measurement: ma trận ngày × slot;
   + KNBM: ngày × daily/weekly/spill;
