@@ -25,7 +25,8 @@ describe("Owner final UX simplification contracts", () => {
 
   it("uses staff self-assignment language instead of Admin-only roster language", () => {
     const roster = src("src/components/work-session/WorkSessionRosterCard.tsx");
-    expect(roster).toContain("Tôi nhận ca này");
+    expect(roster).not.toContain("Tôi nhận ca này");
+    expect(roster).toContain("Chọn người cùng kíp");
     expect(roster).toMatch(/Tự nhận kíp|tự nhận kíp/);
     expect(roster).not.toContain("Bác sĩ, Trưởng khoa hoặc Admin có thể bấm nút");
   });

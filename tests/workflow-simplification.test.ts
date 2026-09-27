@@ -20,7 +20,8 @@ describe("technician-first unified workflow", () => {
     const roster = source("src/components/work-session/WorkSessionRosterCard.tsx");
     expect(view).toContain("Chọn ca khác");
     expect(view).toContain("SHIFT_4");
-    expect(roster).toContain("Tôi nhận ca này");
+    expect(roster).not.toContain("Tôi nhận ca này");
+    expect(roster).toContain("Chọn người cùng kíp");
     expect(roster).toContain("currentUserId");
   });
 

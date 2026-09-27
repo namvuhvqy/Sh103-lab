@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Users, AlertCircle, CheckCircle2, Clock, UserPlus, Edit3, X } from "lucide-react";
+import { Users, AlertCircle, CheckCircle2, Clock, Edit3, X } from "lucide-react";
 import { resolveDutyKindForDateSlot, type DutyRosterInfo } from "@/lib/work-session/server-context";
 import { RosterShiftEditor } from "@/components/roster/RosterShiftEditor";
 import { saveDutyRosterAction } from "@/lib/roster/actions";
@@ -40,16 +40,11 @@ export function WorkSessionRosterCard({
 
   const currentMembers = localRoster?.members ?? [];
   const currentUser = availableStaff.find((staff) => staff.user_id === currentUserId);
-  const canSelfAssign = Boolean(currentUser && !isShift1 && currentMembers.length === 0);
+  const canStartRoster = Boolean(currentUser && !isShift1 && currentMembers.length === 0);
   const initialMemberIds = [
-    currentMembers[0]?.user_id ?? (canSelfAssign ? currentUserId ?? "" : ""),
+    currentMembers[0]?.user_id ?? (canStartRoster ? currentUserId ?? "" : ""),
     currentMembers[1]?.user_id ?? "",
   ];
-
-  const handleSelfAssign = () => {
-    if (!canSelfAssign) return;
-    setIsEditing(true);
-  };
 
   const handleSaveRoster = async (payload: {
     businessDate: string;
@@ -147,8 +142,8 @@ export function WorkSessionRosterCard({
                 </>
               ) : (
                 <>
-                  <UserPlus className="size-3.5" />
-                  <span>Tự nhận / chọn kíp</span>
+                  <Edit3 className="size-3.5" />
+                  <span>Chọn người cùng kíp</span>
                 </>
               )}
             </button>
@@ -165,6 +160,7 @@ export function WorkSessionRosterCard({
               dutyKind={dutyKind}
               availableStaff={availableStaff}
               initialMemberIds={initialMemberIds}
+              currentUserId={currentUserId}
               expectedLock={localRoster?.lock_version}
               onSave={handleSaveRoster}
             />
@@ -206,30 +202,24 @@ export function WorkSessionRosterCard({
               <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
               <div>
                 <p className="font-black text-amber-900">Kíp trực chưa đủ 2 người.</p>
-                <p className="mt-0.5 text-amber-800">
-                  Nhân viên đang đăng nhập bấm <b>Tôi nhận ca này</b>, sau đó chọn người cùng ca từ danh sách 25 nhân sự chính thức.
-                </p>
+                {currentUser ? (
+                  <p className="mt-0.5 text-amber-800">
+                    Vị trí 1 là người đang đăng nhập: <b>{currentUser.full_name}</b> · {ROLE_LABELS[currentUser.business_role] || currentUser.business_role}. Chọn thêm người cùng kíp từ danh sách STAFF chính thức.
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-amber-800">Không xác định được user hiện tại để tạo kíp trực. Vui lòng đăng nhập lại.</p>
+                )}
               </div>
             </div>
-            {availableStaff.length > 0 && (
+            {availableStaff.length > 0 && canStartRoster && (
               <div className="flex flex-wrap gap-2 shrink-0">
-                {canSelfAssign ? (
-                  <button
-                    type="button"
-                    onClick={handleSelfAssign}
-                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition"
-                  >
-                    <UserPlus className="size-3.5" />
-                    <span>Tôi nhận ca này</span>
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   onClick={() => setIsEditing(true)}
                   className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-white px-4 text-xs font-bold text-teal-800 hover:bg-teal-50 transition"
                 >
-                  <UserPlus className="size-3.5" />
-                  <span>{canSelfAssign ? "Chọn người cùng ca" : "Tự nhận / chọn kíp"}</span>
+                  <Edit3 className="size-3.5" />
+                  <span>Chọn người cùng kíp</span>
                 </button>
               </div>
             )}

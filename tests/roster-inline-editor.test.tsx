@@ -26,7 +26,7 @@ describe("WorkSessionRosterCard inline assignment", () => {
     );
 
     expect(screen.getByText(/Kíp trực chưa đủ 2 người/)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Tự nhận|chọn kíp|Chọn người cùng ca/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button", { name: /Chọn người cùng kíp/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders assigned roster members and allows re-editing", () => {

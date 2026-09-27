@@ -26,7 +26,9 @@ describe("shared holiday roster for Quick Duty and Decontamination", () => {
   it("holiday roster picker requires exactly one doctor-class user and one technician from eligible STAFF, with no duplicate/free-text", () => {
     const editor = src("src/components/roster/RosterShiftEditor.tsx");
     const domain = src("src/lib/roster/domain.ts");
-    expect(editor).toContain("roleFilter");
+    expect(editor).toContain("secondPositionStaff");
+    expect(editor).toContain("firstMemberNeedsDoctor");
+    expect(editor).toContain("firstMemberNeedsTechnician");
     expect(editor).toContain("<select");
     expect(editor).not.toMatch(/<input[^>]+name=.*member/i);
     expect(domain).toContain("HOLIDAY_24H");

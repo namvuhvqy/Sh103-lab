@@ -60,9 +60,9 @@ describe("RosterShiftEditor Component", () => {
     expect(screen.getByText(/1 Bác sĩ \/ Trưởng khoa \+ 1 Kỹ thuật viên/i)).toBeInTheDocument();
 
     const selects = screen.getAllByRole("combobox");
-    expect(selects).toHaveLength(2);
-    expect(selects[0]).toHaveValue("user-1");
-    expect(selects[1]).toHaveValue("user-11");
+    expect(selects).toHaveLength(1);
+    expect(screen.getByText(/Huỳnh Quang Thuận/i)).toBeInTheDocument();
+    expect(selects[0]).toHaveValue("user-11");
   });
 
   it("shows real-time validation error if selecting 2 technicians for lunch duty and blocks save", async () => {
