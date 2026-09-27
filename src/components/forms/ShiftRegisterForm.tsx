@@ -206,16 +206,27 @@ export function ShiftRegisterForm({
           disabled={Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
           className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 active:scale-95 transition-all select-none shadow-xs"
         >
-          {areaCode ? "Lưu nháp khu vực" : "Lưu nháp"}
+          {areaCode ? "Lưu nháp khu vực" : `Lưu nháp (${progress.completed}/${progress.total} máy)`}
         </button>
         {!areaCode ? (
           <button
             name="intent"
             value="finalize"
             disabled={!progress.canFinalize}
-            className="min-h-12 rounded-xl bg-teal-700 hover:bg-teal-800 font-bold text-white disabled:bg-slate-200 disabled:text-slate-400 active:scale-95 transition-all select-none shadow-xs shadow-teal-700/20"
+            className={`min-h-12 rounded-xl font-bold transition-all select-none shadow-xs ${
+              progress.canFinalize
+                ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20 active:scale-95 cursor-pointer"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            }`}
+            title={
+              progress.canFinalize
+                ? "Đủ 25/25 máy — Hoàn tất và khóa ca trực"
+                : `Cần ghi nhận đủ 25/25 máy để hoàn tất ca (Hiện có: ${progress.completed}/25)`
+            }
           >
-            Hoàn tất ca
+            {progress.canFinalize
+              ? "Hoàn tất ca (25/25 máy)"
+              : `Hoàn tất ca (Thiếu ${Math.max(progress.total - progress.completed, 0)} máy)`}
           </button>
         ) : null}
       </div>

@@ -660,14 +660,44 @@ begin
   perform public.audit_event('STAFF_DEACTIVATE', 'profile', target_user_id, p_before, jsonb_build_object('active', false, 'reason', target_reason, 'reference_summary', ref_summary));
 end $$;
 
+-- assert_entry_access updated to authorize any active STAFF profile for shift clinical entries
+create or replace function public.assert_entry_access(target_period_id uuid) returns public.register_periods
+language plpgsql security definer set search_path='' as $$
+declare p public.register_periods%rowtype;
+begin
+ select * into p from public.register_periods where id=target_period_id;
+ if not found or p.status not in ('OPEN','RETURNED') then raise exception 'Period is not writable'; end if;
+ if auth.uid() is null then raise exception 'Authentication required'; end if;
+ if not (
+   public.is_department_head() or
+   exists (
+     select 1 from public.profiles
+     where user_id = auth.uid() and active = true and account_kind = 'STAFF'
+   ) or
+   exists (
+     select 1 from public.user_scope_assignments s
+     where s.user_id = auth.uid() and s.active and s.can_enter and (
+       (p.location_id is not null and s.location_id = p.location_id) or
+       (p.asset_id is not null and (s.asset_id = p.asset_id or s.location_id = (select a.location_id from public.assets a where a.id = p.asset_id))) or
+       s.form_template_id = (select form_template_id from public.form_template_versions where id = p.form_version_id)
+     )
+   ) or
+   (p.location_id is null and p.asset_id is null and public.can_access_bm06_version(p.form_version_id, true))
+ ) then raise exception 'Entry scope denied'; end if;
+ return p;
+end $$;
+
 revoke all on function public.save_duty_roster(date, text, uuid[], integer),
   public.get_work_session_context(date, text),
   public.staff_reference_summary(uuid),
   public.set_staff_profile_and_scopes(uuid, text, text, boolean, text, integer, uuid[], uuid[], uuid[]),
-  public.deactivate_staff_profile(uuid, text) from public;
+  public.deactivate_staff_profile(uuid, text),
+  public.assert_entry_access(uuid) from public;
 
 grant execute on function public.save_duty_roster(date, text, uuid[], integer),
   public.get_work_session_context(date, text),
   public.staff_reference_summary(uuid),
   public.set_staff_profile_and_scopes(uuid, text, text, boolean, text, integer, uuid[], uuid[], uuid[]),
-  public.deactivate_staff_profile(uuid, text) to authenticated;
+  public.deactivate_staff_profile(uuid, text),
+  public.assert_entry_access(uuid) to authenticated;
+

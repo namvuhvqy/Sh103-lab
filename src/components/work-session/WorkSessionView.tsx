@@ -114,6 +114,7 @@ export function WorkSessionView({ sessionData }: Props) {
         businessDate={businessDate}
         slotCode={slotCode}
         isOfficialRecordCreated={isOfficialRecordCreated}
+        availableStaff={sessionData.availableStaff}
       />
 
       <section aria-labelledby="work-sections-title" className="space-y-3">

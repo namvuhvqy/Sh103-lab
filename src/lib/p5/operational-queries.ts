@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { currentShift } from "@/lib/forms/domain";
+import { currentShift, SHIFT_DEFINITIONS } from "@/lib/forms/domain";
 import { buildOperationalSummary } from "./domain";
 import { getUnreadNotificationCount } from "./queries";
 
@@ -59,12 +59,17 @@ export async function getTemperatureOverview() {
   return { today, occurrences: occurrences ?? [], records: records ?? [] };
 }
 
-export async function getEquipmentOverview() {
+export async function getEquipmentOverview(date?: string, slot?: string) {
   const supabase = await createClient();
-  const shift = currentShift();
+  const current = currentShift();
+  const businessDate = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : current.businessDate;
+  const slotCode = slot && /^SHIFT_[1-4]$/.test(slot) ? slot : current.code;
+  const shiftDef = SHIFT_DEFINITIONS.find((s) => s.code === slotCode) ?? current;
+  const shift = { ...shiftDef, businessDate };
+
   const [{ data: assets, error: assetError }, { data: statuses, error: statusError }] = await Promise.all([
     supabase.from("assets").select("id,source_name,source_code,source_order,locations(code,name)").eq("asset_type", "LAB_EQUIPMENT").eq("active", true).order("source_order"),
-    supabase.from("equipment_shift_statuses").select("asset_id,status_code,updated_at,equipment_shift_details!inner(records!inner(id,business_date,slot_code,is_effective))").eq("equipment_shift_details.records.business_date", shift.businessDate).eq("equipment_shift_details.records.slot_code", shift.code).eq("equipment_shift_details.records.is_effective", true),
+    supabase.from("equipment_shift_statuses").select("asset_id,status_code,updated_at,equipment_shift_details!inner(records!inner(id,business_date,slot_code,is_effective))").eq("equipment_shift_details.records.business_date", businessDate).eq("equipment_shift_details.records.slot_code", slotCode).eq("equipment_shift_details.records.is_effective", true),
   ]);
   if (assetError || statusError) throw new Error("Không tải được dữ liệu thiết bị");
   const latest = new Map((statuses ?? []).map((row) => [row.asset_id, row]));

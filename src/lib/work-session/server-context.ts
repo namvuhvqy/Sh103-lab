@@ -1,5 +1,6 @@
 import { currentShift } from "@/lib/forms/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { type RosterStaffMember } from "@/lib/roster/domain";
 
 export interface RosterMember {
   user_id: string;
@@ -14,6 +15,7 @@ export interface DutyRosterInfo {
   duty_kind: string;
   business_date: string;
   revision_no?: number;
+  lock_version?: number;
   members: RosterMember[];
 }
 
@@ -25,6 +27,7 @@ export interface WorkSessionContextResult {
   isHead: boolean;
   isAdmin: boolean;
   isOfficialRecordCreated: boolean;
+  availableStaff: RosterStaffMember[];
   occurrences: Array<{
     id: string;
     formCode: string;
@@ -76,14 +79,24 @@ export async function getWorkSessionData(
   slotCode: string,
   supabase: SupabaseClient
 ): Promise<WorkSessionContextResult> {
-  const { data: contextData, error: rpcError } = await supabase.rpc("get_work_session_context", {
-    target_date: businessDate,
-    target_slot_code: slotCode,
-  });
+  const [{ data: contextData, error: rpcError }, { data: staffData }] = await Promise.all([
+    supabase.rpc("get_work_session_context", {
+      target_date: businessDate,
+      target_slot_code: slotCode,
+    }),
+    supabase
+      .from("profiles")
+      .select("user_id, full_name, business_role, is_admin, account_kind, source_order, active")
+      .eq("active", true)
+      .eq("account_kind", "STAFF")
+      .order("source_order", { ascending: true, nullsFirst: false }),
+  ]);
 
   if (rpcError) {
     console.error("Failed to load work session context RPC:", rpcError);
   }
+
+  const availableStaff = (staffData ?? []) as unknown as RosterStaffMember[];
 
   // Fetch occurrences matching the date and relevant forms
   const { data: occs } = await supabase
@@ -121,7 +134,7 @@ export async function getWorkSessionData(
     };
   });
 
-  const hasFulfilled = occurrences.some((o) => !!o.fulfilledByRecordId);
+  const hasFulfilled = occurrences.some((o) => !o.fulfilledByRecordId);
 
   return {
     businessDate,
@@ -131,6 +144,7 @@ export async function getWorkSessionData(
     isHead: Boolean(contextData?.is_head),
     isAdmin: Boolean(contextData?.is_admin),
     isOfficialRecordCreated: hasFulfilled,
+    availableStaff,
     occurrences,
   };
 }

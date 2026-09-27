@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import { WorkSessionView } from "@/components/work-session/WorkSessionView";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
 
 describe("WorkSessionView Component", () => {
   it("renders the entire work session layout with session details and section cards", () => {
@@ -10,7 +14,7 @@ describe("WorkSessionView Component", () => {
       slotCode: "SHIFT_1",
       roster: {
         roster_id: "r1",
-        duty_kind: "WEEKDAY_LUNCH",
+        duty_kind: "WEEKDAY_LUNCH" as const,
         business_date: "2026-09-27",
         members: [
           { user_id: "u1", full_name: "BS. Nguyễn Văn A", business_role: "DOCTOR" as const, member_order: 1 },
@@ -20,18 +24,17 @@ describe("WorkSessionView Component", () => {
       isHead: false,
       isAdmin: false,
       isOfficialRecordCreated: false,
+      availableStaff: [],
       occurrences: [
         {
           id: "occ-1",
           formCode: "BM.01",
           status: "PENDING",
-        }
+        },
       ],
     };
 
-    render(
-      <WorkSessionView sessionData={sessionData} />
-    );
+    render(<WorkSessionView sessionData={sessionData} />);
 
     expect(screen.getByText("Phiên hiện tại")).toBeInTheDocument();
     expect(screen.getByText("Phân công ca trực")).toBeInTheDocument();

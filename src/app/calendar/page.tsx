@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
-import { vietnamParts, currentShift } from "@/lib/forms/domain";
+import { vietnamParts } from "@/lib/forms/domain";
 import { getTodayTasks } from "@/lib/forms/queries";
+import { fetchRosterStaffCandidates } from "@/lib/roster/actions";
 import { createClient } from "@/lib/supabase/server";
-import { Calendar, Clock, ArrowRight, Users } from "lucide-react";
+import { Calendar, Clock, ArrowRight } from "lucide-react";
+import { WorkSessionRosterCard } from "@/components/work-session/WorkSessionRosterCard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +14,16 @@ type RosterMember = {
   full_name: string;
   business_role: "DEPARTMENT_HEAD" | "DOCTOR" | "TECHNICIAN";
   member_order: number;
+  source_order?: number;
 };
 
 type RosterContext = {
   roster: {
     roster_id: string;
     duty_kind: string;
-    revision_no: number;
+    business_date: string;
+    revision_no?: number;
+    lock_version?: number;
     members: RosterMember[];
   } | null;
 };
@@ -69,7 +74,7 @@ async function loadRosterContext(date: string, slotCode: string): Promise<Roster
     target_slot_code: slotCode,
   });
   if (error) throw new Error(`Không tải được roster: ${error.message}`);
-  return { roster: data?.roster ?? null };
+  return { roster: (data?.roster as RosterContext["roster"]) ?? null };
 }
 
 export default async function CalendarPage({
@@ -80,9 +85,9 @@ export default async function CalendarPage({
   const query = await searchParams;
   const todayIso = vietnamParts(new Date()).date;
   const selectedDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
-  const activeShift = currentShift();
-  const [tasks, ...rosterContexts] = await Promise.all([
+  const [tasks, availableStaff, ...rosterContexts] = await Promise.all([
     getTodayTasks(selectedDate),
+    fetchRosterStaffCandidates().catch(() => []),
     ...shifts.map((shift) => loadRosterContext(selectedDate, shift.code)),
   ]);
 
@@ -92,11 +97,11 @@ export default async function CalendarPage({
   const dayNames = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 
   return (
-    <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Lịch công việc & Kíp trực">
+    <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Lịch trực & Phân công ca kíp">
       <div className="space-y-6">
-        <div className="flex flex-col items-stretch justify-between gap-4 rounded-3xl border border-cyan-100 bg-white p-4 shadow-xs sm:flex-row sm:items-center">
-          <div className="flex items-center gap-3">
-            <span className="grid size-12 place-items-center rounded-2xl bg-teal-50 text-teal-700">
+        <div className="flex flex-col items-stretch justify-between gap-4 rounded-3xl border border-cyan-100 bg-white p-5 shadow-xs sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3.5">
+            <span className="grid size-12 place-items-center rounded-2xl bg-teal-50 text-teal-700 border border-teal-200">
               <Calendar className="size-6" />
             </span>
             <div>
@@ -106,65 +111,46 @@ export default async function CalendarPage({
                 </h1>
                 {isToday ? <span className="rounded-full border border-emerald-300 bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-800">Hôm nay</span> : null}
               </div>
-              <p className="text-xs font-medium text-slate-500">Phân công hiển thị trực tiếp từ roster đã lưu; không suy diễn theo tên hoặc ngày trong tuần.</p>
+              <p className="text-xs font-medium text-slate-500">Phân công kíp trực theo ngày và ca; người dùng có thẩm quyền có thể chỉnh sửa trực tiếp.</p>
             </div>
           </div>
           <form method="GET" action="/calendar" className="flex flex-wrap items-center gap-2">
-            <input type="date" name="date" defaultValue={selectedDate} className="min-h-11 rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-bold text-slate-800 outline-none focus:border-teal-600" />
-            <button type="submit" className="min-h-11 rounded-xl bg-teal-700 px-4 text-xs font-bold text-white hover:bg-teal-800">Xem ngày</button>
+            <input type="date" name="date" defaultValue={selectedDate} className="min-h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-bold text-slate-800 outline-none focus:border-teal-600" />
+            <button type="submit" className="min-h-11 rounded-2xl bg-teal-800 px-5 text-xs font-bold text-white hover:bg-teal-900 transition">Xem ngày</button>
           </form>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Bốn khung giờ hoạt động</h2>
+          <h2 className="text-sm font-black uppercase tracking-wide text-slate-900">Bốn khung ca hoạt động</h2>
           <span className="text-xs font-bold text-slate-500">{tasks.length} nghĩa vụ trong ngày</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {shifts.map((shift, index) => {
             const roster = rosterContexts[index]?.roster ?? null;
-            const isCurrentActive = isToday && activeShift.code === shift.code;
             return (
-              <article key={shift.code} className={`rounded-3xl border p-5 shadow-xs ${isCurrentActive ? "border-teal-500 bg-teal-50/20 ring-2 ring-teal-500/20" : "border-cyan-100 bg-white"}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-black ${shift.badgeColor}`}>{shift.badge}</span>
-                      {isCurrentActive ? <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">Đang diễn ra</span> : null}
-                    </div>
-                    <h3 className="mt-2 text-base font-black text-slate-900">{shift.title}</h3>
-                  </div>
-                  <span className="flex shrink-0 items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                    <Clock className="size-3.5 text-teal-700" /> {shift.time}
+              <div key={shift.code} className="space-y-3">
+                <WorkSessionRosterCard
+                  roster={roster}
+                  businessDate={selectedDate}
+                  slotCode={shift.code}
+                  isOfficialRecordCreated={false}
+                  availableStaff={availableStaff}
+                />
+                <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-3.5 shadow-2xs">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                    <Clock className="size-3.5 text-teal-700" />
+                    <span>{shift.title}: {shift.time}</span>
                   </span>
+                  <Link
+                    href={`/quick-duty?date=${selectedDate}&slot=${shift.code}`}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-teal-800 hover:text-teal-950"
+                  >
+                    <span>Mở phiên ca</span>
+                    <ArrowRight className="size-3" />
+                  </Link>
                 </div>
-
-                <div className="mt-4 border-t border-slate-100 pt-3">
-                  {!shift.rosterRequired ? (
-                    <p className="rounded-xl bg-slate-50 p-3 text-xs font-semibold text-slate-700">Buổi sáng là giờ làm việc bình thường; nhân sự có quyền nghiệp vụ phù hợp được nhập occurrence của mình.</p>
-                  ) : roster?.members.length ? (
-                    <div className="space-y-2">
-                      {roster.members.map((member) => (
-                        <div key={member.user_id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-xs">
-                          <span className="min-w-0 truncate font-bold text-slate-900">{member.full_name}</span>
-                          <span className="shrink-0 font-semibold text-slate-500">{member.business_role === "TECHNICIAN" ? "Kỹ thuật viên" : "Bác sĩ / Lãnh đạo"}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
-                      <Users className="mt-0.5 size-4 shrink-0" />
-                      <div><p className="font-black">Chưa phân công roster</p><p className="mt-0.5">Admin hoặc Trưởng khoa cần chọn nhân sự từ danh sách profile chính thức.</p></div>
-                    </div>
-                  )}
-                  <p className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-2.5 text-[11px] text-slate-600"><b className="text-teal-900">Nội dung ca:</b> {shift.tasks}</p>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                  <Link href={`/quick-duty?date=${selectedDate}&slot=${shift.code}`} className="flex items-center gap-1 text-xs font-bold text-teal-800 hover:text-teal-950">Mở Phiên làm việc <ArrowRight className="size-3" /></Link>
-                  <Link href="/tasks" className="text-xs font-bold text-slate-600 hover:text-slate-900">Xem việc chi tiết →</Link>
-                </div>
-              </article>
+              </div>
             );
           })}
         </div>

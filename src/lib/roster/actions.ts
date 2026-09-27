@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 import { type DutyKind, type RosterStaffMember } from "./domain";
 

@@ -36,10 +36,10 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
-    { label: "Kíp trực 24/7 & Lễ", href: "/quick-duty", icon: ShieldCheck },
+    { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
     { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
-    { label: "Lịch công việc", href: "/calendar", icon: Calendar },
-    { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },
+    { label: "Lịch trực & Ca kíp", href: "/calendar", icon: Calendar },
+    { label: "Nhiệt độ & Độ ẩm", href: "/temperature", icon: Layers },
     { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
     { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },

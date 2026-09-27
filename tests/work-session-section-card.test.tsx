@@ -38,7 +38,7 @@ describe("WorkSessionSectionCard Component", () => {
 
     expect(screen.getByText("BM.01")).toBeInTheDocument();
     expect(screen.getByText("Nhiệt độ & độ ẩm phòng xét nghiệm")).toBeInTheDocument();
-    expect(screen.getByText("1/2 hoàn thành")).toBeInTheDocument();
+    expect(screen.getByText(/Đang nháp \(1\/2\)/)).toBeInTheDocument();
     expect(screen.getByRole("link")).toHaveAttribute("href", "/temperature?shift=SHIFT_1&date=2026-09-27");
   });
 });

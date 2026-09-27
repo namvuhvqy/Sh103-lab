@@ -38,8 +38,8 @@ describe("Unified Entry & Quick Duty Contracts", () => {
       expect(src).toContain("get_work_session_context");
       expect(src).not.toMatch(/leader:\s*["']/);
       expect(src).not.toMatch(/leadTech:\s*["']/);
-      expect(src).not.toMatch(/Huỳnh Quang Thuận|Đỗ Văn Sơn|Vũ Thị Thủy|Nguyễn Hải Đăng/);
-      expect(src).toContain("Chưa phân công roster");
+      expect(src).not.toMatch(/Huỳnh Quang Thuận|Đỗ Văn Sơn|Vũ Thị Thủy|Đỗ Thị Hương/);
+      expect(src).toContain("WorkSessionRosterCard");
     });
   });
 
