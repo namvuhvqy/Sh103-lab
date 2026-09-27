@@ -1,6 +1,6 @@
 import { currentShift } from "@/lib/forms/domain";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { type RosterStaffMember } from "@/lib/roster/domain";
+import { type DutyKind, type RosterStaffMember } from "@/lib/roster/domain";
 
 export interface RosterMember {
   user_id: string;
@@ -57,16 +57,36 @@ interface RawWorkSessionOccurrence {
   } | null;
 }
 
+export function isHolidayOrWeekendForDate(dateStr: string) {
+  const date = new Date(`${dateStr}T12:00:00+07:00`);
+  const day = date.getUTCDay();
+  return day === 0 || day === 6;
+}
+
+export function resolveDutyKindForDateSlot(businessDate: string, slotCode: string): DutyKind | null {
+  if (isHolidayOrWeekendForDate(businessDate)) return "HOLIDAY_24H";
+  switch (slotCode) {
+    case "SHIFT_2":
+      return "WEEKDAY_LUNCH";
+    case "SHIFT_3":
+      return "WEEKDAY_AFTERNOON";
+    case "SHIFT_4":
+      return "WEEKDAY_NIGHT";
+    default:
+      return null;
+  }
+}
+
 export function resolveWorkSessionParams(searchParams?: { date?: string; slot?: string }): WorkSessionParams {
   const shift = currentShift();
   const dateStr = searchParams?.date && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date)
     ? searchParams.date
     : shift.businessDate;
 
-  const validSlots = ["SHIFT_1", "SHIFT_2", "SHIFT_3", "SHIFT_4", "MORNING", "AFTERNOON"];
+  const validSlots = ["SHIFT_1", "SHIFT_2", "SHIFT_3", "SHIFT_4", "MORNING", "AFTERNOON", "HOLIDAY_24H"];
   const slotCode = searchParams?.slot && validSlots.includes(searchParams.slot)
     ? searchParams.slot
-    : shift.code;
+    : (isHolidayOrWeekendForDate(dateStr) ? "HOLIDAY_24H" : shift.code);
 
   return {
     businessDate: dateStr,

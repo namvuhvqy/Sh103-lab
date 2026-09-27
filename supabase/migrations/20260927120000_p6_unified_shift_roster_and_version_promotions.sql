@@ -454,7 +454,17 @@ returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare
   result jsonb;
   roster_info jsonb;
+  target_duty_kind text;
 begin
+  target_duty_kind := case
+    when extract(dow from target_date) in (0, 6) then 'HOLIDAY_24H'
+    when target_slot_code = 'HOLIDAY_24H' then 'HOLIDAY_24H'
+    when target_slot_code = 'SHIFT_2' then 'WEEKDAY_LUNCH'
+    when target_slot_code = 'SHIFT_3' then 'WEEKDAY_AFTERNOON'
+    when target_slot_code = 'SHIFT_4' then 'WEEKDAY_NIGHT'
+    else '__NO_ROSTER__'
+  end;
+
   -- Find active roster matching the date
   select jsonb_build_object(
     'roster_id', r.id,
@@ -477,13 +487,7 @@ begin
   from public.duty_rosters r
   where r.business_date = target_date
     and r.status = 'ACTIVE'
-    and r.duty_kind = case target_slot_code
-      when 'SHIFT_2' then 'WEEKDAY_LUNCH'
-      when 'SHIFT_3' then 'WEEKDAY_AFTERNOON'
-      when 'SHIFT_4' then 'WEEKDAY_NIGHT'
-      when 'HOLIDAY_24H' then 'HOLIDAY_24H'
-      else '__NO_ROSTER__'
-    end
+    and r.duty_kind = target_duty_kind
   limit 1;
 
   -- Return aggregated session context

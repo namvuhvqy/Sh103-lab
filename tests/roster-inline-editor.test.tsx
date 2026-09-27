@@ -53,11 +53,11 @@ describe("WorkSessionRosterCard inline assignment", () => {
     expect(screen.getByRole("button", { name: /Chỉnh sửa kíp trực/i })).toBeInTheDocument();
   });
 
-  it("displays regular working hours explanation for SHIFT_1", () => {
+  it("displays regular working hours explanation for SHIFT_1 on a weekday", () => {
     render(
       <WorkSessionRosterCard
         roster={null}
-        businessDate="2026-09-27"
+        businessDate="2026-09-28"
         slotCode="SHIFT_1"
         isOfficialRecordCreated={false}
         availableStaff={mockStaff}

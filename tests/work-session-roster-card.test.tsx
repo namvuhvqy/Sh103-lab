@@ -41,11 +41,11 @@ describe("WorkSessionRosterCard Component", () => {
     expect(screen.getByText("KTV. Trần Thị B")).toBeInTheDocument();
   });
 
-  it("renders morning shift normal working note for SHIFT_1", () => {
+  it("renders morning shift normal working note for SHIFT_1 on a weekday", () => {
     render(
       <WorkSessionRosterCard
         roster={null}
-        businessDate="2026-09-27"
+        businessDate="2026-09-28"
         slotCode="SHIFT_1"
         isOfficialRecordCreated={false}
         availableStaff={mockStaff}

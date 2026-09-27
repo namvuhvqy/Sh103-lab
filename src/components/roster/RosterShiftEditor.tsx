@@ -40,6 +40,13 @@ export function RosterShiftEditor({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const definition = DUTY_KINDS[dutyKind];
+  const roleFilter = (position: 1 | 2) => (staff: RosterStaffMember) => {
+    if (!definition.doctorRequired && !definition.technicianRequired) return true;
+    if (position === 1) return staff.business_role === "DOCTOR" || staff.business_role === "DEPARTMENT_HEAD";
+    return staff.business_role === "TECHNICIAN";
+  };
+  const firstPositionStaff = availableStaff.filter(roleFilter(1));
+  const secondPositionStaff = availableStaff.filter(roleFilter(2));
 
   const staffMap = useMemo(() => {
     return new Map(availableStaff.map((s) => [s.user_id, s]));
@@ -118,7 +125,7 @@ export function RosterShiftEditor({
               className="mt-1.5 block w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-teal-600 focus:bg-white focus:ring-2 focus:ring-teal-600/20 disabled:bg-slate-100"
             >
               <option value="">-- Chọn nhân sự --</option>
-              {availableStaff.map((staff) => (
+              {firstPositionStaff.map((staff) => (
                 <option key={staff.user_id} value={staff.user_id}>
                   {staff.source_order ? `#${staff.source_order} ` : ""}
                   {staff.full_name} ({staff.business_role === "DEPARTMENT_HEAD" ? "Trưởng khoa" : staff.business_role === "DOCTOR" ? "Bác sĩ" : "Kỹ thuật viên"})
@@ -143,7 +150,7 @@ export function RosterShiftEditor({
               className="mt-1.5 block w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-2.5 text-sm font-semibold text-slate-900 outline-none transition focus:border-teal-600 focus:bg-white focus:ring-2 focus:ring-teal-600/20 disabled:bg-slate-100"
             >
               <option value="">-- Chọn nhân sự --</option>
-              {availableStaff.map((staff) => (
+              {secondPositionStaff.map((staff) => (
                 <option key={staff.user_id} value={staff.user_id}>
                   {staff.source_order ? `#${staff.source_order} ` : ""}
                   {staff.full_name} ({staff.business_role === "DEPARTMENT_HEAD" ? "Trưởng khoa" : staff.business_role === "DOCTOR" ? "Bác sĩ" : "Kỹ thuật viên"})

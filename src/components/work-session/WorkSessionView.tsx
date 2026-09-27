@@ -21,6 +21,7 @@ const SHIFT_TITLES: Record<string, string> = {
   SHIFT_2: "Ca 2 · Trưa (11:30–13:30)",
   SHIFT_3: "Ca 3 · Chiều (13:30–16:30)",
   SHIFT_4: "Ca 4 · Đêm (16:30–07:00)",
+  HOLIDAY_24H: "Ngày nghỉ / Lễ · Trực 24h (07:00–07:00)",
   MORNING: "Ca Sáng",
   AFTERNOON: "Ca Chiều",
 };

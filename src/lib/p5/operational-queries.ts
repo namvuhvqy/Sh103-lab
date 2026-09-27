@@ -12,7 +12,24 @@ const isValidIsoDate = (value?: string) => {
 };
 
 type DashboardOccurrence = { status: string; register_periods: { form_template_versions: { form_templates: { code: string } } } };
-type DecontaminationOccurrence = { status: string; register_periods: { location_id: string | null } };
+type DecontaminationOccurrence = { id: string; status: string; fulfilled_by_record_id?: string | null; register_periods: { id?: string; location_id: string | null } };
+
+const BM01_KNBM_AREA_CODES = ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"] as const;
+
+export interface DecontaminationWorkspaceArea {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number | null;
+  periodId: string;
+  occurrenceId: string | null;
+  status: string;
+  recordId: string | null;
+  daily: boolean;
+  weekly: boolean;
+  spill: boolean;
+  note: string;
+}
 
 export async function getOperationalDashboard() {
   const supabase = await createClient();
@@ -76,18 +93,72 @@ export async function getEquipmentOverview(date?: string, slot?: string) {
   return { shift, assets: (assets ?? []).map((asset) => ({ ...asset, latest: latest.get(asset.id) ?? null })) };
 }
 
-export async function getDecontaminationOverview() {
+export async function getDecontaminationWorkspace(date?: string) {
   const supabase = await createClient();
-  const today = todayInVietnam();
+  const today = isValidIsoDate(date) ? date! : todayInVietnam();
+  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: today });
+  if (ensureError) throw new Error(`Không khởi tạo được dữ liệu khử nhiễm: ${ensureError.message}`);
+
   const [{ data: locations, error: locationError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
-    supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order"),
-    supabase.from("schedule_occurrences").select("status,register_periods!inner(location_id,form_template_versions!inner(form_templates!inner(code)))").eq("business_date", today).eq("register_periods.form_template_versions.form_templates.code", "BM.01_KNBM"),
+    supabase.from("locations").select("id,code,name,sort_order").in("code", [...BM01_KNBM_AREA_CODES]).order("sort_order"),
+    supabase
+      .from("schedule_occurrences")
+      .select("id,status,fulfilled_by_record_id,register_periods!inner(id,location_id,form_template_versions!inner(form_templates!inner(code)))")
+      .eq("business_date", today)
+      .eq("register_periods.form_template_versions.form_templates.code", "BM.01_KNBM"),
   ]);
   if (locationError || occurrenceError) throw new Error("Không tải được dữ liệu khử nhiễm");
+
   const typedOccurrences = (occurrences ?? []) as unknown as DecontaminationOccurrence[];
-  const byLocation = new Map<string, string>();
-  for (const occurrence of typedOccurrences) if (occurrence.register_periods.location_id) byLocation.set(occurrence.register_periods.location_id, occurrence.status);
-  return { today, areas: (locations ?? []).map((location) => ({ ...location, status: byLocation.get(location.id) ?? "PENDING" })) };
+  const byLocation = new Map<string, DecontaminationOccurrence>();
+  const recordIds = typedOccurrences.map((occurrence) => occurrence.fulfilled_by_record_id).filter(Boolean) as string[];
+
+  for (const occurrence of typedOccurrences) {
+    const locationId = occurrence.register_periods.location_id;
+    if (locationId) byLocation.set(locationId, occurrence);
+  }
+
+  const { data: records, error: recordError } = recordIds.length
+    ? await supabase
+      .from("records")
+      .select("id,note,decontamination_details(daily_done,weekly_done,spill_event_done)")
+      .in("id", recordIds)
+      .eq("is_effective", true)
+    : { data: [], error: null };
+  if (recordError) throw new Error("Không đọc lại được dữ liệu đã lưu khử nhiễm");
+
+  type SavedRecord = {
+    id: string;
+    note: string | null;
+    decontamination_details: { daily_done: boolean; weekly_done: boolean; spill_event_done: boolean } | null;
+  };
+  const byRecordId = new Map(((records ?? []) as unknown as SavedRecord[]).map((record) => [record.id, record]));
+
+  const areas: DecontaminationWorkspaceArea[] = (locations ?? []).map((location) => {
+    const occurrence = byLocation.get(location.id);
+    const record = occurrence?.fulfilled_by_record_id ? byRecordId.get(occurrence.fulfilled_by_record_id) : null;
+    return {
+      id: location.id,
+      code: location.code,
+      name: location.name,
+      sort_order: location.sort_order,
+      periodId: occurrence?.register_periods.id ?? "",
+      occurrenceId: occurrence?.id ?? null,
+      status: occurrence?.status ?? "PENDING",
+      recordId: occurrence?.fulfilled_by_record_id ?? null,
+      daily: Boolean(record?.decontamination_details?.daily_done),
+      weekly: Boolean(record?.decontamination_details?.weekly_done),
+      spill: Boolean(record?.decontamination_details?.spill_event_done),
+      note: record?.note ?? "",
+    };
+  });
+
+  return { today, areas };
+}
+
+export async function getDecontaminationOverview() {
+  const workspace = await getDecontaminationWorkspace();
+  return { today: workspace.today, areas: workspace.areas.map(({ id, code, name, sort_order, status }) => ({ id, code, name, sort_order, status })) };
 }
 
 export async function getReportPeriods() {

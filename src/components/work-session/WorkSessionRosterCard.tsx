@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Users, AlertCircle, CheckCircle2, Clock, UserPlus, Edit3, X } from "lucide-react";
-import type { DutyRosterInfo } from "@/lib/work-session/server-context";
+import { resolveDutyKindForDateSlot, type DutyRosterInfo } from "@/lib/work-session/server-context";
 import { RosterShiftEditor } from "@/components/roster/RosterShiftEditor";
 import { saveDutyRosterAction } from "@/lib/roster/actions";
 import type { DutyKind, RosterStaffMember } from "@/lib/roster/domain";
@@ -23,19 +23,6 @@ const ROLE_LABELS: Record<string, string> = {
   TECHNICIAN: "Kỹ thuật viên trực",
 };
 
-function resolveDutyKind(slotCode: string): DutyKind {
-  switch (slotCode) {
-    case "SHIFT_2":
-      return "WEEKDAY_LUNCH";
-    case "SHIFT_3":
-      return "WEEKDAY_AFTERNOON";
-    case "SHIFT_4":
-      return "WEEKDAY_NIGHT";
-    default:
-      return "WEEKDAY_LUNCH";
-  }
-}
-
 export function WorkSessionRosterCard({
   roster,
   businessDate,
@@ -48,8 +35,8 @@ export function WorkSessionRosterCard({
   const [isEditing, setIsEditing] = useState(false);
   const [localRoster, setLocalRoster] = useState<DutyRosterInfo | null>(roster);
 
-  const isShift1 = slotCode === "SHIFT_1" || slotCode === "MORNING";
-  const dutyKind = resolveDutyKind(slotCode);
+  const dutyKind = resolveDutyKindForDateSlot(businessDate, slotCode);
+  const isShift1 = dutyKind === null;
 
   const currentMembers = localRoster?.members ?? [];
   const currentUser = availableStaff.find((staff) => staff.user_id === currentUserId);
@@ -122,6 +109,8 @@ export function WorkSessionRosterCard({
                 ? "Giờ làm việc bình thường"
                 : dutyKind === "WEEKDAY_AFTERNOON"
                 ? "Ca chiều: Đúng 2 nhân sự STAFF"
+                : dutyKind === "HOLIDAY_24H"
+                ? "Ngày nghỉ/lễ: 1 Bác sĩ + 1 KTV dùng chung 24h"
                 : "Ca trực: Đúng 1 Bác sĩ + 1 Kỹ thuật viên"}
             </p>
           </div>
