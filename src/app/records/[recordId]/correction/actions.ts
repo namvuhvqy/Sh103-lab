@@ -14,10 +14,10 @@ export async function createCorrectionAction(form: FormData) {
   if (!reason) redirect(`${path}?error=${encodeURIComponent("Lý do đính chính là bắt buộc")}`);
   const recordType = value(form, "recordType");
   const changes: Record<string, string | number | boolean | Array<{ asset_id: string; status: string }>> = {};
-  for (const key of ["note", "cadence", "result", "usage_unit"] as const) {
+  for (const key of ["note", "cadence", "result"] as const) {
     const raw = value(form, key); if (raw) changes[key] = raw;
   }
-  for (const key of ["temperature_c", "humidity_pct", "usage_value"] as const) {
+  for (const key of ["temperature_c", "humidity_pct"] as const) {
     const parsed = optionalNumber(value(form, key)); if (parsed !== undefined && Number.isFinite(parsed)) changes[key] = parsed;
   }
   if (recordType === "DECONTAMINATION") {

@@ -16,7 +16,7 @@ export async function POST(request:Request){
  const required=intent==="finalize"?(expected??[]).map(item=>item.asset_id):mapped.map(item=>item.assetId);
  const validation=validateShiftStatuses(mapped,required);
  if(!validation.ok)return redirectError(request,areaCode,validation.error);
- const{error}=await supabase.rpc("save_equipment_shift_draft",{target_occurrence_id:occurrenceId,target_usage:Number(data.get("usageValue")),target_unit:String(data.get("usageUnit")),target_note:String(data.get("note")||"")||null,target_statuses:statuses,target_finalize:intent==="finalize",target_expected_lock:Number(data.get("lockVersion")||1)});
+ const{error}=await supabase.rpc("save_equipment_shift_draft",{target_occurrence_id:occurrenceId,target_usage:null,target_unit:null,target_note:String(data.get("note")||"")||null,target_statuses:statuses,target_finalize:intent==="finalize",target_expected_lock:Number(data.get("lockVersion")||1)});
  if(error)return redirectError(request,areaCode,"Không thể lưu ca. Dữ liệu có thể đã thay đổi; vui lòng tải lại và thử lại.");
  return NextResponse.redirect(new URL(`/bm06?area=${encodeURIComponent(areaCode)}&saved=1`,request.url),303);
 }

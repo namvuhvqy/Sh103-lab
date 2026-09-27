@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -28,6 +28,7 @@ export interface TemperaturePoint {
   isAbnormal: boolean;
   updatedAt: string;
   code: string;
+  slotCode: string | null;
   minTemp: number;
   maxTemp: number;
 }
@@ -53,21 +54,15 @@ export function TemperatureLabDashboard({
   // Bộ lọc
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
-  const [selectedShift, setSelectedShift] = useState<string>("SHIFT_1");
+  const [selectedShift, setSelectedShift] = useState<string>("MORNING");
   const [points, setPoints] = useState<TemperaturePoint[]>(initialPoints);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const committedPointsRef = useRef(new Map(initialPoints.map((point) => [point.id, point])));
 
-  // Thống kê 4 KPI Cards chuẩn Image 2:
-  const totalPoints = points.length;
-  const recordedCount = points.filter((p) => p.temperature !== null).length;
-  const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
-  const abnormalCount = points.filter((p) => p.isAbnormal).length;
-  const abnormalPercent = totalPoints > 0 ? ((abnormalCount / totalPoints) * 100).toFixed(1) : "0.0";
-  const unrecordedCount = totalPoints - recordedCount;
-  const unrecordedPercent = totalPoints > 0 ? Math.round((unrecordedCount / totalPoints) * 100) : 0;
-
-  // Lọc theo tìm kiếm và khu vực
+  // Lọc theo tìm kiếm, khu vực và slot đo thực tế.
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
+      if (p.slotCode !== selectedShift) return false;
       if (selectedArea !== "ALL" && p.area !== selectedArea) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -75,11 +70,27 @@ export function TemperatureLabDashboard({
       }
       return true;
     });
-  }, [points, selectedArea, searchQuery]);
+  }, [points, selectedArea, selectedShift, searchQuery]);
+
+  const filteredOccurrences = useMemo(
+    () => occurrences.filter((occurrence) => occurrence.slot_code === selectedShift),
+    [occurrences, selectedShift]
+  );
+  const totalPoints = filteredPoints.length;
+  const recordedCount = filteredPoints.filter((p) => p.temperature !== null).length;
+  const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
+  const abnormalCount = filteredPoints.filter((p) => p.isAbnormal).length;
+  const abnormalPercent = totalPoints > 0 ? ((abnormalCount / totalPoints) * 100).toFixed(1) : "0.0";
+  const unrecordedCount = totalPoints - recordedCount;
+  const unrecordedPercent = totalPoints > 0 ? Math.round((unrecordedCount / totalPoints) * 100) : 0;
 
   // Sửa nhanh giá trị trên bảng
-  const handleInlineCellChange = (id: string, newTemp: string) => {
+  const handleInlineCellChange = async (id: string, newTemp: string) => {
     const val = newTemp.trim() !== "" ? parseFloat(newTemp) : null;
+    const previousPoint = committedPointsRef.current.get(id);
+    if (!previousPoint || (val !== null && !Number.isFinite(val))) return;
+
+    setSaveError(null);
     setPoints((prev) =>
       prev.map((pt) => {
         if (pt.id === id) {
@@ -95,19 +106,43 @@ export function TemperatureLabDashboard({
       })
     );
 
-    // Gửi lưu API ngầm
-    fetch("/api/measurements/quick-save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        occurrenceId: id,
-        temperature: val,
-      }),
-    }).catch(console.warn);
+    try {
+      const response = await fetch("/api/measurements/quick-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          occurrenceId: id,
+          temperature: val,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Không thể lưu số đo. Vui lòng thử lại.");
+      }
+      const savedPoint = points.find((point) => point.id === id);
+      if (savedPoint) {
+        committedPointsRef.current.set(id, {
+          ...savedPoint,
+          temperature: val,
+          isAbnormal: val !== null && (val < savedPoint.minTemp || val > savedPoint.maxTemp),
+        });
+      }
+    } catch (error) {
+      setPoints((current) =>
+        current.map((point) => (point.id === id ? previousPoint : point))
+      );
+      setSaveError(error instanceof Error ? error.message : "Không thể lưu số đo. Vui lòng thử lại.");
+    }
   };
 
   return (
     <div className="space-y-5">
+      {saveError ? (
+        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
+          {saveError}
+        </div>
+      ) : null}
       {/* 1. Thanh Tabs Chuẩn Mockup Ảnh 2: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình] */}
       <div className="flex overflow-x-auto gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold [scrollbar-width:none]">
         <button
@@ -188,16 +223,15 @@ export function TemperatureLabDashboard({
           onChange={(e) => setSelectedShift(e.target.value)}
           className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none hover:border-teal-400"
         >
-          <option value="SHIFT_1">Ca 1 - Sáng (07:00–11:30)</option>
-          <option value="SHIFT_2">Ca 2 - Trực trưa (11:30–13:30)</option>
-          <option value="SHIFT_3">Ca 3 - Chiều (13:30–16:40)</option>
-          <option value="SHIFT_4">Ca 4 - Trực đêm (16:40–07:00)</option>
+          <option value="MORNING">Sáng (08:00–09:00)</option>
+          <option value="AFTERNOON">Chiều (14:30–15:30)</option>
         </select>
 
         <button
           type="button"
           onClick={() => {
             setSelectedArea("ALL");
+            setSelectedShift("MORNING");
             setSearchQuery("");
           }}
           className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition"
@@ -222,7 +256,7 @@ export function TemperatureLabDashboard({
               ← Về bảng tổng quan
             </button>
           </div>
-          <InlineTemperatureList initialOccurrences={occurrences} />
+          <InlineTemperatureList initialOccurrences={filteredOccurrences} />
         </div>
       ) : (
         <>
@@ -252,9 +286,7 @@ export function TemperatureLabDashboard({
                 <p className="text-2xl sm:text-3xl font-black text-slate-900">{recordedCount}</p>
                 <span className="text-xs font-bold text-slate-500">{recordedPercent}%</span>
               </div>
-              <p className="mt-2 text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                <span>↑</span> +2 so với hôm qua
-              </p>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
             </div>
 
             {/* Card 3: Bất thường */}
@@ -267,9 +299,7 @@ export function TemperatureLabDashboard({
                 <p className="text-2xl sm:text-3xl font-black text-rose-800">{abnormalCount}</p>
                 <span className="text-xs font-bold text-slate-500">{abnormalPercent}%</span>
               </div>
-              <p className="mt-2 text-[11px] font-bold text-rose-700 flex items-center gap-1">
-                <span>↑</span> +1 so với hôm qua
-              </p>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
             </div>
 
             {/* Card 4: Chưa ghi */}
@@ -365,7 +395,17 @@ export function TemperatureLabDashboard({
                               type="number"
                               step="0.1"
                               inputMode="decimal"
-                              defaultValue={pt.temperature != null ? pt.temperature : ""}
+                              value={pt.temperature != null ? pt.temperature : ""}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setPoints((current) =>
+                                  current.map((point) =>
+                                    point.id === pt.id
+                                      ? { ...point, temperature: nextValue === "" ? null : Number(nextValue) }
+                                      : point
+                                  )
+                                );
+                              }}
                               onBlur={(e) => handleInlineCellChange(pt.id, e.target.value)}
                               className={cn(
                                 "w-16 py-1 px-2 text-center rounded-lg border text-xs font-black transition-all",

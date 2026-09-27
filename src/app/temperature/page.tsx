@@ -67,6 +67,7 @@ export default async function TemperaturePage() {
       isAbnormal: Boolean(detail?.temperature_abnormal || detail?.humidity_abnormal || (temperature !== null && (temperature < minTemp || temperature > maxTemp))),
       updatedAt: record?.performed_at ? new Date(record.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "Chưa ghi",
       code: template.code.split("/")[0],
+      slotCode: occurrence.slot_code,
       minTemp,
       maxTemp,
     };

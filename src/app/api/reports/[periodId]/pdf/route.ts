@@ -52,6 +52,13 @@ type ReportRecord = {
   equipment_shift_details: EquipmentShiftDetail[] | EquipmentShiftDetail | null;
 };
 
+const BM06_SHIFT_WINDOWS: Record<string, string> = {
+  SHIFT_1: "07:00 – 11:30",
+  SHIFT_2: "11:30 – 13:30",
+  SHIFT_3: "13:30 – 16:30",
+  SHIFT_4: "16:30 – 07:00",
+};
+
 function firstItem<T>(val: T[] | T | null): T | null {
   if (!val) return null;
   return Array.isArray(val) ? val[0] ?? null : val;
@@ -146,7 +153,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
               ? [shiftDetail.equipment_shift_statuses]
               : [])
         : [];
-      draw(`${row.business_date} · ${slot} · KTV: ${row.profiles?.full_name ?? "—"} · ${statuses.length}/25 máy`);
+      const shiftWindow = row.slot_code ? BM06_SHIFT_WINDOWS[row.slot_code] ?? "—" : "—";
+      draw(`${row.business_date} · ${slot} · ${shiftWindow} · KTV: ${row.profiles?.full_name ?? "—"} · ${statuses.length}/25 máy`);
       statuses
         .slice()
         .sort((a, b) => a.asset_display_order_snapshot - b.asset_display_order_snapshot)

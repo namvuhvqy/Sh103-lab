@@ -128,8 +128,8 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
               : shift.code === "SHIFT_2"
               ? "Ca trực trưa (11:30 – 13:30): Trực nhận mẫu cấp cứu, theo dõi thiết bị liên tục và kiểm soát sự cố."
               : shift.code === "SHIFT_3"
-              ? "Ca chiều (13:30 – 16:40): Đo nhiệt độ ca 2 (14h), vận hành máy xét nghiệm và hoàn thành khử nhiễm."
-              : "Ca trực đêm (16:40 – 07:00 hôm sau): Trực đêm cấp cứu viện 103, kiểm soát mẫu và bảo dưỡng theo lịch."}
+              ? "Ca chiều (13:30 – 16:30): Đo nhiệt độ ca 2 (14h), vận hành máy xét nghiệm và hoàn thành khử nhiễm."
+              : "Ca trực đêm (16:30 – 07:00 hôm sau): Trực đêm cấp cứu viện 103, kiểm soát mẫu và bảo dưỡng theo lịch."}
           </p>
         </div>
 

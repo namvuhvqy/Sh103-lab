@@ -29,8 +29,6 @@ type EquipmentStatus = {
 };
 
 type EquipmentShiftDetail = {
-  usage_value?: number | null;
-  usage_unit?: string | null;
   equipment_shift_statuses: EquipmentStatus[] | EquipmentStatus | null;
 };
 
@@ -161,7 +159,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { header: "Ca trực", key: "slot_code", width: 10 },
       { header: "Khung giờ quy định", key: "shift_time", width: 16 },
       { header: "Người sử dụng (KTV)", key: "entered_by", width: 22 },
-      { header: "Số giờ / Ca", key: "usage_hours", width: 13 },
+
       ...HOSPITAL_MACHINES_25.map((m) => ({
         header: `#${m.order} ${m.name.replace(/^(Máy|Hệ thống Automation Máy) /, "")}`,
         key: `machine_${m.order}`,
@@ -208,7 +206,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           slot_code: shift.label,
           shift_time: shift.time,
           entered_by: performer,
-          usage_hours: matchingRecord ? (shiftDetail?.usage_value ?? null) : null,
+
           ...machineData,
           note,
         });

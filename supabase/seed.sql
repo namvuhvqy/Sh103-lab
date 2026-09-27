@@ -218,7 +218,8 @@ on conflict(form_version_id,asset_id) do nothing;
 
 insert into public.form_version_locations(form_version_id,location_id)
 select v.id,l.id from public.form_templates t join public.form_template_versions v on v.form_template_id=t.id and v.status='PUBLISHED' join public.locations l on
- (t.code='BM.01/QL.HTAT.01' and l.code in('SINH_HOA','MIEN_DICH','KHO')) or
+ (t.code='BM.01/QL.HTAT.01' and v.version_label='3.0' and l.code in('SINH_HOA','MIEN_DICH','KHO')) or
+ (t.code='BM.01/QL.HTAT.01' and v.version_label='3.1' and l.code in('SINH_HOA','MIEN_DICH','NUOC_TIEU','LY_TAM','NHAN_BENH_PHAM')) or
  (t.code='BM.01_KNBM' and l.code in('SINH_HOA','MIEN_DICH','NUOC_TIEU','LY_TAM','NHAN_BENH_PHAM'))
 on conflict do nothing;
 

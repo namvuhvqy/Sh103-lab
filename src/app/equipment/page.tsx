@@ -242,35 +242,13 @@ export default async function EquipmentPage() {
                     </div>
                   </div>
 
-                  {/* Cụm Trạng thái + 4 Ca trực */}
+                  {/* Trạng thái được truy vấn cho đúng ca hiện tại */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                    {/* 4 Ca trực Pills chuẩn Mockup M02 */}
-                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-bold text-slate-500 mr-1 hidden sm:inline">
-                        4 ca:
-                      </span>
-                      {[1, 2, 3, 4].map((c) => {
-                        const shiftActive = isBT || (c <= 2 && !isH);
-                        return (
-                          <span
-                            key={c}
-                            title={`Ca ${c}`}
-                            className={`grid size-5 place-items-center rounded-full text-[9px] font-black ${
-                              isH && c === 3
-                                ? "bg-red-500 text-white"
-                                : shiftActive
-                                ? "bg-teal-600 text-white"
-                                : "bg-slate-200 text-slate-500"
-                            }`}
-                          >
-                            {isH && c === 3 ? "!" : shiftActive ? "✓" : "–"}
-                          </span>
-                        );
-                      })}
-                      <span className="text-[10px] font-black text-slate-600 ml-1">
-                        {isH ? "2/4" : isBT ? "4/4" : "0/4"}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">
+                      {asset.latest?.updated_at
+                        ? `Cập nhật ${new Date(asset.latest.updated_at).toLocaleString("vi-VN")}`
+                        : "Chưa ghi ca hiện tại"}
+                    </span>
 
                     {/* Badge trạng thái */}
                     <span

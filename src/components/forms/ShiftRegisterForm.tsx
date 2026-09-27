@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { shiftProgress } from "@/lib/forms/domain";
-import { Zap, RotateCcw, HelpCircle } from "lucide-react";
+import { RotateCcw, HelpCircle } from "lucide-react";
 
 export type ShiftAsset = { id: string; sourceOrder: number; name: string; locationCode: string };
 
@@ -38,24 +38,6 @@ export function ShiftRegisterForm({
     [statuses, areaCode, visible]
   );
 
-  // Thao tác nhanh cho kíp trực 25 máy trên 1 màn hình
-  const handleSetAll = (code: string) => {
-    const updated = { ...statuses };
-    visible.forEach((a) => {
-      updated[a.id] = code;
-    });
-    setStatuses(updated);
-  };
-
-  const handleSetRemaining = (code: string) => {
-    const updated = { ...statuses };
-    visible.forEach((a) => {
-      if (!updated[a.id]) {
-        updated[a.id] = code;
-      }
-    });
-    setStatuses(updated);
-  };
 
   const handleClearAll = () => {
     const updated = { ...statuses };
@@ -91,23 +73,6 @@ export function ShiftRegisterForm({
         {/* Thanh thao tác nhanh tập trung 1 màn hình */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleSetAll("BT")}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 px-3 text-xs font-bold text-white transition shadow-xs"
-              title="Đặt nhanh tất cả máy trong danh sách ở trạng thái Bình thường"
-            >
-              <Zap className="size-3.5" />
-              ⚡ Đặt tất cả = BT
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetRemaining("BT")}
-              className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-teal-200 bg-teal-50/80 hover:bg-teal-100 px-2.5 text-xs font-bold text-teal-800 transition"
-              title="Chỉ điền BT cho những máy chưa được chọn"
-            >
-              Điền còn lại = BT
-            </button>
             <button
               type="button"
               onClick={handleClearAll}
@@ -216,36 +181,8 @@ export function ShiftRegisterForm({
         })}
       </div>
 
-      {/* Thông tin vận hành bổ sung - Tối ưu Input Ergonomics */}
+      {/* Lượng sử dụng được xác định bởi slot/khung giờ của occurrence. */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="block text-xs font-bold text-slate-700">
-            Lượng sử dụng trong ca
-            <input
-              required
-              name="usageValue"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              defaultValue="4.5"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
-              placeholder="VD: 4.5"
-            />
-          </label>
-          <label className="block text-xs font-bold text-slate-700">
-            Đơn vị tính
-            <select
-              name="usageUnit"
-              defaultValue="HOURS"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 bg-white"
-            >
-              <option value="HOURS">Số giờ chạy thực tế</option>
-              <option value="SHIFTS">Số ca trực</option>
-            </select>
-          </label>
-        </div>
-
         <label className="block text-xs font-bold text-slate-700">
           Ghi chú bàn giao &amp; Sự cố thiết bị
           <textarea
