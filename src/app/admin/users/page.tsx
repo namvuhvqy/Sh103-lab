@@ -3,7 +3,7 @@ import { AdminPageShell, SummaryCard } from "@/components/admin/AdminPageShell";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { roleLabel, type BusinessRole } from "@/lib/auth/access";
 import { checkAuthAdminPrerequisites } from "@/lib/admin/staff-actions";
-import { Lock } from "lucide-react";
+import { Lock, Plus, Trash2 } from "lucide-react";
 
 export default async function UsersPage() {
   const { supabase } = await requireAdmin();
@@ -40,6 +40,30 @@ export default async function UsersPage() {
         <SummaryCard label="Lãnh đạo khoa" value={headCount} />
         <SummaryCard label="Tài khoản TEST" value={testCount} />
       </div>
+
+      <section className="mb-5 rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 to-white p-4 shadow-xs">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-black text-slate-900">Tạo và xoá tài khoản</h2>
+            <p className="text-xs font-medium text-slate-600">
+              API tạo tài khoản: <code className="rounded bg-white px-1 py-0.5">POST /api/admin/staff</code>. Xóa cứng tài khoản sạch tham chiếu: <code className="rounded bg-white px-1 py-0.5">DELETE /api/admin/staff/[userId]</code>; tài khoản đã phát sinh dữ liệu phải dùng vô hiệu hóa để giữ audit.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/admin/users/new"
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl bg-teal-800 px-4 text-xs font-black text-white shadow-sm transition hover:bg-teal-900"
+            >
+              <Plus className="size-4" />
+              Tạo tài khoản
+            </Link>
+            <span className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-rose-200 bg-white px-4 text-xs font-black text-rose-700">
+              <Trash2 className="size-4" />
+              Xóa tài khoản sạch tham chiếu
+            </span>
+          </div>
+        </div>
+      </section>
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs">
         <div className="border-b border-slate-100 p-4 sm:p-5 flex items-center justify-between bg-slate-50/50">

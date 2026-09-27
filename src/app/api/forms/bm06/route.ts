@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateShiftStatuses } from "@/lib/forms/validation";
 
+const resultUrl = (request: Request, area: string, params: Record<string, string>) => {
+  const referer = request.headers.get("referer") ?? "";
+  const basePath = referer.includes("/equipment") ? "/equipment" : "/bm06";
+  const url = new URL(basePath, request.url);
+  if (area) url.searchParams.set("area", area);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  if (basePath === "/equipment") url.hash = "bm06-entry";
+  return url;
+};
+
 const redirectError = (request: Request, area: string, message: string) =>
-  NextResponse.redirect(
-    new URL(`/bm06?area=${encodeURIComponent(area)}&error=${encodeURIComponent(message)}`, request.url),
-    303
-  );
+  NextResponse.redirect(resultUrl(request, area, { error: message }), 303);
 
 function translateBm06Error(message?: string): string {
   if (!message) return "Không thể lưu ca. Vui lòng kiểm tra lại.";
@@ -89,8 +96,5 @@ export async function POST(request: Request) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
   }
 
-  return NextResponse.redirect(
-    new URL(`/bm06?area=${encodeURIComponent(areaCode)}&saved=1&intent=${encodeURIComponent(intent)}`, request.url),
-    303
-  );
+  return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);
 }

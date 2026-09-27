@@ -40,26 +40,39 @@ export async function getBm06Occurrence(occurrenceId: string, areaCode?: string)
   return { occurrence:typed, assets, initialStatuses, lockVersion, areaCode };
 }
 
-export async function getCurrentBm06(areaCode?: string) {
+export async function getBm06ByDateShift(businessDate?: string, shiftCode?: string, areaCode?: string) {
   const supabase = await createClient();
-  const shift = currentShift();
+  const current = currentShift();
+  const selectedShift = shiftCode ?? current.code;
+  const selectedBusinessDate = businessDate ?? current.businessDate;
+  const shift = {
+    ...current,
+    code: selectedShift,
+    businessDate: selectedBusinessDate,
+    label: selectedShift === "SHIFT_1" ? "Ca 1 - Sáng (07:00–11:30)" : selectedShift === "SHIFT_2" ? "Ca 2 - Trực trưa (11:30–13:30)" : selectedShift === "SHIFT_3" ? "Ca 3 - Chiều (13:30–16:30)" : "Ca 4 - Trực đêm (16:30–07:00 hôm sau)",
+  };
   const { data: version } = await supabase.from("form_template_versions").select("id,form_templates!inner(code)").eq("status", "PUBLISHED").eq("form_templates.code", "BM.06/QL.TRTB.01").single();
   if (!version) return null;
-  const bounds = monthBounds();
-  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: bounds.today });
+  const bounds = monthBounds(new Date(`${selectedBusinessDate}T12:00:00+07:00`));
+  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: selectedBusinessDate });
   if (ensureError) throw new Error(ensureError.message);
   const { data: period, error } = await supabase.from("register_periods").select("id").eq("form_version_id", version.id).eq("period_start", bounds.start).eq("period_end", bounds.end).is("location_id", null).is("asset_id", null).single();
   if (error || !period) throw new Error(error?.message ?? "Không tìm thấy kỳ BM.06");
   const periodId = period.id;
-  const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id").eq("period_id", periodId).eq("business_date", shift.businessDate).eq("slot_code", shift.code).single();
+  const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id").eq("period_id", periodId).eq("business_date", selectedBusinessDate).eq("slot_code", selectedShift).single();
   if (!occurrence) return null;
   const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,location_id,locations!inner(code))").eq("form_version_id", version.id).eq("active", true).order("display_order");
   let initialStatuses: Record<string, string> = {}; let lockVersion = 1;
   if (occurrence.fulfilled_by_record_id) {
     const [{ data: record }, { data: statuses }] = await Promise.all([supabase.from("records").select("lock_version").eq("id", occurrence.fulfilled_by_record_id).single(), supabase.from("equipment_shift_statuses").select("asset_id,status_code").eq("shift_record_id", occurrence.fulfilled_by_record_id)]);
-    lockVersion = record?.lock_version ?? 1; initialStatuses = Object.fromEntries((statuses ?? []).map(s => [s.asset_id, s.status_code]));
+    lockVersion = record?.lock_version ?? 1; initialStatuses = Object.fromEntries((statuses ?? []).map(s => [s.asset_id,s.status_code]));
   }
   type AssetRow = { asset_id: string; display_order: number; assets: { source_name: string; locations: { code: string } } };
   const assets = ((rows ?? []) as unknown as AssetRow[]).map((row) => ({ id: row.asset_id, sourceOrder: row.display_order, name: row.assets.source_name, locationCode: row.assets.locations.code }));
   return { occurrence, assets, initialStatuses, lockVersion, areaCode, shift, periodId };
+}
+
+export async function getCurrentBm06(areaCode?: string) {
+  const shift = currentShift();
+  return getBm06ByDateShift(shift.businessDate, shift.code, areaCode);
 }

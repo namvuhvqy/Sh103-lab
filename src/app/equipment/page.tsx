@@ -3,11 +3,13 @@ import Image from "next/image";
 import { AppShell } from "@/components/shell/AppShell";
 import { KpiCard } from "@/components/p5/KpiCard";
 import { StatusDistribution } from "@/components/p5/OperationalChart";
+import { ShiftRegisterForm } from "@/components/forms/ShiftRegisterForm";
+import { getBm06ByDateShift } from "@/lib/forms/context";
 import { getEquipmentOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { SHIFT_DEFINITIONS, vietnamParts } from "@/lib/forms/domain";
 import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
-import { Activity, CircleAlert, TestTube2, Wrench, Sparkles, Calendar, ArrowRight } from "lucide-react";
+import { Activity, CircleAlert, TestTube2, Wrench, Sparkles, Calendar } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +38,10 @@ export default async function EquipmentPage({
   const selectedDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
   const selectedShift = query.shift && /^SHIFT_[1-4]$/.test(query.shift) ? query.shift : undefined;
 
-  const [data, unread] = await Promise.all([
+  const [data, unread, bm06Data] = await Promise.all([
     getEquipmentOverview(selectedDate, selectedShift),
     getUnreadNotificationCount(),
+    getBm06ByDateShift(selectedDate, selectedShift),
   ]);
 
   type Asset = {
@@ -133,7 +136,7 @@ export default async function EquipmentPage({
             value={`${recorded}/25`}
             status={recorded === 25 ? "Hoàn tất" : "Chưa hoàn tất"}
             tone={recorded === 25 ? "success" : "warning"}
-            href={`/bm06?date=${selectedDate}&shift=${data.shift.code}`}
+            href={`/equipment?date=${selectedDate}&shift=${data.shift.code}#bm06-entry`}
             icon={<Activity className="size-5" />}
           />
           <KpiCard
@@ -172,23 +175,6 @@ export default async function EquipmentPage({
             { label: "Chưa ghi", value: Math.max(assets.length - recorded, 0), tone: "amber" },
           ]}
         />
-
-        {/* CTA Actions */}
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href={`/bm06?date=${selectedDate}&shift=${data.shift.code}`}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl bg-teal-800 px-6 font-bold text-white shadow-sm hover:bg-teal-900 transition"
-          >
-            <span>Nhật ký trang thiết bị ({data.shift.label})</span>
-            <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            href="/quick-duty"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl border border-teal-200 bg-white px-6 font-bold text-teal-800 hover:bg-teal-50 transition"
-          >
-            <span>Phiên làm việc / Nhập nhanh</span>
-          </Link>
-        </div>
 
         {/* Danh sách 25 thiết bị kèm hình ảnh chuyên nghiệp */}
         <section className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-sm">
@@ -302,6 +288,26 @@ export default async function EquipmentPage({
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        <section id="bm06-entry" className="overflow-hidden rounded-3xl border border-teal-200 bg-white shadow-sm">
+          <div className="border-b border-teal-100 bg-teal-50/60 p-5">
+            <p className="text-xs font-black uppercase tracking-wider text-teal-800">BM.06/QL.TRTB.01 · nhập ngay trong Thiết bị</p>
+            <h2 className="mt-1 text-xl font-black text-slate-900">Nhập trạng thái 25 thiết bị — {data.shift.label}</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Chọn ca ở bộ lọc phía trên; SHIFT_1, SHIFT_2, SHIFT_3, SHIFT_4 đều nhập và lưu ngay tại màn hình này.</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            {bm06Data ? (
+              <ShiftRegisterForm
+                occurrenceId={bm06Data.occurrence.id}
+                assets={bm06Data.assets}
+                initialStatuses={bm06Data.initialStatuses}
+                lockVersion={bm06Data.lockVersion}
+              />
+            ) : (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">Chưa tìm thấy occurrence BM.06 cho ngày/ca đang chọn.</p>
+            )}
           </div>
         </section>
 

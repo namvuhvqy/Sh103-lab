@@ -30,10 +30,11 @@ describe("Owner final UX simplification contracts", () => {
     expect(roster).not.toContain("Bác sĩ, Trưởng khoa hoặc Admin có thể bấm nút");
   });
 
-  it("temperature screen is input-first, no overview/chart tab, and lower point list is read-only", () => {
+  it("temperature screen keeps chart/list UX, hides only the overview button, and lower point list is read-only", () => {
     const temp = src("src/components/forms/TemperatureLabDashboard.tsx");
-    expect(temp).not.toContain("Tổng quan");
-    expect(temp).not.toContain("QCTrendChart");
+    expect(temp).not.toMatch(/>\s*Tổng quan\s*</);
+    expect(temp).toContain("QCTrendChart");
+    expect(temp).toContain("Nhập số liệu");
     expect(temp).not.toContain("handleInlineCellChange");
     expect(temp).not.toContain("type=\"number\"");
     expect(temp).toContain("InlineTemperatureList");

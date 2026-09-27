@@ -13,7 +13,7 @@ describe("BM.06 saving & outward statistics contracts", () => {
   it("api/forms/bm06 returns informative translated error messages instead of generic error", () => {
     const routeSrc = fs.readFileSync(path.resolve(process.cwd(), "src/app/api/forms/bm06/route.ts"), "utf8");
     expect(routeSrc).toMatch(/error\.message|Cần ghi nhận đủ|Không thể lưu ca/);
-    expect(routeSrc).toMatch(/saved=1/);
+    expect(routeSrc).toMatch(/saved:\s*"1"|saved=1/);
   });
 
   it("Equipment overview supports shift/date selection parameters", () => {
