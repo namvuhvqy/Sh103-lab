@@ -3,7 +3,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { BarChart3, Bell, CalendarDays, CircleAlert, ClipboardCheck, ClipboardList, History, UserRound } from "lucide-react";
 
 const links = [
-  { href: "/calendar", label: "Lịch trực & Ca kíp", description: "Xem và phân công kíp trực theo ngày", icon: CalendarDays },
+  { href: "/quick-duty", label: "Phiên làm việc", description: "Chọn ca, tự nhận kíp và nhập liệu", icon: CalendarDays },
   { href: "/temperature", label: "Nhiệt độ & Độ ẩm", description: "Môi trường, tủ mát và tủ đông", icon: ClipboardList },
   { href: "/periods", label: "Lịch sử kỳ", description: "Tra cứu kỳ và bản ghi", icon: History },
   { href: "/approvals", label: "Trung tâm phê duyệt", description: "Duyệt theo kỳ / sổ", icon: ClipboardCheck },

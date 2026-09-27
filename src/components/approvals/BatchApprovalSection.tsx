@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { ApprovalPeriod } from "@/lib/forms/workflow";
 import { batchApprovePeriodsAction } from "@/app/periods/actions";
 import { Check, CheckSquare, Square, CheckCircle2, Filter, AlertCircle } from "lucide-react";
@@ -40,7 +39,9 @@ export function BatchApprovalSection({
     return true;
   });
 
-  const filteredActionable = filteredPeriods.filter((p) => p.status === "READY_FOR_REVIEW");
+  // Owner may approve an operational period even when its input remains incomplete.
+  // The database stores APPROVE_INCOMPLETE in the append-only audit trail.
+  const filteredActionable = filteredPeriods.filter((p) => ["OPEN", "RETURNED", "READY_FOR_REVIEW"].includes(p.status));
 
   const handleToggle = (id: string) => {
     setSelectedIds((prev) =>
@@ -188,16 +189,16 @@ export function BatchApprovalSection({
                       : "Chờ duyệt"}
                   </span>
 
-                  <Link
-                    href={
-                      period.status === "READY_FOR_REVIEW"
-                        ? `/periods/${period.id}/review`
-                        : `/periods/${period.id}`
-                    }
-                    className="inline-flex min-h-9 items-center rounded-xl bg-slate-100 hover:bg-slate-200 px-3 text-xs font-bold text-slate-800 transition"
-                  >
-                    {period.status === "READY_FOR_REVIEW" ? "Rà soát & Duyệt lẻ" : "Xem chi tiết"}
-                  </Link>
+                  <form action={batchApprovePeriodsAction}>
+                    <input type="hidden" name="periodIds" value={period.id} />
+                    <button
+                      type="submit"
+                      disabled={!canApprove || !isActionable}
+                      className="inline-flex min-h-10 items-center rounded-xl bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                    >
+                      {isActionable ? "Phê duyệt ngay" : "Xem chi tiết"}
+                    </button>
+                  </form>
                 </div>
               </div>
             </article>

@@ -134,7 +134,7 @@ export async function getWorkSessionData(
     };
   });
 
-  const hasFulfilled = occurrences.some((o) => !o.fulfilledByRecordId);
+  const hasFulfilled = occurrences.some((o) => !!o.fulfilledByRecordId);
 
   return {
     businessDate,

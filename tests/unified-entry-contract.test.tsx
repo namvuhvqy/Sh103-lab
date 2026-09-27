@@ -32,14 +32,13 @@ describe("Unified Entry & Quick Duty Contracts", () => {
     });
   });
 
-  describe("2. Calendar and personnel truthfulness", () => {
-    it("Calendar reads saved roster context and never hard-codes staff assignments", () => {
+  describe("2. Calendar retirement & personnel truthfulness", () => {
+    it("Calendar routes to Quick Duty and never hard-codes staff assignments", () => {
       const src = readSource("src/app/calendar/page.tsx");
-      expect(src).toContain("get_work_session_context");
+      expect(src).toContain('redirect("/quick-duty")');
       expect(src).not.toMatch(/leader:\s*["']/);
       expect(src).not.toMatch(/leadTech:\s*["']/);
       expect(src).not.toMatch(/Huỳnh Quang Thuận|Đỗ Văn Sơn|Vũ Thị Thủy|Đỗ Thị Hương/);
-      expect(src).toContain("WorkSessionRosterCard");
     });
   });
 

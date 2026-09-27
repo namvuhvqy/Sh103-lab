@@ -14,6 +14,7 @@ interface Props {
   slotCode: string;
   isOfficialRecordCreated: boolean;
   availableStaff?: RosterStaffMember[];
+  currentUserId?: string | null;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -41,6 +42,7 @@ export function WorkSessionRosterCard({
   slotCode,
   isOfficialRecordCreated,
   availableStaff = [],
+  currentUserId = null,
 }: Props) {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -50,10 +52,17 @@ export function WorkSessionRosterCard({
   const dutyKind = resolveDutyKind(slotCode);
 
   const currentMembers = localRoster?.members ?? [];
+  const currentUser = availableStaff.find((staff) => staff.user_id === currentUserId);
+  const canSelfAssign = Boolean(currentUser && !isShift1 && currentMembers.length === 0);
   const initialMemberIds = [
-    currentMembers[0]?.user_id ?? "",
+    currentMembers[0]?.user_id ?? (canSelfAssign ? currentUserId ?? "" : ""),
     currentMembers[1]?.user_id ?? "",
   ];
+
+  const handleSelfAssign = () => {
+    if (!canSelfAssign) return;
+    setIsEditing(true);
+  };
 
   const handleSaveRoster = async (payload: {
     businessDate: string;
@@ -214,14 +223,26 @@ export function WorkSessionRosterCard({
               </div>
             </div>
             {availableStaff.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition shrink-0"
-              >
-                <UserPlus className="size-3.5" />
-                <span>Phân công kíp trực</span>
-              </button>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                {canSelfAssign ? (
+                  <button
+                    type="button"
+                    onClick={handleSelfAssign}
+                    className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition"
+                  >
+                    <UserPlus className="size-3.5" />
+                    <span>Tôi nhận ca này</span>
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-white px-4 text-xs font-bold text-teal-800 hover:bg-teal-50 transition"
+                >
+                  <UserPlus className="size-3.5" />
+                  <span>{canSelfAssign ? "Chọn người cùng ca" : "Phân công kíp trực"}</span>
+                </button>
+              </div>
             )}
           </div>
         )}

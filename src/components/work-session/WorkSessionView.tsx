@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import {
   CalendarCheck,
   ClipboardCheck,
@@ -107,6 +108,23 @@ export function WorkSessionView({ sessionData }: Props) {
             </p>
           </div>
         </div>
+        <div className="mt-4 border-t border-white/15 pt-3" aria-label="Chọn ca khác">
+          <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-cyan-100">Chọn ca khác</p>
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(SHIFT_TITLES).filter(([code]) => code.startsWith("SHIFT_")).map(([code, label]) => (
+              <Link
+                key={code}
+                href={`/quick-duty?date=${businessDate}&slot=${code}`}
+                aria-current={code === slotCode ? "page" : undefined}
+                className={`min-h-10 rounded-xl px-3 py-2 text-xs font-bold transition active:scale-95 ${
+                  code === slotCode ? "bg-white text-teal-950" : "border border-white/25 bg-white/10 text-white hover:bg-white/20"
+                }`}
+              >
+                {label.replace("Ca ", "")}
+              </Link>
+            ))}
+          </div>
+        </div>
       </section>
 
       <WorkSessionRosterCard
@@ -115,6 +133,7 @@ export function WorkSessionView({ sessionData }: Props) {
         slotCode={slotCode}
         isOfficialRecordCreated={isOfficialRecordCreated}
         availableStaff={sessionData.availableStaff}
+        currentUserId={sessionData.userId}
       />
 
       <section aria-labelledby="work-sections-title" className="space-y-3">

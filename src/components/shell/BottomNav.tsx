@@ -10,7 +10,7 @@ const tabs = [
   { label: "Nhiệt độ", href: "/temperature", icon: Thermometer, matches: ["/temperature", "/general-tasks", "/entry"] },
   { label: "Thiết bị", href: "/equipment", icon: TestTube2, matches: ["/equipment", "/bm06", "/assets"] },
   { label: "Khử nhiễm", href: "/decontamination", icon: Sparkles, matches: ["/decontamination", "/areas"] },
-  { label: "Thêm", href: "/more", icon: MoreHorizontal, matches: ["/more", "/notifications", "/incidents", "/approvals", "/reports", "/periods", "/calendar", "/account", "/admin"] },
+  { label: "Thêm", href: "/more", icon: MoreHorizontal, matches: ["/more", "/notifications", "/incidents", "/approvals", "/reports", "/periods", "/account", "/admin"] },
 ];
 
 function isActive(path: string, matches: string[]) {
