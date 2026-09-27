@@ -6,7 +6,7 @@ import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import {
   Home,
   Layers,
-  FileSpreadsheet,
+
   BookOpen,
   History,
   CheckCircle2,
@@ -36,7 +36,7 @@ export function DesktopSidebar({
     { label: "Trang chủ", href: "/", icon: Home },
     { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
     { label: "Nhiệt độ & Độ ẩm", href: "/temperature", icon: Layers },
-    { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
+    { label: "Thiết bị / BM.06", href: "/equipment", icon: Layers },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
     { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },
     { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },

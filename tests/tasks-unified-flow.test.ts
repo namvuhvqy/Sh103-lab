@@ -12,6 +12,6 @@ describe("Tasks page & TaskList unified workflow contracts", () => {
   it("TaskList provides unified work session links and clean task action routing", () => {
     const listSrc = fs.readFileSync(path.resolve(process.cwd(), "src/components/forms/TaskList.tsx"), "utf8");
     expect(listSrc).not.toContain('"Nhập ngay"');
-    expect(listSrc).toMatch(/\/quick-duty|\/temperature|\/bm06|\/maintenance/);
+    expect(listSrc).toMatch(/\/quick-duty|\/temperature|\/equipment|\/maintenance/);
   });
 });

@@ -21,6 +21,7 @@ export function ShiftRegisterForm({
 }) {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const visible = areaCode ? assets.filter((a) => a.locationCode === areaCode) : assets;
   const progress = shiftProgress(
@@ -48,11 +49,21 @@ export function ShiftRegisterForm({
   };
 
   return (
-    <form action="/api/forms/bm06" method="post" className="space-y-4">
+    <form action="/api/forms/bm06" method="post" onSubmit={() => setIsSubmitting(true)} className="space-y-4">
       <input type="hidden" name="occurrenceId" value={occurrenceId} />
       <input type="hidden" name="lockVersion" value={lockVersion} />
       <input type="hidden" name="statuses" value={payload} />
       <input type="hidden" name="areaCode" value={areaCode ?? ""} />
+
+      {/* Sticky Progress Header */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 shadow-xs" aria-label="Trạng thái lưu BM.06">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">Draft · Bản nháp</span>
+          <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-800">{isSubmitting ? "Saving · Đang lưu" : "Saved · Đã lưu sau khi server xác nhận"}</span>
+          <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-800">Error · Lỗi sẽ hiển thị ở đầu trang sau khi redirect</span>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800">Completed · Hoàn tất khi đủ 25/25</span>
+        </div>
+      </div>
 
       {/* Sticky Progress Header */}
       <div className="sticky top-16 z-20 rounded-2xl border border-teal-200 bg-white/95 p-4 shadow-sm backdrop-blur">
@@ -203,7 +214,7 @@ export function ShiftRegisterForm({
         <button
           name="intent"
           value="draft"
-          disabled={Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
+          disabled={isSubmitting || Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
           className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 active:scale-95 transition-all select-none shadow-xs"
         >
           {areaCode ? "Lưu nháp khu vực" : `Lưu nháp (${progress.completed}/${progress.total} máy)`}
@@ -212,7 +223,7 @@ export function ShiftRegisterForm({
           <button
             name="intent"
             value="finalize"
-            disabled={!progress.canFinalize}
+            disabled={isSubmitting || !progress.canFinalize}
             className={`min-h-12 rounded-xl font-bold transition-all select-none shadow-xs ${
               progress.canFinalize
                 ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20 active:scale-95 cursor-pointer"

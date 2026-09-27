@@ -4,9 +4,14 @@ import { validateShiftStatuses } from "@/lib/forms/validation";
 
 const resultUrl = (request: Request, area: string, params: Record<string, string>) => {
   const referer = request.headers.get("referer") ?? "";
+  const refererUrl = referer ? new URL(referer) : null;
   const basePath = referer.includes("/equipment") ? "/equipment" : "/bm06";
   const url = new URL(basePath, request.url);
   if (area) url.searchParams.set("area", area);
+  const date = refererUrl?.searchParams.get("date");
+  const shift = refererUrl?.searchParams.get("shift");
+  if (basePath === "/equipment" && date) url.searchParams.set("date", date);
+  if (basePath === "/equipment" && shift) url.searchParams.set("shift", shift);
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   if (basePath === "/equipment") url.hash = "bm06-entry";
   return url;

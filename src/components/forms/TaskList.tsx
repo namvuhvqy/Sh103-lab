@@ -33,7 +33,7 @@ function resolveTaskActionHref(formCode: string, slotCode: string | null, locati
     return { href: `/temperature?tab=freezer&shift=${slotCode ?? "MORNING"}`, label: "Mở theo dõi tủ đông" };
   }
   if (formCode.includes("BM.06")) {
-    return { href: `/bm06?shift=${slotCode ?? "SHIFT_1"}`, label: "Mở nhật ký thiết bị" };
+    return { href: `/equipment?shift=${slotCode ?? "SHIFT_1"}#bm06-entry`, label: "Mở nhật ký thiết bị" };
   }
   if (formCode.includes("BM.01_KNBM")) {
     return { href: `/decontamination?area=${locationCode ?? ""}`, label: "Mở khử nhiễm bề mặt" };
