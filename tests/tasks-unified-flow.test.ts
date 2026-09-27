@@ -6,7 +6,7 @@ describe("Tasks page & TaskList unified workflow contracts", () => {
   it("TasksPage contains prominent CTA directing to unified Quick Duty work session", () => {
     const pageSrc = fs.readFileSync(path.resolve(process.cwd(), "src/app/tasks/page.tsx"), "utf8");
     expect(pageSrc).toMatch(/\/quick-duty/);
-    expect(pageSrc).toMatch(/Phiên làm việc|Nhập nhanh/);
+    expect(pageSrc).toMatch(/Legacy task screen retired|redirect/);
   });
 
   it("TaskList provides unified work session links and clean task action routing", () => {

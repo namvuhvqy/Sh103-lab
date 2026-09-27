@@ -86,7 +86,7 @@ export function WorkSessionView({ sessionData }: Props) {
       code: "BM.02/QL.TRTB.01",
       title: "Bảo dưỡng trang thiết bị",
       description: "Mở đúng occurrence cần thực hiện",
-      href: `/tasks?date=${businessDate}&shift=${slotCode}`,
+      href: `/maintenance/${getOccurrencesForForm("BM.02/QL.TRTB.01")[0]?.id ?? ""}`,
       icon: Wrench,
       occurrences: getOccurrencesForForm("BM.02/QL.TRTB.01"),
     },

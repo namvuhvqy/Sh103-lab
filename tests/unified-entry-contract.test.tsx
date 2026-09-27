@@ -64,7 +64,7 @@ describe("Unified Entry & Quick Duty Contracts", () => {
 
     it("TemperatureLabDashboard filters data based on selected slot/shift, not just select state", () => {
       const src = readSource("src/components/forms/TemperatureLabDashboard.tsx");
-      expect(src).toMatch(/p\.slotCode !== selectedShift|occurrence\.slot_code === selectedShift/);
+      expect(src).toMatch(/point\.slotCode !== selectedShift|occurrence\.slot_code !== selectedShift/);
     });
   });
 });

@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/shell/AppShell";
 import { TemperatureLabDashboard, type TemperaturePoint } from "@/components/forms/TemperatureLabDashboard";
 import type { InlineOccurrence } from "@/components/forms/InlineTemperatureCard";
-import type { QCTrendPoint } from "@/components/p5/QCTrendChart";
 import { currentShift, vietnamParts } from "@/lib/forms/domain";
 import { getTemperatureOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
@@ -86,15 +85,12 @@ export default async function TemperaturePage() {
     };
   });
 
-  const chartPoints: QCTrendPoint[] = initialPoints
-    .filter((point) => point.temperature !== null || point.humidity !== null)
-    .map((point) => ({ areaName: point.area, time: point.updatedAt, temperature: point.temperature, humidity: point.humidity }));
   const nowShift = currentShift();
   const today = vietnamParts(new Date()).date.split("-").reverse().join("/");
 
   return (
     <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Nhiệt độ & Độ ẩm (BM.01 - BM.02 - BM.03)" unreadCount={unread}>
-      <TemperatureLabDashboard initialPoints={initialPoints} occurrences={mappedOccurrences} chartPoints={chartPoints} activeDate={`${today} · ${nowShift.name}`} />
+      <TemperatureLabDashboard initialPoints={initialPoints} occurrences={mappedOccurrences} activeDate={`${today} · ${nowShift.name}`} />
     </AppShell>
   );
 }

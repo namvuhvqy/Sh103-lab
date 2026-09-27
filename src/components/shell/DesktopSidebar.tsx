@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import {
   Home,
-  CheckSquare,
   Layers,
   FileSpreadsheet,
   BookOpen,
@@ -36,7 +35,6 @@ export function DesktopSidebar({
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
     { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
-    { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
     { label: "Nhiệt độ & Độ ẩm", href: "/temperature", icon: Layers },
     { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },

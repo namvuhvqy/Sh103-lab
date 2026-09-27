@@ -1,20 +1,9 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { 
-  Search, 
-  Download, 
-  ChevronRight, 
-  AlertTriangle, 
-  CheckCircle2, 
-  Clock3, 
-  Filter,
-  Thermometer
-} from "lucide-react";
-import { QCTrendChart, type QCTrendPoint } from "@/components/p5/QCTrendChart";
+import { Download, Filter, Search } from "lucide-react";
 import { InlineTemperatureList } from "@/components/forms/InlineTemperatureList";
-import { MobileActionSheet } from "@/components/ui/MobileActionSheet";
 import type { InlineOccurrence } from "@/components/forms/InlineTemperatureCard";
 import { cn } from "@/lib/utils";
 
@@ -36,439 +25,139 @@ export interface TemperaturePoint {
 interface TemperatureLabDashboardProps {
   initialPoints: TemperaturePoint[];
   occurrences: InlineOccurrence[];
-  chartPoints: QCTrendPoint[];
   activeDate?: string;
-
 }
 
 export function TemperatureLabDashboard({
   initialPoints,
   occurrences,
-  chartPoints,
   activeDate = "25/09/2026",
-
 }: TemperatureLabDashboardProps) {
-  // Tab chính chuẩn Mockup: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình]
-  const [activeTab, setActiveTab] = useState<"overview" | "input" | "chart" | "report" | "config">("overview");
-
-  // Bộ lọc
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
   const [selectedShift, setSelectedShift] = useState<string>("MORNING");
-  const [points, setPoints] = useState<TemperaturePoint[]>(initialPoints);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const committedPointsRef = useRef(new Map(initialPoints.map((point) => [point.id, point])));
 
-  // Lọc theo tìm kiếm, khu vực và slot đo thực tế.
-  const filteredPoints = useMemo(() => {
-    return points.filter((p) => {
-      if (p.slotCode !== selectedShift) return false;
-      if (selectedArea !== "ALL" && p.area !== selectedArea) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        return p.name.toLowerCase().includes(q) || p.area.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [points, selectedArea, selectedShift, searchQuery]);
-
-  const filteredOccurrences = useMemo(
-    () => occurrences.filter((occurrence) => occurrence.slot_code === selectedShift),
-    [occurrences, selectedShift]
+  const areaOptions = useMemo(
+    () => Array.from(new Set(initialPoints.map((point) => point.area))).filter(Boolean),
+    [initialPoints]
   );
-  const totalPoints = filteredPoints.length;
-  const recordedCount = filteredPoints.filter((p) => p.temperature !== null).length;
-  const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
-  const abnormalCount = filteredPoints.filter((p) => p.isAbnormal).length;
-  const abnormalPercent = totalPoints > 0 ? ((abnormalCount / totalPoints) * 100).toFixed(1) : "0.0";
-  const unrecordedCount = totalPoints - recordedCount;
-  const unrecordedPercent = totalPoints > 0 ? Math.round((unrecordedCount / totalPoints) * 100) : 0;
 
-  // Sửa nhanh giá trị trên bảng
-  const handleInlineCellChange = async (id: string, newTemp: string) => {
-    const val = newTemp.trim() !== "" ? parseFloat(newTemp) : null;
-    const previousPoint = committedPointsRef.current.get(id);
-    if (!previousPoint || (val !== null && !Number.isFinite(val))) return;
+  const filteredPoints = useMemo(() => {
+    return initialPoints.filter((point) => {
+      if (point.slotCode !== selectedShift) return false;
+      if (selectedArea !== "ALL" && point.area !== selectedArea) return false;
+      const query = searchQuery.trim().toLowerCase();
+      if (!query) return true;
+      return point.name.toLowerCase().includes(query) || point.area.toLowerCase().includes(query);
+    });
+  }, [initialPoints, searchQuery, selectedArea, selectedShift]);
 
-    setSaveError(null);
-    setPoints((prev) =>
-      prev.map((pt) => {
-        if (pt.id === id) {
-          const isAbn = val !== null && (val < pt.minTemp || val > pt.maxTemp);
-          return {
-            ...pt,
-            temperature: val,
-            isAbnormal: isAbn,
-            updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-          };
-        }
-        return pt;
-      })
-    );
-
-    try {
-      const response = await fetch("/api/measurements/quick-save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          occurrenceId: id,
-          temperature: val,
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || "Không thể lưu số đo. Vui lòng thử lại.");
-      }
-      const savedPoint = points.find((point) => point.id === id);
-      if (savedPoint) {
-        committedPointsRef.current.set(id, {
-          ...savedPoint,
-          temperature: val,
-          isAbnormal: val !== null && (val < savedPoint.minTemp || val > savedPoint.maxTemp),
-        });
-      }
-    } catch (error) {
-      setPoints((current) =>
-        current.map((point) => (point.id === id ? previousPoint : point))
-      );
-      setSaveError(error instanceof Error ? error.message : "Không thể lưu số đo. Vui lòng thử lại.");
-    }
-  };
+  const filteredOccurrences = useMemo(() => {
+    return occurrences.filter((occurrence) => {
+      if (occurrence.slot_code !== selectedShift) return false;
+      if (selectedArea === "ALL") return true;
+      const locationName = occurrence.register_periods.locations?.name ?? "";
+      const assetName = occurrence.register_periods.assets?.source_name ?? "";
+      return locationName === selectedArea || assetName === selectedArea;
+    });
+  }, [occurrences, selectedArea, selectedShift]);
 
   return (
-    <div className="space-y-5">
-      {saveError ? (
-        <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800">
-          {saveError}
-        </div>
-      ) : null}
-      {/* 1. Thanh Tabs Chuẩn Mockup Ảnh 2: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình] */}
-      <div className="flex overflow-x-auto gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold [scrollbar-width:none]">
-        <button
-          type="button"
-          onClick={() => setActiveTab("overview")}
-          className={cn(
-            "px-4 py-2 rounded-xl transition-all shrink-0",
-            activeTab === "overview"
-              ? "bg-teal-700 text-white shadow-xs font-black"
-              : "text-slate-600 hover:text-slate-900"
-          )}
-        >
-          Tổng quan
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("input")}
-          className={cn(
-            "px-4 py-2 rounded-xl transition-all shrink-0",
-            activeTab === "input"
-              ? "bg-teal-700 text-white shadow-xs font-black"
-              : "text-slate-600 hover:text-slate-900"
-          )}
-        >
-          Nhập số liệu
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("chart")}
-          className={cn(
-            "px-4 py-2 rounded-xl transition-all shrink-0",
-            activeTab === "chart"
-              ? "bg-teal-700 text-white shadow-xs font-black"
-              : "text-slate-600 hover:text-slate-900"
-          )}
-        >
-          Biểu đồ
-        </button>
-        <Link
-          href="/reports"
-          className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all shrink-0"
-        >
-          Báo cáo
-        </Link>
-        <Link
-          href="/admin/users"
-          className="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition-all shrink-0"
-        >
-          Cấu hình
-        </Link>
-      </div>
-
-      {/* 2. Thanh Bộ Lọc Ngang Chuẩn Mockup Ảnh 2 */}
-      <div className="flex flex-wrap items-center gap-2 p-2.5 bg-white rounded-2xl border border-cyan-100 shadow-xs text-xs font-bold">
-        {/* Bộ chọn Ngày */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800">
-          <span>📅</span>
-          <span>Hôm nay, {activeDate}</span>
-        </div>
-
-        {/* Bộ chọn Khu vực */}
-        <select
-          value={selectedArea}
-          onChange={(e) => setSelectedArea(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none hover:border-teal-400"
-        >
-          <option value="ALL">Tất cả khu vực</option>
-          <option value="Sinh hóa">Sinh hóa</option>
-          <option value="Miễn dịch">Miễn dịch</option>
-          <option value="Nước tiểu">Nước tiểu</option>
-          <option value="Ly tâm">Ly tâm</option>
-          <option value="Nhận bệnh phẩm">Nhận bệnh phẩm</option>
-        </select>
-
-        {/* Bộ chọn Ca */}
-        <select
-          value={selectedShift}
-          onChange={(e) => setSelectedShift(e.target.value)}
-          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none hover:border-teal-400"
-        >
-          <option value="MORNING">Sáng (08:00–09:00)</option>
-          <option value="AFTERNOON">Chiều (14:30–15:30)</option>
-        </select>
-
-        <button
-          type="button"
-          onClick={() => {
-            setSelectedArea("ALL");
-            setSelectedShift("MORNING");
-            setSearchQuery("");
-          }}
-          className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition"
-        >
-          <Filter className="size-3.5" />
-          <span>Lọc</span>
-        </button>
-      </div>
-
-      {/* Nếu chọn tab Nhập số liệu: Hiển thị Thẻ Inline Click-to-Edit tốc độ cao */}
-      {activeTab === "input" ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-black text-slate-900">
-              Ghi nhận tức thì điểm đo phòng xét nghiệm (ISO 15189)
-            </h2>
-            <button
-              type="button"
-              onClick={() => setActiveTab("overview")}
-              className="text-xs font-bold text-teal-800 hover:underline"
-            >
-              ← Về bảng tổng quan
-            </button>
+    <div className="space-y-4">
+      <section className="rounded-3xl border border-teal-100 bg-white p-4 shadow-xs sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-wider text-teal-700">BM.01 · BM.02 · BM.03</p>
+            <h1 className="mt-1 text-xl font-black text-slate-950">Nhập nhanh nhiệt độ & độ ẩm</h1>
+            <p className="mt-1 text-xs font-medium text-slate-500">
+              {activeDate} · Chọn ca và khu vực rồi nhập trực tiếp bằng thẻ bên dưới.
+            </p>
           </div>
-          <InlineTemperatureList initialOccurrences={filteredOccurrences} />
+          <Link
+            href="/reports/export"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+          >
+            <Download className="size-4" />
+            Xuất báo cáo
+          </Link>
         </div>
-      ) : (
-        <>
-          {/* 3. Bốn Khối KPI Tổng Quan Chuẩn 100% Mockup Ảnh 2 */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-            {/* Card 1: Tổng số điểm */}
-            <div className="rounded-2xl border border-cyan-100 bg-white p-3.5 sm:p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <Thermometer className="size-4 text-teal-600" />
-                <span>Tổng số điểm</span>
-              </div>
-              <p className="mt-1 text-2xl sm:text-3xl font-black text-slate-900">{totalPoints}</p>
-              <p className="text-[11px] font-semibold text-slate-500">5 khu vực</p>
-              <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-teal-600 rounded-full" style={{ width: `${recordedPercent}%` }} />
-              </div>
-              <p className="mt-1 text-[10px] font-bold text-teal-700">{recordedPercent}% đã ghi</p>
-            </div>
 
-            {/* Card 2: Đã ghi */}
-            <div className="rounded-2xl border border-emerald-100 bg-white p-3.5 sm:p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <CheckCircle2 className="size-4 text-emerald-600" />
-                <span>Đã ghi</span>
-              </div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">{recordedCount}</p>
-                <span className="text-xs font-bold text-slate-500">{recordedPercent}%</span>
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
-            </div>
-
-            {/* Card 3: Bất thường */}
-            <div className="rounded-2xl border border-rose-100 bg-white p-3.5 sm:p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <AlertTriangle className="size-4 text-rose-600" />
-                <span>Bất thường</span>
-              </div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <p className="text-2xl sm:text-3xl font-black text-rose-800">{abnormalCount}</p>
-                <span className="text-xs font-bold text-slate-500">{abnormalPercent}%</span>
-              </div>
-              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
-            </div>
-
-            {/* Card 4: Chưa ghi */}
-            <div className="rounded-2xl border border-cyan-100 bg-white p-3.5 sm:p-4 shadow-xs">
-              <div className="flex items-center gap-2 text-slate-500 text-xs font-bold">
-                <Clock3 className="size-4 text-amber-600" />
-                <span>Chưa ghi</span>
-              </div>
-              <div className="mt-1 flex items-baseline gap-2">
-                <p className="text-2xl sm:text-3xl font-black text-slate-900">{unrecordedCount}</p>
-                <span className="text-xs font-bold text-slate-500">{unrecordedPercent}%</span>
-              </div>
-              <p className="mt-2 text-[11px] font-bold text-slate-500 truncate">
-                Cần hoàn thành ca này
-              </p>
-            </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Tìm điểm đo hoặc khu vực..."
+              className="min-h-11 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm font-semibold outline-none transition focus:border-teal-600 focus:bg-white"
+            />
           </div>
 
-          {/* 4. Biểu Đồ Xu Hướng 24 Giờ Gần Nhất (Chuẩn Mockup Ảnh 2) */}
-          <QCTrendChart points={chartPoints} />
+          <select
+            value={selectedShift}
+            onChange={(event) => setSelectedShift(event.target.value)}
+            className="min-h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-600"
+          >
+            <option value="MORNING">Sáng (08:00–09:00)</option>
+            <option value="AFTERNOON">Chiều (14:30–15:30)</option>
+          </select>
 
-          {/* 5. Danh Sách Điểm Đo (16 Điểm) Khớp Mockup Ảnh 2 */}
-          <section className="space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <h2 className="text-base font-black text-slate-900">
-                Danh sách điểm đo ({filteredPoints.length} điểm)
-              </h2>
+          <select
+            value={selectedArea}
+            onChange={(event) => setSelectedArea(event.target.value)}
+            className="min-h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-800 outline-none focus:border-teal-600"
+          >
+            <option value="ALL">Tất cả khu vực / tủ</option>
+            {areaOptions.map((area) => (
+              <option key={area} value={area}>{area}</option>
+            ))}
+          </select>
 
-              <div className="flex items-center gap-2">
-                {/* Thanh tìm kiếm điểm đo */}
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm điểm đo, khu vực…"
-                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-medium outline-none focus:border-teal-500"
-                  />
-                </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchQuery("");
+              setSelectedArea("ALL");
+              setSelectedShift("MORNING");
+            }}
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            <Filter className="size-4" />
+            Xóa lọc
+          </button>
+        </div>
+      </section>
 
-                {/* Nút Xuất báo cáo */}
-                <Link
-                  href="/reports/export"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs"
-                >
-                  <Download className="size-3.5 text-slate-700" />
-                  <span>Xuất</span>
-                </Link>
+      <InlineTemperatureList initialOccurrences={filteredOccurrences} />
+
+      <section className="rounded-3xl border border-slate-200 bg-white shadow-xs">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4">
+          <div>
+            <h2 className="text-base font-black text-slate-900">Danh sách điểm đo đã lọc</h2>
+            <p className="text-xs font-medium text-slate-500">Chỉ để đối chiếu trạng thái; nhập số liệu ở thẻ phía trên.</p>
+          </div>
+          <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-black text-teal-800">{filteredPoints.length} điểm</span>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {filteredPoints.map((point) => (
+            <div key={point.id} className="flex items-center justify-between gap-3 p-3.5 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-black text-slate-900">#{point.stt} · {point.name}</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-500">{point.area} · {point.slotCode}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className={cn("text-xs font-black", point.isAbnormal ? "text-rose-700" : "text-emerald-700")}>
+                  {point.temperature != null ? `${point.temperature}°C` : "Chưa ghi"}
+                </p>
+                <p className="text-[11px] font-semibold text-slate-400">{point.humidity != null ? `${point.humidity}%` : "—"}</p>
               </div>
             </div>
-
-            {/* Bảng Dữ Liệu Điểm Đo (Table View với Click-to-Edit trực tiếp) */}
-            <div className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50/80 border-b border-slate-100 text-[11px] font-black uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="py-3 px-3 w-10 text-center">STT</th>
-                      <th className="py-3 px-3">Tên điểm đo</th>
-                      <th className="py-3 px-3">Khu vực</th>
-                      <th className="py-3 px-3 text-center">Nhiệt độ (°C)</th>
-                      <th className="py-3 px-3 text-center">Độ ẩm (%)</th>
-                      <th className="py-3 px-3 text-center">Trạng thái</th>
-                      <th className="py-3 px-3 text-center">Cập nhật</th>
-                      <th className="py-3 px-2 w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                    {filteredPoints.map((pt) => {
-                      const isAbnormal = pt.isAbnormal;
-                      return (
-                        <tr
-                          key={pt.id}
-                          className={cn(
-                            "hover:bg-teal-50/30 transition-colors",
-                            isAbnormal && "bg-rose-50/20"
-                          )}
-                        >
-                          <td className="py-3 px-3 text-center font-bold text-slate-400">
-                            {pt.stt}
-                          </td>
-                          <td className="py-3 px-3 font-bold text-slate-900">
-                            {pt.name}
-                          </td>
-                          <td className="py-3 px-3 text-slate-600">
-                            {pt.area}
-                          </td>
-
-                          {/* Ô nhập nhiệt độ tương tác trực tiếp (Inline Click-to-Edit) */}
-                          <td className="py-2.5 px-3 text-center">
-                            <input
-                              type="number"
-                              step="0.1"
-                              inputMode="decimal"
-                              value={pt.temperature != null ? pt.temperature : ""}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setPoints((current) =>
-                                  current.map((point) =>
-                                    point.id === pt.id
-                                      ? { ...point, temperature: nextValue === "" ? null : Number(nextValue) }
-                                      : point
-                                  )
-                                );
-                              }}
-                              onBlur={(e) => handleInlineCellChange(pt.id, e.target.value)}
-                              className={cn(
-                                "w-16 py-1 px-2 text-center rounded-lg border text-xs font-black transition-all",
-                                pt.temperature != null
-                                  ? isAbnormal
-                                    ? "border-rose-400 bg-rose-50 text-rose-800 focus:ring-1 focus:ring-rose-500"
-                                    : "border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-1 focus:ring-emerald-500"
-                                  : "border-slate-200 bg-slate-50 text-slate-500 placeholder:text-slate-300"
-                              )}
-                              placeholder="—"
-                              title={`Ngưỡng chuẩn: ${pt.minTemp}°C – ${pt.maxTemp}°C`}
-                            />
-                          </td>
-
-                          {/* Ô độ ẩm */}
-                          <td className="py-3 px-3 text-center text-slate-600 font-bold">
-                            {pt.humidity != null ? `${pt.humidity}%` : "—"}
-                          </td>
-
-                          {/* Badge trạng thái */}
-                          <td className="py-3 px-3 text-center">
-                            {pt.temperature != null ? (
-                              isAbnormal ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-black text-rose-800 border border-rose-300">
-                                  Vượt ngưỡng
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-800 border border-emerald-300">
-                                  Bình thường
-                                </span>
-                              )
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
-                                Chưa ghi
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Thời gian cập nhật */}
-                          <td className="py-3 px-3 text-center text-slate-500 text-[11px] font-semibold">
-                            {pt.updatedAt || "—"}
-                          </td>
-
-                          {/* Nút mũi tên chuyển chi tiết */}
-                          <td className="py-3 px-2 text-center text-slate-400">
-                            <ChevronRight className="size-4" />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        </>
-      )}
-
-      {/* Floating Action Menu trên Mobile (Xuất, Nhập, In, Đóng) */}
-      <MobileActionSheet
-        onQuickInput={() => setActiveTab("input")}
-        exportHref="/reports/export"
-      />
+          ))}
+          {filteredPoints.length === 0 ? (
+            <p className="p-6 text-center text-sm font-semibold text-slate-500">Không có điểm đo phù hợp với bộ lọc.</p>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

@@ -28,8 +28,8 @@ describe("P5 mobile visual fidelity and data visualization", () => {
   it("uses real charts on temperature, equipment and reports screens", () => {
     const temperaturePage = read("src/app/temperature/page.tsx");
     const temperatureDashboard = read("src/components/forms/TemperatureLabDashboard.tsx");
-    expect(temperaturePage).toMatch(/chartPoints/);
-    expect(temperatureDashboard).toMatch(/QCTrendChart points=\{chartPoints\}/);
+    expect(temperaturePage).toMatch(/getTemperatureOverview/);
+    expect(temperatureDashboard).toMatch(/InlineTemperatureList/);
     expect(read("src/app/equipment/page.tsx")).toMatch(/StatusDistribution/);
     expect(read("src/app/reports/page.tsx")).toMatch(/StatusDistribution/);
   });

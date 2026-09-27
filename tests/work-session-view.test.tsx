@@ -37,7 +37,7 @@ describe("WorkSessionView Component", () => {
     render(<WorkSessionView sessionData={sessionData} />);
 
     expect(screen.getByText("Phiên hiện tại")).toBeInTheDocument();
-    expect(screen.getByText("Phân công ca trực")).toBeInTheDocument();
+    expect(screen.getByText(/Tự nhận kíp trực/)).toBeInTheDocument();
     expect(screen.getByText("Chưa tạo hồ sơ chính thức")).toBeInTheDocument();
     expect(screen.getByText("Công việc trong phiên")).toBeInTheDocument();
     expect(screen.getByText("BM.01")).toBeInTheDocument();

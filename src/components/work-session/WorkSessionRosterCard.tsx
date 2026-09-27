@@ -115,7 +115,7 @@ export function WorkSessionRosterCard({
           </span>
           <div>
             <h2 id="roster-card-title" className="font-black text-slate-900 leading-tight">
-              Phân công ca trực
+              Tự nhận kíp trực
             </h2>
             <p className="text-xs text-slate-500 font-medium mt-0.5">
               {isShift1
@@ -159,7 +159,7 @@ export function WorkSessionRosterCard({
               ) : (
                 <>
                   <UserPlus className="size-3.5" />
-                  <span>Phân công kíp trực</span>
+                  <span>Tự nhận / chọn kíp</span>
                 </>
               )}
             </button>
@@ -216,9 +216,9 @@ export function WorkSessionRosterCard({
             <div className="flex items-start gap-2.5">
               <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <p className="font-black text-amber-900">Chưa có phân công ca trực được thiết lập cho phiên này.</p>
+                <p className="font-black text-amber-900">Kíp trực chưa đủ 2 người.</p>
                 <p className="mt-0.5 text-amber-800">
-                  Bác sĩ, Trưởng khoa hoặc Admin có thể bấm nút <b>Phân công kíp trực</b> để chọn nhân sự từ danh sách chính thức.
+                  Nhân viên đang đăng nhập bấm <b>Tôi nhận ca này</b>, sau đó chọn người cùng ca từ danh sách 25 nhân sự chính thức.
                 </p>
               </div>
             </div>
@@ -240,7 +240,7 @@ export function WorkSessionRosterCard({
                   className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-teal-200 bg-white px-4 text-xs font-bold text-teal-800 hover:bg-teal-50 transition"
                 >
                   <UserPlus className="size-3.5" />
-                  <span>{canSelfAssign ? "Chọn người cùng ca" : "Phân công kíp trực"}</span>
+                  <span>{canSelfAssign ? "Chọn người cùng ca" : "Tự nhận / chọn kíp"}</span>
                 </button>
               </div>
             )}

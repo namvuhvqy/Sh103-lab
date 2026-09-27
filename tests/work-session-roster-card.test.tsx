@@ -36,7 +36,7 @@ describe("WorkSessionRosterCard Component", () => {
       />
     );
 
-    expect(screen.getByText("Phân công ca trực")).toBeInTheDocument();
+    expect(screen.getByText(/Tự nhận kíp trực/)).toBeInTheDocument();
     expect(screen.getByText("BS. Nguyễn Văn A")).toBeInTheDocument();
     expect(screen.getByText("KTV. Trần Thị B")).toBeInTheDocument();
   });
@@ -66,7 +66,7 @@ describe("WorkSessionRosterCard Component", () => {
       />
     );
 
-    expect(screen.getByText(/Chưa có phân công ca trực/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Phân công kíp trực/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Kíp trực chưa đủ 2 người/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Tự nhận|chọn kíp|Chọn người cùng ca/i }).length).toBeGreaterThanOrEqual(1);
   });
 });

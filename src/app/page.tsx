@@ -21,7 +21,7 @@ export default async function Home() {
   const banner = summary.broken > 0
     ? { title: `${summary.broken} máy đang ở trạng thái H`, description: "Kiểm tra nhật ký BM.06 và xử lý theo quy trình của khoa.", href: "/equipment", cta: "Xem thiết bị", tone: "danger" as const }
     : summary.pending > 0
-      ? { title: `Còn ${summary.pending} công việc chưa hoàn thành`, description: "Dữ liệu được tổng hợp trực tiếp từ các nghĩa vụ trong ngày.", href: "/tasks", cta: "Xem công việc", tone: "warning" as const }
+      ? { title: `Còn ${summary.pending} mục trong phiên chưa hoàn thành`, description: "Xử lý ngay trong Phiên làm việc, không cần mở màn hình việc riêng.", href: "/quick-duty", cta: "Mở phiên làm việc", tone: "warning" as const }
       : { title: "Vận hành ổn định", description: "Các nghĩa vụ hiện tại đã được xử lý, không ghi nhận máy H.", href: "/dashboard", cta: "Xem Dashboard", tone: "success" as const };
 
   const modules = [
@@ -41,7 +41,7 @@ export default async function Home() {
           <KpiCard label="Nhiệt độ & độ ẩm" value={`${summary.abnormal}`} status={summary.abnormal ? "Bất thường" : "Không bất thường"} tone={summary.abnormal ? "danger" : "success"} href="/temperature" icon={<Thermometer className="size-5" />} />
           <KpiCard label="Nhật ký trang thiết bị" value={`${shiftCompleted}/${shiftTotal}`} status={shiftCompleted === 25 ? "Đủ 25 máy" : `Còn ${Math.max(shiftTotal - shiftCompleted, 0)} máy`} tone={shiftCompleted === 25 ? "success" : "warning"} href="/equipment" icon={<TestTube2 className="size-5" />} />
           <KpiCard label="Khử nhiễm" value={summary.decontaminationPending} status="Chưa hoàn thành" tone={summary.decontaminationPending ? "warning" : "success"} href="/decontamination" icon={<Sparkles className="size-5" />} />
-          <KpiCard label="Bảo dưỡng" value={summary.maintenancePending} status="Nghĩa vụ còn thiếu" tone={summary.maintenancePending ? "warning" : "success"} href="/tasks" icon={<ClipboardCheck className="size-5" />} />
+          <KpiCard label="Bảo dưỡng" value={summary.maintenancePending} status="Trong phiên làm việc" tone={summary.maintenancePending ? "warning" : "success"} href="/quick-duty" icon={<ClipboardCheck className="size-5" />} />
         </div>
       </section>
       <section aria-labelledby="areas-title"><div className="flex items-end justify-between gap-4"><h2 id="areas-title" className="clinical-section-title">5 khu vực làm việc</h2><Link href="/areas" className="min-h-11 py-3 text-xs font-bold text-teal-800">Xem tất cả →</Link></div><div className="mt-2.5 flex snap-x gap-2.5 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-5">{areas.map((area) => <div key={area.code} className="w-[8.75rem] shrink-0 snap-start sm:w-auto"><AreaCard {...area} /></div>)}</div></section>
