@@ -221,7 +221,7 @@ Quy tắc nhập:
 
 ## 5.4. Ngưỡng FINAL
 
-Cả 3 khu vực dùng cùng ngưỡng:
+Cả 5 khu vực BM.01 v3.1 dùng cùng ngưỡng:
 
 - **Nhiệt độ phòng hợp lệ:** từ **21°C đến 26°C**, tính cả hai đầu.
 - **Độ ẩm hợp lệ:** từ **20% đến 80%**, tính cả hai đầu.
@@ -235,7 +235,7 @@ Cờ bất thường:
 
 | Trường nghiệp vụ | Bắt buộc | Quy tắc |
 |---|---|---|
-| Khu vực | Có | Chọn 1 trong 3 khu vực trên. |
+| Khu vực | Có | Chọn 1 trong 5 khu vực BM.01 v3.1 (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`). `KHO` không phải work area BM.01. |
 | Thiết bị theo dõi | Có | Tự lấy từ danh mục khu vực tại thời điểm ghi; vẫn lưu tham chiếu lịch sử. |
 | Tháng/năm | Có | Xác định kỳ/sổ. |
 | Ngày đo | Có | Ngày 1–31 hợp lệ của tháng. |
@@ -691,7 +691,7 @@ Một ca chỉ được coi là hoàn tất khi:
 
 Nếu máy không dùng trong ca → `KSD`; nếu hỏng → `H`.
 
-## 10.6. UI nhập và dữ liệu lưu (Hỗ trợ theo Khu vực, Toàn khoa và Quick Duty Orchestrator)
+## 10.6. UI nhập và dữ liệu lưu (BM.06 v4.1 — 25 cột thiết bị, theo Khu vực, Toàn khoa và Quick Duty Orchestrator)
 
 Nghiệp vụ yêu cầu một ca có nhiều máy, dữ liệu hỗ trợ nhập linh hoạt theo các phương thức:
 
@@ -701,7 +701,7 @@ Nghiệp vụ yêu cầu một ca có nhiều máy, dữ liệu hỗ trợ nhậ
    - Chỉ hiển thị các máy thuộc khu vực đó để KTV kiểm tra và chọn BT/KSD/H;
    - Cho phép lưu nháp (Draft) tiến độ nhập của khu vực mà không bắt buộc phải hoàn tất cả 25 máy ngay lập tức.
 2. **Phương thức Toàn khoa (Tổng hợp ca):**
-   - Xem tổng quan toàn bộ 25 máy theo đúng thứ tự nguồn;
+   - Xem tổng quan toàn bộ 25 máy theo đúng thứ tự nguồn `source_order` 1–25; export/sổ BM.06 v4.1 phải render đủ 25 cột/dòng thiết bị, không còn 14 + 11 OPEN ITEM;
    - Kiểm tra các máy đã có trạng thái và các máy còn thiếu theo từng khu vực;
    - Hoàn tất ca (Finalize) khi và chỉ khi toàn bộ 25/25 máy của cả 4 khu vực đã có trạng thái BT/KSD/H.
 3. **Quick Duty Orchestrator (Điều phối ca trực nhanh):**
@@ -778,7 +778,7 @@ Và vị trí lưu trữ phụ trợ: **Kho / Lưu mẫu** (`KHO`).
 | `NUOC_TIEU` | Khu vực làm xét nghiệm Nước tiểu | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt), BM.06 (4 máy), BM.02 (Bảo dưỡng) | Tổng phân tích nước tiểu & cặn lắng |
 | `LY_TAM` | Khu vực Ly tâm | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt), BM.06 (4 máy), BM.02 (Bảo dưỡng) | Tách huyết thanh/huyết tương |
 | `NHAN_BENH_PHAM` | Khu vực Nhận bệnh phẩm | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt hằng ngày, tuần, tràn đổ) | Tiếp nhận, đối chiếu mẫu ban đầu; **không có máy** |
-| `KHO` | Kho hóa chất / Kho lưu mẫu | NAKĐT-03 | BM.01 (Môi trường kho), BM.02/BM.03 (Tủ lưu kho chính/kho lẻ) | Lưu trữ hóa chất, sinh phẩm, mẫu lưu |
+| `KHO` | Kho hóa chất / Kho lưu mẫu | NAKĐT-03 | **Auxiliary/location context only**; không phải khu vực làm việc BM.01 v3.1. Dùng cho BM.02/BM.03 (Tủ lưu kho chính/kho lẻ) và ngữ cảnh lưu trữ khi source/master data yêu cầu. | Lưu trữ hóa chất, sinh phẩm, mẫu lưu |
 
 Khi thiết bị theo dõi thay đổi trong tương lai, dữ liệu cũ phải vẫn biết thiết bị nào đã được dùng tại thời điểm ghi; không cập nhật ngược lịch sử sang thiết bị mới.
 
@@ -840,7 +840,7 @@ Khi thiết bị theo dõi thay đổi trong tương lai, dữ liệu cũ phải
 1. **BM.06 (Nhật ký 4 ca):** Áp dụng bắt buộc cho toàn bộ 25 máy theo 4 khung giờ mỗi ngày (9 Sinh hóa, 8 Miễn dịch, 4 Nước tiểu, 4 Ly tâm).
 2. **BM.02/QL.TRTB.01 (Bảo dưỡng thiết bị):** Áp dụng theo chu kỳ Daily / Weekly / Monthly cho các máy có yêu cầu bảo dưỡng theo danh mục kỹ thuật của khoa.
 3. **BM.01_KNBM (Khử nhiễm bề mặt):** Áp dụng theo **Khu vực làm việc** (`location_id`) cho cả 5 khu vực (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`), gồm chu kỳ Hằng ngày (Daily), Hằng tuần (Weekly) và Xử lý tràn đổ (Spill).
-4. **BM.01 (Nhiệt độ - Độ ẩm PXN):** Áp dụng cho các điểm đo môi trường được gán vào khu vực Sinh hóa, Miễn dịch và Kho.
+4. **BM.01 (Nhiệt độ - Độ ẩm PXN) v3.1:** Áp dụng chính thức cho đúng 5 khu vực làm việc `SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`. `KHO` chỉ là auxiliary/location context cho bảo quản/tủ khi source/master data yêu cầu, không phải work area BM.01.
 5. **BM.02 / BM.03 (Tủ lạnh mát / Tủ đá):** Áp dụng cho 13 dòng tủ/ngăn tủ; hiển thị tại nhóm "Công việc chung toàn khoa" hoặc theo vị trí đặt tủ (Kho lẻ, Kho chính, Tủ lưu mẫu, QC/Cal).
 
 ---

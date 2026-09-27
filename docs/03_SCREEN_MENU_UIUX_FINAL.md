@@ -153,11 +153,15 @@ flowchart TB
         S04 --> S07[S07: Khử nhiễm bề mặt khu vực KNBM]
     end
 
-    subgraph GENERAL_TASKS [Công Việc Chung & Lịch]
-        S01 --> S02[S02: Việc hôm nay - Lọc theo Khu vực / Toàn khoa]
-        S01 --> S08[S08: Lịch công việc]
-        S01 --> S09[S09: Công việc chung - BM.01 Môi trường / BM.02-03 Tủ lạnh]
-        S01 --> S10[S10: Nhập ca BM.06 tổng hợp toàn khoa 25 máy]
+    subgraph WORK_SESSION [Phiên làm việc / Nhập nhanh P6]
+        S01 --> S02[S02: Phiên làm việc /quick-duty - roster + nhập nhanh]
+        S02 --> S09[S09: Nhiệt độ /temperature]
+        S02 --> S10[S10: Thiết bị /equipment + BM.06 SHIFT_1-4]
+    end
+
+    subgraph LEGACY_ROUTES [Route legacy không phải workflow nhập chính]
+        S01 -. saved links .-> L01[/tasks redirect /quick-duty]
+        S01 -. saved links .-> L02[/calendar redirect /quick-duty]
     end
 
     subgraph REVIEW_REPORTS [Xét Duyệt & Báo Cáo]
@@ -192,17 +196,16 @@ flowchart TB
 
 ## 5.1 Mobile bottom navigation
 Dành cho KTV và Bác sĩ:
-1. **Trang chủ** (Area-first Home: 5 thẻ khu vực + trạng thái ca)
-2. **Hôm nay** (Việc cần làm trong ca, có lọc nhanh theo khu)
-3. **Khu vực** (Mở nhanh danh sách 5 khu vực làm việc)
+1. **Trang chủ** (Area-first Home + thông báo theo dòng + trạng thái ca)
+2. **Phiên làm việc** (`/quick-duty` — roster + nhập nhanh trong ca)
+3. **Khu vực / Thiết bị** (mở nhanh danh sách 5 khu vực và `/equipment`)
 4. **Lịch sử** (Tra cứu hồ sơ đã nhập theo ngày/khu vực)
 5. **Thêm** (Mở menu mở rộng)
 
 Menu `Thêm` bao gồm:
-- Lịch công việc (`/calendar`)
-- Phiên làm việc / Nhập nhanh (`/quick-duty` — gom Nhiệt độ PXN BM.01, Tủ lạnh/đá BM.02/03, KNBM, BM.06)
+- Phiên làm việc / Nhập nhanh (`/quick-duty` — roster tự nhận kíp, gom Nhiệt độ PXN BM.01, Tủ lạnh/đá BM.02/03, KNBM, BM.06)
+- Thiết bị / BM.06 (`/equipment` — lồng ghép nhập SHIFT_1–SHIFT_4 dưới danh sách thiết bị)
 - Nhiệt độ & Độ ẩm (`/temperature`)
-- Nhập ca BM.06 toàn khoa 25 máy (`/bm06`)
 - Sổ theo kỳ (`/periods`)
 - Danh mục biểu mẫu (`/forms`)
 - Báo cáo & Xuất file (`/reports`)
@@ -222,10 +225,10 @@ Menu `Thêm` bao gồm:
 ### Công việc hàng ngày
 - Trang chủ (`/`)
 - Phiên làm việc / Nhập nhanh (`/quick-duty`)
-- Việc hôm nay (`/tasks`)
+- Thiết bị / BM.06 (`/equipment`)
 - Nhiệt độ & Độ ẩm (`/temperature`)
-- Lịch công việc (`/calendar`)
-- Nhập ca BM.06 toàn khoa (`/bm06`)
+- `/tasks` và `/calendar` chỉ là legacy redirect/backward compatibility, không expose như menu/CTA nhập chính
+- `/bm06` nếu còn dùng thì là route legacy/chuyên sâu; CTA chính cho KTV là `/equipment#bm06-entry`
 - Sổ / Kỳ theo dõi (`/periods`)
 - Lịch sử & Tra cứu (`/history`)
 
@@ -259,8 +262,9 @@ Theo quyền:
 | Trang chủ Area-first | ✓ | ✓ | ✓ | Không đổi |
 | 4 Khu vực làm việc | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | R toàn khoa |
 | Chi tiết thiết bị | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | Quản trị thiết bị |
-| Việc hôm nay | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | Không đổi |
-| Lịch công việc | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | Không đổi |
+| Phiên làm việc / Nhập nhanh | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | Không đổi |
+| `/tasks` legacy redirect | Saved links only | Saved links only | Saved links only | Không dùng làm workflow nhập chính |
+| `/calendar` legacy redirect | Saved links only | Saved links only | Saved links only | Không dùng làm workflow nhập chính |
 | Công việc chung toàn khoa | ✓ | ✓ | ✓ | Không đổi |
 | Nhập ca BM.06 toàn khoa | ✓ | ✓ | ✓ | Không đổi |
 | Sổ / Kỳ | ✓ theo scope | ✓ theo scope | ✓ toàn khoa | Không đổi |
@@ -288,15 +292,15 @@ Theo quyền:
 |---|---|---|---|---|
 | **S00** | S00 | Đăng nhập | `/login` | Đăng nhập hệ thống (bỏ tab Đăng ký tự do; Admin cấp tài khoản) |
 | **S01** | S01 | Trang chủ Area-First | `/` | Trung tâm điều hướng: trạng thái ca + 4 thẻ Khu vực làm việc |
-| **S02** | S02 | Việc hôm nay | `/tasks` | Danh sách công việc cần làm trong ca, có lọc nhanh theo khu |
+| **S02** | S02 | Phiên làm việc / Nhập nhanh | `/quick-duty` | Workspace ca trực: roster tự nhận kíp + accordion/inline nhập các section nghiệp vụ |
 | **S03** | *(Mới)* | Danh sách Khu vực | `/areas` | Tổng quan 4 khu vực làm việc của khoa |
-| **S04** | *(Mới)* | Chi tiết Khu vực | `/areas/:areaCode` | Quản lý tác nghiệp riêng cho Sinh hóa, Miễn dịch, Nước tiểu, Ly tâm |
+| **S04** | *(Mới)* | Chi tiết Khu vực | `/areas/:areaCode` | Quản lý tác nghiệp riêng cho 5 khu vực BM.01/KNBM; riêng danh sách máy chỉ có ở 4 khu có thiết bị |
 | **S05** | S16 | Chi tiết Thiết bị | `/assets/:assetId` | Xem thông tin máy, nhật ký 4 ca, bảo dưỡng, lịch sử riêng của máy |
 | **S06** | S05 | Nhập biểu mẫu đo | `/entry/:occurrenceId` | Nhập số đo BM.01, BM.02, BM.03, KNBM, Bảo dưỡng |
 | **S07** | *(Mới)* | Khử nhiễm khu vực | `/areas/:areaCode/knbm` | Khử nhiễm bề mặt BM.01_KNBM Daily/Weekly/Spill cho khu vực |
-| **S08** | S03 | Lịch công việc | `/calendar` | Lịch theo ngày/tuần/tháng theo khu vực hoặc toàn khoa |
+| **L01** | S02/S03 cũ | `/tasks`, `/calendar` legacy | `/tasks`, `/calendar` | Redirect/backward compatibility cho saved links; không là màn hình nhập chính |
 | **S09** | *(Mới)* | Công việc chung | `/general-tasks` | Quản lý đo nhiệt độ phòng xét nghiệm (BM.01) & 13 tủ lạnh (BM.02/03) |
-| **S10** | S06 | Nhập ca BM.06 Toàn khoa | `/bm06/:occurrenceId` | Nhập trạng thái 25 máy cho một ca trực (BT/KSD/H) |
+| **S10** | S06 | Thiết bị / BM.06 | `/equipment#bm06-entry` | Danh sách thiết bị + nhập BM.06 SHIFT_1–SHIFT_4 liền mạch; `/bm06` chỉ là route legacy/chuyên sâu nếu cần |
 | **S11** | S07 | Sổ / Kỳ theo dõi | `/periods/:periodId` | Xem sổ tổng hợp theo kỳ (matrix ngày × slot, ca × máy) |
 | **S12** | S08 | Chi tiết record | `/records/:recordId` | Xem dữ liệu gốc, người nhập, thời điểm thực tế, lịch sử sửa |
 | **S13** | S09 | Chờ duyệt kỳ | `/approvals` | Danh sách các kỳ `READY_FOR_REVIEW` chờ Trưởng khoa phê duyệt |
@@ -304,7 +308,7 @@ Theo quyền:
 | **S15** | S11 | Đính chính | `/records/:recordId/correction` | Tạo đề nghị đính chính bản ghi sau khi kỳ đã phê duyệt |
 | **S16** | S13 | Dashboard | `/dashboard` | Bảng điều khiển KPI, tỷ lệ hoàn thành, cảnh báo bất thường |
 | **S17** | S14 | Báo cáo & Xuất file | `/reports` | Xuất file PDF/Excel mẫu chuẩn ISO từ kỳ đã APPROVED |
-| **S18** | S18 | Quản lý Khu vực & Điểm đo | `/admin/locations` | Quản trị 4 khu vực làm việc và thiết bị đo môi trường |
+| **S18** | S18 | Quản lý Khu vực & Điểm đo | `/admin/locations` | Quản trị 5 khu vực làm việc BM.01/KNBM và `KHO` auxiliary; thiết bị đo môi trường theo version hiện hành |
 | **S19** | S15 | Quản lý Thiết bị & Tủ | `/admin/assets` | Quản trị 25 máy và 13 dòng tủ/ngăn tủ kèm ánh xạ khu vực |
 | **S20** | S19/20 | Quản trị Biểu mẫu & Version | `/admin/templates` | Quản lý cấu hình 6 nhóm form và các version đã phát hành |
 | **S21** | S21 | Nhân sự & Phân quyền | `/admin/users` | Quản lý tài khoản, gán vai trò nghiệp vụ và phạm vi scope |
@@ -870,8 +874,8 @@ Trung tâm xuất báo cáo chuẩn ISO 15189:
 **Route:** `/admin/locations`
 
 Dành cho Admin hệ thống:
-- Quản trị danh mục 4 khu vực làm việc chính (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`) và Kho (`KHO`);
-- Gán và cập nhật mã thiết bị theo dõi môi trường (NAKĐT-01, NAKĐT-02, NAKĐT-03);
+- Quản trị danh mục 5 khu vực làm việc BM.01/KNBM (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`) và `KHO` auxiliary;
+- Gán và cập nhật mã thiết bị theo dõi môi trường theo form version hiện hành;
 - Cập nhật thứ tự sắp xếp và trạng thái hoạt động.
 
 ---
@@ -881,8 +885,8 @@ Dành cho Admin hệ thống:
 **Route:** `/admin/assets`
 
 Dành cho Admin hệ thống:
-- Danh mục 25 máy xét nghiệm chuẩn hóa (kèm `location_id` trỏ về 4 khu vực làm việc);
-- Quản lý trạng thái xác nhận nguồn (`Đã xác định` vs `OPEN ITEM — Cần khoa xác nhận`);
+- Danh mục 25 máy xét nghiệm chuẩn hóa (kèm `location_id` trỏ về 4 khu vực có thiết bị: Sinh hóa, Miễn dịch, Nước tiểu, Ly tâm);
+- Tất cả 25/25 máy đã Owner xác nhận chính thức, 0 OPEN ITEM; không dùng nhãn `OPEN ITEM — Cần khoa xác nhận` trong workflow hiện hành;
 - Danh mục 13 dòng tủ/ngăn tủ (TU-01 đến TU-10) kèm phân loại ngăn mát/ngăn đá và mục đích sử dụng;
 - Cấm xóa cứng thiết bị đã có dữ liệu lịch sử ghi chép.
 

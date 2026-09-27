@@ -146,7 +146,7 @@ Business rules bắt buộc:
 
 # 6. M03 — Thiết bị / BM.06 FINAL
 
-M03 là **equipment overview + latest shift status**, không thay thế màn nhập BM.06.
+M03 là **equipment overview + latest shift status + entry surface cho BM.06 trên `/equipment`**. Từ P6, nhập BM.06 SHIFT_1–SHIFT_4 được lồng ghép dưới mục thiết bị để giảm chuyển màn hình; không tách KTV sang workflow `/tasks`/`/calendar`.
 
 Bắt buộc:
 
@@ -161,7 +161,7 @@ Bắt buộc:
 - không merge thiết bị trùng tên;
 - ảnh thiết bị chỉ optional; không được dùng ảnh giả để quyết định identity.
 
-Có thể có search/filter/pagination ở overview. Khi nhập BM.06 mobile, vẫn phải bảo đảm rule `24/25 không Complete`, `25/25 mới Complete`.
+Có thể có search/filter/pagination ở overview. Khi nhập BM.06 mobile trên `/equipment#bm06-entry`, vẫn phải bảo đảm rule `24/25 không Complete`, `25/25 mới Complete`, Draft/Saving/Saved/Error/Completed rõ ràng và refresh/read-back đúng trạng thái.
 
 ---
 
@@ -397,7 +397,7 @@ Không mặc định Storage backup là business requirement nếu vẫn không 
 - [ ] P5 regression PASS.
 - [ ] RLS mới PASS.
 - [ ] M01–M08 visual/accessibility PASS.
-- [ ] Performance budget hợp lý trên mobile.
+- [ ] Performance budget hợp lý trên mobile với BEFORE/AFTER measurable metrics.
 - [ ] Backup/restore dữ liệu P5 mới PASS.
 - [ ] PWA offline/reconnect PASS.
 - [ ] Preview/Staging không có known 404/5xx trên core flow.

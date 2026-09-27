@@ -3068,8 +3068,8 @@ Data foundation được coi là xong khi:
 - master data có UUID nội bộ;
 - duplicate source name không bị merge;
 - 13 dòng tủ/ngăn seed được;
-- 4 khu vực làm việc chính (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`) + kho seed được;
-- 25 dòng asset BM.06 seed đủ, đúng thứ tự nguồn và có `location_id` trỏ về khu vực tương ứng;
+- 5 khu vực làm việc BM.01/KNBM (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`) + `KHO` auxiliary seed được;
+- 25 dòng asset BM.06 seed đủ, đúng thứ tự nguồn và có `location_id` trỏ về 4 khu vực có thiết bị tương ứng;
 - template/version model hoạt động;
 - period/occurrence generation idempotent;
 - records lưu `entered_at` server;

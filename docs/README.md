@@ -17,7 +17,8 @@ docs/
 │   ├── 03_SCREEN_MENU_UIUX_FINAL.md   # UI/UX nền, Area-first flow, mobile-first
 │   ├── 04_IMPLEMENTATION_PLAN_FINAL.md# Roadmap lịch sử P0–P9, phase sequencing, exit gate nền
 │   ├── 05_P5_PRODUCT_UI_EXPANSION_FINAL.md # P5 scope expansion: UI polish, Notification, Announcement, Incident, Report Center
-│   └── 06_P5_MOCKUP_SYNC_P6_P9_FINAL.md    # FINAL mới nhất: 6 mockup chốt, M01 giản lược, nav canonical, P6–P9 hardening bổ sung
+│   ├── 06_P5_MOCKUP_SYNC_P6_P9_FINAL.md    # P5 mockup contract, nav canonical, P6–P9 hardening bổ sung
+│   └── 07_UNIFIED_SHIFT_ENTRY_OWNER_DECISIONS_FINAL.md # Source-of-truth addendum cao nhất cho P6 unified shift entry
 │
 ├── [Hồ Sơ Đánh Giá & Audit Chuyên Đề]
 │   ├── AREA_FIRST_CHANGE_IMPACT_AUDIT.md # Hồ sơ lịch sử thay đổi Area-first; không phải source of truth mới hơn FINAL
@@ -65,9 +66,17 @@ Ngoài `00–04`, **bắt buộc** đọc thêm:
 6. `05_P5_PRODUCT_UI_EXPANSION_FINAL.md`
 7. `06_P5_MOCKUP_SYNC_P6_P9_FINAL.md`
 
+### Task P6 Unified Shift Entry trở đi
+
+Bắt buộc đọc thêm và ưu tiên cao nhất:
+
+8. `07_UNIFIED_SHIFT_ENTRY_OWNER_DECISIONS_FINAL.md`
+
 File 05 là Owner-approved P5 scope expansion.
 
-File 06 là quyết định mới nhất cho:
+File 06 là quyết định hiện hành cho P5 visual/mockup. File 07 là quyết định Owner mới nhất cho P6 unified shift entry và ghi đè mọi rule cũ về roster, Quick Duty, Calendar/Tasks, BM.01/BM.06, QA gate và performance.
+
+File 06 là quyết định hiện hành cho:
 
 - cách diễn giải 6 mockup đã chốt;
 - M01 Home đã bỏ block `Việc ưu tiên` và `Thao tác nhanh` để giảm rối;
@@ -75,7 +84,7 @@ File 06 là quyết định mới nhất cho:
 - các điểm không được copy từ dữ liệu/text minh họa của mockup;
 - bổ sung regression/security/UAT/Production/handover cho P6–P9.
 
-Nếu code P5+ mà agent không đọc 05 và 06 thì task **không đạt spec-review gate**.
+Nếu code P5+ mà agent không đọc 05 và 06 thì task **không đạt spec-review gate**. Nếu code P6 unified shift entry mà agent không đọc 07 thì task **không đạt spec-review gate**.
 
 ### Raw source
 
@@ -87,18 +96,19 @@ Dùng `danh mục biểu mẫu/` để đối chiếu nguồn khi cần. Không 
 
 ### Business/data/security lõi
 
-1. Quyết định Owner mới nhất được ghi rõ trong FINAL/Addendum.
-2. `00_PRODUCT_SCOPE_FINAL.md`
-3. `02_FORMS_DATA_RULES_FINAL.md`
-4. `01_ARCHITECTURE_FINAL.md`
-5. `03_SCREEN_MENU_UIUX_FINAL.md`
+1. `07_UNIFIED_SHIFT_ENTRY_OWNER_DECISIONS_FINAL.md` — Owner Decisions mới nhất cho P6 unified shift entry; ưu tiên cao nhất khi mâu thuẫn với 00–06.
+2. Quyết định Owner mới nhất được ghi rõ trong FINAL/Addendum.
+3. `00_PRODUCT_SCOPE_FINAL.md`
+4. `02_FORMS_DATA_RULES_FINAL.md`
+5. `01_ARCHITECTURE_FINAL.md`
+6. `03_SCREEN_MENU_UIUX_FINAL.md`
 
 ### P5+
 
-6. `05_P5_PRODUCT_UI_EXPANSION_FINAL.md` — scope expansion đã duyệt.
-7. `06_P5_MOCKUP_SYNC_P6_P9_FINAL.md` — mockup contract và downstream gates mới nhất; tại các mục được ghi rõ, file 06 ưu tiên hơn presentation/sequencing cũ.
-8. `04_IMPLEMENTATION_PLAN_FINAL.md` — dùng làm roadmap/sequencing nền; các câu cũ bị 05/06 ghi đè từ P5 trở đi không còn là blocker.
-9. Audit/process artifacts chỉ để tham khảo lịch sử.
+7. `05_P5_PRODUCT_UI_EXPANSION_FINAL.md` — scope expansion đã duyệt.
+8. `06_P5_MOCKUP_SYNC_P6_P9_FINAL.md` — mockup contract và downstream gates P5+; tại các mục được ghi rõ, file 06 ưu tiên hơn presentation/sequencing cũ.
+9. `04_IMPLEMENTATION_PLAN_FINAL.md` — dùng làm roadmap/sequencing nền; các câu cũ bị 05/06/07 ghi đè từ P5/P6 trở đi không còn là blocker.
+10. Audit/process artifacts chỉ để tham khảo lịch sử.
 
 Ví dụ các mâu thuẫn đã được giải quyết:
 

@@ -88,3 +88,85 @@
 2. **Phân định rõ Roster và Người nhập thực tế (`entered_by`):**
    - Phân công ca trực (Roster Assignment) xác định ai chịu trách nhiệm ca trực đó.
    - Bản ghi đo đạc/nhập liệu thực tế lưu chính xác `entered_by = auth.uid()` của người đang thao tác trên máy, đảm bảo tính giải trình (attribution & audit trail) tuyệt đối, không ghi đè người nhập bằng danh sách roster.
+
+---
+
+# 7. Source-of-Truth Precedence for P6+
+
+`07_UNIFIED_SHIFT_ENTRY_OWNER_DECISIONS_FINAL.md` là **source-of-truth addendum ưu tiên cao nhất** cho P6 Unified Shift Entry và mọi phase sau có liên quan đến ca trực, nhập nhanh, BM.01/BM.06, điều hướng Calendar/Tasks, QA gate và performance.
+
+Thứ tự ưu tiên khi có mâu thuẫn:
+
+1. `07_UNIFIED_SHIFT_ENTRY_OWNER_DECISIONS_FINAL.md` — Owner Decisions mới nhất cho Unified Shift Entry.
+2. Các quyết định Owner mới hơn được ghi thành addendum sau này.
+3. `00_PRODUCT_SCOPE_FINAL.md`.
+4. `02_FORMS_DATA_RULES_FINAL.md`.
+5. `01_ARCHITECTURE_FINAL.md`.
+6. `03_SCREEN_MENU_UIUX_FINAL.md`.
+7. `05_P5_PRODUCT_UI_EXPANSION_FINAL.md` và `06_P5_MOCKUP_SYNC_P6_P9_FINAL.md` trong phạm vi visual/mockup/P5 expansion.
+8. `04_IMPLEMENTATION_PLAN_FINAL.md` chỉ còn là roadmap/sequencing nền; mọi câu cũ trái với 07 không còn là blocker.
+9. Audit/process artifacts (`AREA_FIRST_CHANGE_IMPACT_AUDIT.md`, `FINAL_CROSS_FILE_AUDIT.md`, `p5_comprehensive_audit_report.md`) chỉ là lịch sử đối chiếu, không ghi đè 07.
+
+# 8. BM.06 v4.1 Current Revision — 25 Device Columns, Source Order 1–25
+
+BM.06 v4.1 là biểu mẫu hiện hành cho Nhật ký hoạt động trang thiết bị. BM.06 v4.0 được giữ nguyên làm historical source, không overwrite/xóa.
+
+BM.06 v4.1 bắt buộc:
+
+1. Có đủ **25 cột/dòng thiết bị** theo đúng `source_order` Phụ lục **1–25**; không còn trạng thái kế hoạch `14 + 11 OPEN ITEM`.
+2. Mapping khu vực đã khóa: Sinh hóa 9 máy, Miễn dịch 8 máy, Nước tiểu 4 máy, Ly tâm 4 máy, Nhận bệnh phẩm 0 máy.
+3. Mỗi ngày có 4 ca cố định: `SHIFT_1` 07:00–11:30, `SHIFT_2` 11:30–13:30, `SHIFT_3` 13:30–16:30, `SHIFT_4` 16:30–07:00 hôm sau theo `business_date` ngày bắt đầu ca.
+4. Trạng thái thiết bị chỉ dùng `BT | KSD | H`; không dùng N/A thay thế `KSD` hoặc `H`.
+5. “Lượng sử dụng” được suy ra từ ca/khung giờ; không có numeric usage input, không default `4.5`, không bulk/default `BT`.
+6. Draft được phép lưu khi chưa đủ 25/25; Completed/Final chỉ khi đủ 25/25 thiết bị đã có trạng thái hợp lệ.
+
+# 9. Calendar/Tasks Legacy Routing — Not Primary Entry Workflow
+
+Từ P6 Unified Shift Entry:
+
+1. `/quick-duty` là Phiên làm việc / Nhập nhanh chính cho KTV.
+2. `/equipment` là màn hình thiết bị có lồng ghép nhập BM.06 SHIFT_1–SHIFT_4 dưới danh sách thiết bị.
+3. `/temperature` là màn hình chuyên biệt nhiệt độ/độ ẩm; danh sách điểm đo phía dưới là read-only, nhập qua nút `Nhập số liệu`.
+4. `/approvals` là màn hình phê duyệt đơn giản một nơi.
+5. `/calendar` và `/tasks` **không còn là workflow nhập chính**. Nếu còn route thì chỉ để legacy redirect/backward compatibility cho saved links; không expose như CTA/menu nghiệp vụ chính.
+
+# 10. P6 Additional Gates Before Refactor/Implementation
+
+Không bắt đầu refactor/code P6 tiếp theo cho đến khi Owner duyệt roadmap/canonical docs mới.
+
+P6 bổ sung các gate bắt buộc:
+
+## 10.1. Codebase Cleanup & Simplification Gate
+
+- Audit route/component trùng vai trò trước khi refactor.
+- Cắt/gộp màn hình và CTA nghiệp vụ dư thừa để KTV không phải chuyển nhiều màn hình.
+- Không xóa route legacy nếu có saved links; route legacy phải redirect rõ về màn hình chính.
+- Không gọi là “đã tối ưu” nếu chưa có BEFORE/AFTER measurable evidence.
+
+## 10.2. End-to-End Gate bắt buộc
+
+E2E phải có flow thực tế tối thiểu:
+
+`Home → Phiên làm việc (/quick-duty) → roster tự nhận kíp từ danh sách nhân sự chính thức → nhập biểu mẫu → save → refresh → trạng thái đúng → export đúng`
+
+Phải đọc lại dữ liệu server/database hoặc export parse được; không chỉ dựa vào toast/UI tạm.
+
+## 10.3. Mutation State Gate
+
+Mọi form quan trọng phải thể hiện và test rõ các trạng thái:
+
+- `Draft`: lưu nháp/partial, không ngụy tạo completed.
+- `Saving`: đang gửi server, chống double-submit.
+- `Saved`: server xác nhận thành công và refresh/read-back đúng.
+- `Error`: lỗi validation/permission/conflict/server, không báo đã lưu.
+- `Completed`: chỉ khi đủ điều kiện hoàn tất nghiệp vụ của form/kỳ/ca.
+
+## 10.4. Performance Gate
+
+P6 phải có metrics đo được, tối thiểu:
+
+- BEFORE baseline trước thay đổi.
+- AFTER sau thay đổi.
+- Cùng route, cùng viewport/device profile, cùng môi trường đo.
+- Ghi rõ TTFB, DOMContentLoaded, LCP hoặc chỉ số tương đương, request count/JS size nếu có.
+- Không claim “tối ưu” nếu không có số đo BEFORE/AFTER.
