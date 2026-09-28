@@ -170,3 +170,21 @@ P6 phải có metrics đo được, tối thiểu:
 - Cùng route, cùng viewport/device profile, cùng môi trường đo.
 - Ghi rõ TTFB, DOMContentLoaded, LCP hoặc chỉ số tương đương, request count/JS size nếu có.
 - Không claim “tối ưu” nếu không có số đo BEFORE/AFTER.
+
+## 10.5. PWA Offline/Reconnect Gate — Scope đơn giản hóa
+
+SH103-Lab **không hỗ trợ offline working mode** trong P6:
+
+- Không offline write.
+- Không background sync.
+- Không queue mutation.
+- Không fake `Saved`/`Completed` khi mất mạng.
+- `/offline` route/fallback không còn là gate bắt buộc nếu global offline state hoạt động đúng.
+
+Gate P6 hợp lệ khi:
+
+1. App hiển thị global offline banner/state rõ ràng khi browser mất mạng.
+2. Mọi save/mutation khi offline bị chặn hoặc trả lỗi rõ ràng; UI không được báo đã lưu.
+3. Khi reconnect, app refresh/read-back đúng trạng thái server cho các màn workflow chính.
+4. Service Worker/manifest chỉ phục vụ installability/app shell/static assets; không cache business API, `/rest`, `/rpc`, admin, reports hoặc mutation responses.
+5. Không yêu cầu route `/offline` riêng là blocker nếu các điều kiện trên PASS.

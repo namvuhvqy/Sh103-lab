@@ -6,7 +6,8 @@ const resultUrl = (request: Request, area: string, params: Record<string, string
   const referer = request.headers.get("referer") ?? "";
   const refererUrl = referer ? new URL(referer) : null;
   const basePath = referer.includes("/equipment") ? "/equipment" : "/bm06";
-  const url = new URL(basePath, request.url);
+  const origin = refererUrl?.origin ?? new URL(request.url).origin;
+  const url = new URL(basePath, origin);
   if (area) url.searchParams.set("area", area);
   const date = refererUrl?.searchParams.get("date");
   const shift = refererUrl?.searchParams.get("shift");

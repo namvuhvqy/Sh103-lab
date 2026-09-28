@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(46);
+select plan(49);
 
 -- Test-owned personnel fixtures. Production migrations never create Auth users.
 insert into auth.users (id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at)
@@ -317,6 +317,44 @@ select ok(
 
 -- 5. RPC function signatures
 select has_function('public', 'save_duty_roster', array['date', 'text', 'uuid[]', 'integer'], 'save_duty_roster RPC signature exists');
+
+set local role authenticated;
+select set_config('request.jwt.claim.role','authenticated',true);
+select set_config('request.jwt.claim.sub','60000000-0000-0000-0000-000000000002',true);
+select lives_ok($$select public.ensure_operational_month('2026-09-28')$$,'active STAFF can ensure operational month for unified workflow');
+select is(
+  (
+    select count(*)::integer
+    from public.register_periods p
+    join public.form_template_versions v on v.id = p.form_version_id
+    join public.form_templates t on t.id = v.form_template_id
+    where t.code = 'BM.06/QL.TRTB.01'
+      and p.period_start = '2026-09-01'
+      and p.period_end = '2026-09-30'
+      and p.location_id is null
+      and p.asset_id is null
+  ),
+  1,
+  'active STAFF reads exactly one BM.06 monthly period after P6 RLS alignment'
+);
+select is(
+  (
+    select count(*)::integer
+    from public.form_version_assets fva
+    join public.assets a on a.id = fva.asset_id
+    join public.locations l on l.id = a.location_id
+    where fva.form_version_id = (
+      select v.id
+      from public.form_template_versions v
+      join public.form_templates t on t.id = v.form_template_id
+      where t.code = 'BM.06/QL.TRTB.01' and v.status = 'PUBLISHED'
+    )
+    and fva.active = true
+  ),
+  25,
+  'active STAFF reads exactly 25 BM.06 assets through joined RLS'
+);
+reset role;
 select has_function('public', 'get_work_session_context', array['date', 'text'], 'get_work_session_context RPC signature exists');
 select has_function('public', 'staff_reference_summary', array['uuid'], 'staff_reference_summary RPC signature exists');
 select has_function('public', 'set_staff_profile_and_scopes', array['uuid', 'text', 'text', 'boolean', 'text', 'integer', 'uuid[]', 'uuid[]', 'uuid[]'], 'set_staff_profile_and_scopes RPC signature exists');

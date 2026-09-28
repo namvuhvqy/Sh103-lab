@@ -56,7 +56,7 @@ describe("P1 PWA & Offline UX Requirements", () => {
     }
   });
 
-  it("service worker sw.js only caches static/shell/offline and explicitly bypasses auth/rest/rpc/admin/reports", () => {
+  it("service worker sw.js only caches static shell assets and explicitly bypasses auth/rest/rpc/admin/reports", () => {
     const swPath = path.resolve(__dirname, "../public/sw.js");
     expect(fs.existsSync(swPath)).toBe(true);
     const swContent = fs.readFileSync(swPath, "utf-8");
@@ -68,8 +68,8 @@ describe("P1 PWA & Offline UX Requirements", () => {
     expect(swContent).toContain("/api");
     expect(swContent).toContain("/admin");
     expect(swContent).toContain("/reports");
-    // Offline fallback cached
-    expect(swContent).toContain("/offline");
+    // P6 does not support offline working mode: no business API/mutation cache.
     expect(swContent).not.toMatch(/STATIC_ASSETS\s*=\s*\[[\s\S]*?["']\/["']/);
+    expect(swContent).not.toMatch(/background\s*sync|sync\s*event|mutation\s*queue|offline\s*write/i);
   });
 });

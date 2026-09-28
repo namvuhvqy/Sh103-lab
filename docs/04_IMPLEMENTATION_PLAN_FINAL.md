@@ -579,9 +579,14 @@ Tạo:
 
 - online/offline detector;
 - global offline banner;
-- offline page;
 - không fake save;
-- không background write queue.
+- không background write queue;
+- không offline write;
+- không background sync;
+- không queue mutation;
+- reconnect phải refresh/read-back trạng thái server.
+
+`/offline` route/fallback có thể tồn tại để tương thích shell/PWA cũ, nhưng từ P6 trở đi **không phải gate bắt buộc**. Gate offline/reconnect dựa trên global offline banner/state, mutation blocking/error rõ ràng và reconnect read-back server.
 
 ## 13.8. P1-OPS-01 — Environment
 
@@ -623,7 +628,8 @@ README phải giúp một người mới:
 - typecheck;
 - basic render;
 - manifest load;
-- offline page;
+- global offline banner/state;
+- mutation offline không fake saved;
 - no secret scan;
 - mobile shell 360/390;
 - desktop shell.

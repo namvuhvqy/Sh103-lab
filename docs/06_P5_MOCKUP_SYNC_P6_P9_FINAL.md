@@ -399,7 +399,7 @@ Không mặc định Storage backup là business requirement nếu vẫn không 
 - [ ] M01–M08 visual/accessibility PASS.
 - [ ] Performance budget hợp lý trên mobile với BEFORE/AFTER measurable metrics.
 - [ ] Backup/restore dữ liệu P5 mới PASS.
-- [ ] PWA offline/reconnect PASS.
+- [ ] PWA offline/reconnect PASS: global offline banner/state rõ ràng, không offline write/background sync/queue mutation, save khi offline bị chặn hoặc báo lỗi rõ, reconnect refresh/read-back đúng server state. `/offline` route riêng không phải blocker nếu các điều kiện này PASS.
 - [ ] Preview/Staging không có known 404/5xx trên core flow.
 
 ---
