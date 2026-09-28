@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -28,6 +28,7 @@ export interface TemperaturePoint {
   isAbnormal: boolean;
   updatedAt: string;
   code: string;
+  slotCode: string | null;
   minTemp: number;
   maxTemp: number;
 }
@@ -47,27 +48,19 @@ export function TemperatureLabDashboard({
   activeDate = "25/09/2026",
 
 }: TemperatureLabDashboardProps) {
-  // Tab chính chuẩn Mockup: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình]
-  const [activeTab, setActiveTab] = useState<"overview" | "input" | "chart" | "report" | "config">("overview");
+  // Owner decision: remove only the Tổng quan button; keep chart/list UX and open read-only list by default.
+  const [activeTab, setActiveTab] = useState<"list" | "input" | "chart" | "report" | "config">("list");
 
   // Bộ lọc
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
-  const [selectedShift, setSelectedShift] = useState<string>("SHIFT_1");
-  const [points, setPoints] = useState<TemperaturePoint[]>(initialPoints);
+  const [selectedShift, setSelectedShift] = useState<string>("MORNING");
+  const points = initialPoints;
 
-  // Thống kê 4 KPI Cards chuẩn Image 2:
-  const totalPoints = points.length;
-  const recordedCount = points.filter((p) => p.temperature !== null).length;
-  const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
-  const abnormalCount = points.filter((p) => p.isAbnormal).length;
-  const abnormalPercent = totalPoints > 0 ? ((abnormalCount / totalPoints) * 100).toFixed(1) : "0.0";
-  const unrecordedCount = totalPoints - recordedCount;
-  const unrecordedPercent = totalPoints > 0 ? Math.round((unrecordedCount / totalPoints) * 100) : 0;
-
-  // Lọc theo tìm kiếm và khu vực
+  // Lọc theo tìm kiếm, khu vực và slot đo thực tế.
   const filteredPoints = useMemo(() => {
     return points.filter((p) => {
+      if (p.slotCode !== selectedShift) return false;
       if (selectedArea !== "ALL" && p.area !== selectedArea) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -75,53 +68,24 @@ export function TemperatureLabDashboard({
       }
       return true;
     });
-  }, [points, selectedArea, searchQuery]);
+  }, [points, selectedArea, selectedShift, searchQuery]);
 
-  // Sửa nhanh giá trị trên bảng
-  const handleInlineCellChange = (id: string, newTemp: string) => {
-    const val = newTemp.trim() !== "" ? parseFloat(newTemp) : null;
-    setPoints((prev) =>
-      prev.map((pt) => {
-        if (pt.id === id) {
-          const isAbn = val !== null && (val < pt.minTemp || val > pt.maxTemp);
-          return {
-            ...pt,
-            temperature: val,
-            isAbnormal: isAbn,
-            updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-          };
-        }
-        return pt;
-      })
-    );
-
-    // Gửi lưu API ngầm
-    fetch("/api/measurements/quick-save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        occurrenceId: id,
-        temperature: val,
-      }),
-    }).catch(console.warn);
-  };
+  const filteredOccurrences = useMemo(
+    () => occurrences.filter((occurrence) => occurrence.slot_code === selectedShift),
+    [occurrences, selectedShift]
+  );
+  const totalPoints = filteredPoints.length;
+  const recordedCount = filteredPoints.filter((p) => p.temperature !== null).length;
+  const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
+  const abnormalCount = filteredPoints.filter((p) => p.isAbnormal).length;
+  const abnormalPercent = totalPoints > 0 ? ((abnormalCount / totalPoints) * 100).toFixed(1) : "0.0";
+  const unrecordedCount = totalPoints - recordedCount;
+  const unrecordedPercent = totalPoints > 0 ? Math.round((unrecordedCount / totalPoints) * 100) : 0;
 
   return (
     <div className="space-y-5">
-      {/* 1. Thanh Tabs Chuẩn Mockup Ảnh 2: [Tổng quan] [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình] */}
+      {/* 1. Thanh Tabs Chuẩn Mockup: [Nhập số liệu] [Biểu đồ] [Báo cáo] [Cấu hình]; bỏ riêng nút Tổng quan theo Owner. */}
       <div className="flex overflow-x-auto gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold [scrollbar-width:none]">
-        <button
-          type="button"
-          onClick={() => setActiveTab("overview")}
-          className={cn(
-            "px-4 py-2 rounded-xl transition-all shrink-0",
-            activeTab === "overview"
-              ? "bg-teal-700 text-white shadow-xs font-black"
-              : "text-slate-600 hover:text-slate-900"
-          )}
-        >
-          Tổng quan
-        </button>
         <button
           type="button"
           onClick={() => setActiveTab("input")}
@@ -188,16 +152,15 @@ export function TemperatureLabDashboard({
           onChange={(e) => setSelectedShift(e.target.value)}
           className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 outline-none hover:border-teal-400"
         >
-          <option value="SHIFT_1">Ca 1 - Sáng (07:00–11:30)</option>
-          <option value="SHIFT_2">Ca 2 - Trực trưa (11:30–13:30)</option>
-          <option value="SHIFT_3">Ca 3 - Chiều (13:30–16:40)</option>
-          <option value="SHIFT_4">Ca 4 - Trực đêm (16:40–07:00)</option>
+          <option value="MORNING">Sáng (08:00–09:00)</option>
+          <option value="AFTERNOON">Chiều (14:30–15:30)</option>
         </select>
 
         <button
           type="button"
           onClick={() => {
             setSelectedArea("ALL");
+            setSelectedShift("MORNING");
             setSearchQuery("");
           }}
           className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 transition"
@@ -216,13 +179,13 @@ export function TemperatureLabDashboard({
             </h2>
             <button
               type="button"
-              onClick={() => setActiveTab("overview")}
+              onClick={() => setActiveTab("list")}
               className="text-xs font-bold text-teal-800 hover:underline"
             >
-              ← Về bảng tổng quan
+              ← Về danh sách điểm đo
             </button>
           </div>
-          <InlineTemperatureList initialOccurrences={occurrences} />
+          <InlineTemperatureList initialOccurrences={filteredOccurrences} />
         </div>
       ) : (
         <>
@@ -252,9 +215,7 @@ export function TemperatureLabDashboard({
                 <p className="text-2xl sm:text-3xl font-black text-slate-900">{recordedCount}</p>
                 <span className="text-xs font-bold text-slate-500">{recordedPercent}%</span>
               </div>
-              <p className="mt-2 text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                <span>↑</span> +2 so với hôm qua
-              </p>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
             </div>
 
             {/* Card 3: Bất thường */}
@@ -267,9 +228,7 @@ export function TemperatureLabDashboard({
                 <p className="text-2xl sm:text-3xl font-black text-rose-800">{abnormalCount}</p>
                 <span className="text-xs font-bold text-slate-500">{abnormalPercent}%</span>
               </div>
-              <p className="mt-2 text-[11px] font-bold text-rose-700 flex items-center gap-1">
-                <span>↑</span> +1 so với hôm qua
-              </p>
+              <p className="mt-2 text-[11px] font-semibold text-slate-500">Theo bộ lọc hiện tại</p>
             </div>
 
             {/* Card 4: Chưa ghi */}
@@ -361,23 +320,19 @@ export function TemperatureLabDashboard({
 
                           {/* Ô nhập nhiệt độ tương tác trực tiếp (Inline Click-to-Edit) */}
                           <td className="py-2.5 px-3 text-center">
-                            <input
-                              type="number"
-                              step="0.1"
-                              inputMode="decimal"
-                              defaultValue={pt.temperature != null ? pt.temperature : ""}
-                              onBlur={(e) => handleInlineCellChange(pt.id, e.target.value)}
+                            <span
                               className={cn(
-                                "w-16 py-1 px-2 text-center rounded-lg border text-xs font-black transition-all",
+                                "inline-flex min-w-16 justify-center rounded-lg border px-2 py-1 text-xs font-black",
                                 pt.temperature != null
                                   ? isAbnormal
-                                    ? "border-rose-400 bg-rose-50 text-rose-800 focus:ring-1 focus:ring-rose-500"
-                                    : "border-emerald-300 bg-emerald-50/40 text-emerald-900 focus:ring-1 focus:ring-emerald-500"
-                                  : "border-slate-200 bg-slate-50 text-slate-500 placeholder:text-slate-300"
+                                    ? "border-rose-200 bg-rose-50 text-rose-800"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                                  : "border-slate-200 bg-slate-50 text-slate-500"
                               )}
-                              placeholder="—"
                               title={`Ngưỡng chuẩn: ${pt.minTemp}°C – ${pt.maxTemp}°C`}
-                            />
+                            >
+                              {pt.temperature != null ? pt.temperature : "—"}
+                            </span>
                           </td>
 
                           {/* Ô độ ẩm */}

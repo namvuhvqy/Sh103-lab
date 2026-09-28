@@ -30,10 +30,32 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const ready = rows.filter((row) => row.status === "READY_FOR_REVIEW");
   const open = rows.filter((row) => row.status === "OPEN");
 
-  const totalReports = rows.length > 0 ? rows.length : 124;
-  const approvedCount = approved.length > 0 ? approved.length : 116;
-  const readyCount = ready.length > 0 ? ready.length : 5;
-  const openCount = open.length > 0 ? open.length : 3;
+  const totalReports = rows.length;
+  const approvedCount = approved.length;
+  const readyCount = ready.length;
+  const openCount = open.length;
+  const percent = (count: number) => totalReports > 0 ? Math.round((count / totalReports) * 100) : 0;
+
+  const locationStats = Array.from(
+    rows.reduce((stats, row) => {
+      const name = row.locations?.name ?? row.assets?.source_name ?? "Toàn khoa";
+      const current = stats.get(name) ?? { total: 0, approved: 0 };
+      current.total += 1;
+      if (row.status === "APPROVED") current.approved += 1;
+      stats.set(name, current);
+      return stats;
+    }, new Map<string, { total: number; approved: number }>())
+  );
+
+  const templateStats = Array.from(
+    rows.reduce((stats, row) => {
+      const template = row.form_template_versions.form_templates;
+      const current = stats.get(template.code) ?? { name: template.name, count: 0 };
+      current.count += 1;
+      stats.set(template.code, current);
+      return stats;
+    }, new Map<string, { name: string; count: number }>())
+  );
 
   // Lọc theo searchParams
   const selectedStatus = query.status ?? "ALL";
@@ -66,7 +88,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             Xuất biểu mẫu ISO (Excel / PDF)
           </Link>
           <Link href="/periods" className="px-4 py-2 rounded-xl text-slate-700 hover:text-teal-900 hover:bg-white/60 shrink-0">
-            47 Sổ kỳ &amp; Theo dõi
+          Sổ kỳ &amp; Theo dõi
           </Link>
           <Link href="/approvals" className="px-4 py-2 rounded-xl text-slate-700 hover:text-teal-900 hover:bg-white/60 shrink-0">
             Phê duyệt &amp; Đính chính
@@ -160,9 +182,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </div>
             <p className="mt-2 text-2xl sm:text-3xl font-black text-emerald-800">{approvedCount}</p>
             <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: "93.5%" }} />
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${percent(approvedCount)}%` }} />
             </div>
-            <p className="mt-1 text-[10px] font-bold text-slate-500 text-right">Đã ký số</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500 text-right">{percent(approvedCount)}% tổng số kỳ</p>
           </div>
 
           <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-xs">
@@ -172,7 +194,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </div>
             <p className="mt-2 text-2xl sm:text-3xl font-black text-amber-800">{readyCount}</p>
             <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-amber-500 rounded-full" style={{ width: "4.0%" }} />
+              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${percent(readyCount)}%` }} />
             </div>
             <p className="mt-1 text-[10px] font-bold text-slate-500 text-right">Chờ Trưởng khoa</p>
           </div>
@@ -184,7 +206,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </div>
             <p className="mt-2 text-2xl sm:text-3xl font-black text-red-800">{openCount}</p>
             <div className="mt-2 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-red-500 rounded-full" style={{ width: "2.5%" }} />
+              <div className="h-full bg-red-500 rounded-full" style={{ width: `${percent(openCount)}%` }} />
             </div>
             <p className="mt-1 text-[10px] font-bold text-slate-500 text-right">Kỳ đang mở</p>
           </div>
@@ -198,26 +220,20 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               Tỷ lệ hoàn thành theo khu vực
             </h3>
             <div className="space-y-3 text-xs">
-              {[
-                { name: "Sinh hóa", pct: 92, icon: "🧪" },
-                { name: "Miễn dịch", pct: 88, icon: "🧬" },
-                { name: "Nước tiểu", pct: 95, icon: "💧" },
-                { name: "Ly tâm", pct: 90, icon: "🔄" },
-                { name: "Nhận bệnh phẩm", pct: 80, icon: "🩸" },
-              ].map((item) => (
-                <div key={item.name} className="flex items-center justify-between gap-3">
-                  <span className="w-32 flex items-center gap-2 font-bold text-slate-700 truncate">
-                    <span>{item.icon}</span> {item.name}
-                  </span>
+              {locationStats.map(([name, stats]) => {
+                const completion = stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0;
+                return (
+                <div key={name} className="flex items-center justify-between gap-3">
+                  <span className="w-32 font-bold text-slate-700 truncate">{name}</span>
                   <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-teal-600 rounded-full"
-                      style={{ width: `${item.pct}%` }}
+                      style={{ width: `${completion}%` }}
                     />
                   </div>
-                  <span className="w-10 text-right font-black text-slate-800">{item.pct}%</span>
+                  <span className="w-10 text-right font-black text-slate-800">{completion}%</span>
                 </div>
-              ))}
+              );})}
             </div>
           </div>
 
@@ -227,21 +243,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               Tỷ lệ theo biểu mẫu đầu ra
             </h3>
             <div className="space-y-2.5 text-xs">
-              {[
-                { code: "BM.01", name: "Nhiệt độ & Độ ẩm", count: 42, pct: "33.9%", dot: "bg-teal-500" },
-                { code: "BM.06", name: "Nhật ký thiết bị 4 ca", count: 35, pct: "28.2%", dot: "bg-purple-500" },
-                { code: "BM.01_KNBM", name: "Khử nhiễm bề mặt", count: 28, pct: "22.6%", dot: "bg-emerald-500" },
-                { code: "BM.02", name: "Bảo dưỡng thiết bị", count: 19, pct: "15.3%", dot: "bg-amber-500" },
-              ].map((item) => (
-                <div key={item.code} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <span className={`size-2.5 rounded-full ${item.dot}`} />
-                    <span className="font-black text-teal-900">{item.code}</span>
-                    <span className="text-slate-500 truncate">{item.name}</span>
+              {templateStats.map(([code, item]) => (
+                <div key={code} className="flex min-w-0 items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <div className="min-w-0 flex flex-1 items-center gap-2">
+                    <span className="size-2.5 shrink-0 rounded-full bg-teal-500" />
+                    <span className="shrink-0 font-black text-teal-900">{code}</span>
+                    <span className="min-w-0 truncate text-slate-500">{item.name}</span>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex shrink-0 items-center gap-3">
                     <b className="text-slate-800">{item.count}</b>
-                    <span className="text-[11px] font-semibold text-slate-500">{item.pct}</span>
+                    <span className="text-[11px] font-semibold text-slate-500">{percent(item.count)}%</span>
                   </div>
                 </div>
               ))}

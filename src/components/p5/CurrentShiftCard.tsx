@@ -128,8 +128,8 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
               : shift.code === "SHIFT_2"
               ? "Ca trực trưa (11:30 – 13:30): Trực nhận mẫu cấp cứu, theo dõi thiết bị liên tục và kiểm soát sự cố."
               : shift.code === "SHIFT_3"
-              ? "Ca chiều (13:30 – 16:40): Đo nhiệt độ ca 2 (14h), vận hành máy xét nghiệm và hoàn thành khử nhiễm."
-              : "Ca trực đêm (16:40 – 07:00 hôm sau): Trực đêm cấp cứu viện 103, kiểm soát mẫu và bảo dưỡng theo lịch."}
+              ? "Ca chiều (13:30 – 16:30): Đo nhiệt độ ca 2 (14h), vận hành máy xét nghiệm và hoàn thành khử nhiễm."
+              : "Ca trực đêm (16:30 – 07:00 hôm sau): Trực đêm cấp cứu viện 103, kiểm soát mẫu và bảo dưỡng theo lịch."}
           </p>
         </div>
 
@@ -161,17 +161,17 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
           )}
 
           <Link
-            href="/calendar"
+            href="/quick-duty"
             className={cn(
               "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-2xl px-3 py-2 text-xs font-bold transition-all border",
               isDuty
                 ? "border-white/20 bg-white/10 hover:bg-white/20 text-white"
                 : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
             )}
-            title="Xem lịch trực toàn khoa"
+            title="Chọn ca và tự nhận kíp trong Phiên làm việc"
           >
             <CalendarDays className="size-4" />
-            <span className="hidden sm:inline">Lịch trực</span>
+            <span className="hidden sm:inline">Chọn ca</span>
           </Link>
         </div>
       </div>

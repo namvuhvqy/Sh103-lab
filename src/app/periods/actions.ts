@@ -65,7 +65,7 @@ export async function batchApprovePeriodsAction(form: FormData) {
 
   for (const id of periodIds) {
     const { data: p } = await supabase.from("register_periods").select("lock_version,status").eq("id", id).single();
-    if (p && p.status === "READY_FOR_REVIEW") {
+    if (p && ["OPEN", "RETURNED", "READY_FOR_REVIEW"].includes(p.status)) {
       const { error } = await supabase.rpc("approve_period", {
         target_period_id: id,
         target_expected_lock: p.lock_version,

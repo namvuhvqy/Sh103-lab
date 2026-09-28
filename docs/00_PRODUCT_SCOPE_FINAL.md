@@ -92,20 +92,20 @@ MVP **không tạo thêm một role riêng** chỉ cho “Nhân viên quản lý
 
 ### 3.2. Danh mục cơ bản & 5 Khu vực làm việc của Khoa
 
-Chuẩn hóa **5 khu vực làm việc** của khoa:
-1. **Sinh hóa** (`SINH_HOA`) — Khu vực xét nghiệm chuyên sâu, máy sinh hóa tự động, khí máu, HbA1c.
-2. **Miễn dịch** (`MIEN_DICH`) — Khu vực xét nghiệm miễn dịch tự động, hệ thống đa nhiệm SH-MD (ARCHITECT-2, Alinity) và thiết bị lắc chuyên dụng.
-3. **Nước tiểu** (`NUOC_TIEU`) — Khu vực xét nghiệm nước tiểu và cặn lắng.
-4. **Ly tâm** (`LY_TAM`) — Khu vực ly tâm tách huyết thanh/huyết tương.
+Chuẩn hóa **5 khu vực làm việc** chính thức của khoa:
+1. **Sinh hóa** (`SINH_HOA`) — Khu vực làm xét nghiệm Sinh hóa (9 máy xét nghiệm chuyên sâu, máy sinh hóa tự động, khí máu, HbA1c).
+2. **Miễn dịch** (`MIEN_DICH`) — Khu vực làm xét nghiệm Miễn dịch (8 máy xét nghiệm miễn dịch tự động, hệ thống đa nhiệm SH-MD ARCHITECT-2, Alinity và thiết bị lắc).
+3. **Nước tiểu** (`NUOC_TIEU`) — Khu vực làm xét nghiệm Nước tiểu (4 máy xét nghiệm nước tiểu và cặn lắng).
+4. **Ly tâm** (`LY_TAM`) — Khu vực Ly tâm (4 máy ly tâm tách huyết thanh/huyết tương).
 5. **Nhận bệnh phẩm** (`NHAN_BENH_PHAM`) — Khu vực tiếp nhận, phân loại mẫu ban đầu. Khu vực này **không có máy xét nghiệm**, chỉ thực hiện **vệ sinh và khử nhiễm bề mặt (BM.01_KNBM)**.
 
 Phân biệt rành mạch 3 cấp độ thực thể:
-- **Khu vực làm việc (Work Area):** 5 khu vực làm việc nêu trên và các vị trí phụ trợ (Kho hóa chất/lưu mẫu `KHO`).
+- **Khu vực làm việc (Work Area):** Đúng 5 khu vực làm việc nêu trên (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`). Vị trí **Kho hóa chất / Kho lưu mẫu** (`KHO`) chỉ là vị trí phụ trợ theo dõi điều kiện bảo quản nhiệt độ, không phải là khu vực làm việc BM.01.
 - **Trang thiết bị (Equipment / Asset):** Đủ 25 máy xét nghiệm/ly tâm và danh mục 13 tủ/ngăn tủ. 100% 25 máy đã được Owner xác nhận chính thức khu vực quản lý (9 Sinh hóa, 8 Miễn dịch, 4 Nước tiểu, 4 Ly tâm; không còn OPEN ITEM về vị trí máy).
 - **Biểu mẫu / Công việc (Form / Task):** 6 nhóm biểu mẫu áp dụng cho từng thiết bị hoặc từng khu vực (Khu Nhận bệnh phẩm chỉ áp dụng BM.01_KNBM).
 
 Danh mục cơ bản gồm:
-- Nhân sự và phân công quyền.
+- Nhân sự và phân công quyền: Định danh người dùng bằng `user_id` (UUID), không dùng `staff_number`. Số thứ tự trong Phụ lục chỉ đóng vai trò thứ tự hiển thị/nguồn. Loại trừ tài khoản TEST `TS.BS Vũ Văn Nam` khỏi danh sách nhân sự chính thức.
 - 5 Khu vực làm việc chính thức và vị trí theo dõi môi trường/kho.
 - Tủ và ngăn tủ (13 dòng theo dõi).
 - Máy/trang thiết bị (25 máy chuẩn hóa).
@@ -251,10 +251,12 @@ Những nội dung có thể xem xét ở Version sau chỉ được đưa vào 
 | P0-10 | Bỏ báo cáo sự cố khỏi MVP | LOCKED |
 | P0-11 | 6 nhóm biểu mẫu còn lại đều thuộc scope Core Pilot 7 ngày | LOCKED |
 | P0-12 | BM.03 dùng tab `NganDa` làm nguồn hiện hành | LOCKED |
-| P0-13 | BM.06 dùng 4 khung giờ: 07:00–11:30; 11:30–13:30; 13:30–16:30; 16:30–07:00 | LOCKED |
-| P0-14 | BM.06 dùng toàn bộ danh sách máy từ Phụ lục và giữ thứ tự như sổ giấy | LOCKED |
+| P0-13 | BM.06 dùng 4 khung giờ: 07:00–11:30; 11:30–13:30; 13:30–16:30; 16:30–07:00 (lượng sử dụng chuẩn hóa qua khung ca; không nhập số lượng thủ công, không default số/bulk BT; DB legacy nullable) | LOCKED |
+| P0-14 | BM.06 dùng toàn bộ danh sách máy từ Phụ lục và giữ thứ tự như sổ giấy (giữ v4.0 lịch sử, áp dụng v4.1 hiện hành; Quick Duty orchestrator không tạo super-record) | LOCKED |
 | P0-15 | Mã máy/tủ chưa chuẩn có thể tạm dùng tên + vị trí trong Pilot; phải chuẩn hóa trước Production | LOCKED |
-| P0-16 | Area-first navigation là mô hình điều hướng chính; khóa 5 khu vực: Sinh hóa, Miễn dịch, Nước tiểu, Ly tâm, Nhận bệnh phẩm (chỉ KNBM); 25 máy phân khu chính thức | LOCKED |
+| P0-16 | Area-first navigation là mô hình điều hướng chính; khóa 5 khu vực: Sinh hóa, Miễn dịch, Nước tiểu, Ly tâm, Nhận bệnh phẩm (chỉ KNBM); 25 máy phân khu chính thức; KHO chỉ là vị trí phụ trợ theo dõi nhiệt độ | LOCKED |
+| P0-17 | Bằng chứng nguồn gốc bất biến, không chỉnh sửa hồi tố trừ biểu mẫu BM.06 có thẩm quyền ban hành version mới | LOCKED |
+| P0-18 | Không dùng staff_number; định danh user_id (UUID); STT Phụ lục chỉ để hiển thị/thứ tự nguồn; loại trừ tài khoản TEST TS.BS Vũ Văn Nam | LOCKED |
 
 Chi tiết chuyên môn từng biểu mẫu không lặp lại ở đây để tránh hai nơi chứa cùng một quy tắc.
 

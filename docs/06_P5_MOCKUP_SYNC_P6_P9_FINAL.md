@@ -9,6 +9,17 @@
 
 ---
 
+# 0.1. Owner Decision addendum — source revision và unified entry
+
+- Source evidence gốc không được overwrite. Ngoại lệ được Owner cho phép là ban hành **BM.06 v4.1** mới; BM.06 v4.0 vẫn là historical source bất biến.
+- BM.01 version hiện hành áp dụng đúng 5 khu `SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`; `KHO` không thuộc BM.01 nhưng vẫn là auxiliary context cho tủ mát/tủ đông.
+- BM.06 v4.1 có 25 máy đúng source order và 4 ca `07:00–11:30`, `11:30–13:30`, `13:30–16:30`, `16:30–07:00 hôm sau`; SHIFT_4 dùng business date ngày bắt đầu.
+- “Lượng sử dụng” chính là ca/khung giờ cố định. UI/export không nhận numeric usage, không default `4.5`, không bulk/default `BT`.
+- `/quick-duty` là Phiên làm việc/nhập nhanh dạng inline/accordion/sheet, không tạo super-record. `/general-tasks` redirect 308 về `/temperature`.
+- Mọi chọn nhân sự dùng `user_id`; STT Phụ lục chỉ để giữ source/display order; tài khoản TEST `TS.BS Vũ Văn Nam` không thuộc roster.
+
+---
+
 # 1. Thứ tự ưu tiên khi code P5+
 
 1. Business rules/data/security: `00`, `02`, `01`.
@@ -122,6 +133,7 @@ Cho phép layout:
 
 Business rules bắt buộc:
 
+- BM.01 áp dụng đúng 5 work areas Owner-locked; `KHO` không được đưa vào filter BM.01 nhưng vẫn có thể xuất hiện trong context BM.02/BM.03.
 - BM.01: 08:00–09:00 và 14:30–15:30; 21–26°C; RH 20–80%.
 - BM.02: 13 dòng tủ/ngăn liên quan theo source; 2–8°C.
 - BM.03: source `NganDa`; -30 đến -10°C.
@@ -134,19 +146,22 @@ Business rules bắt buộc:
 
 # 6. M03 — Thiết bị / BM.06 FINAL
 
-M03 là **equipment overview + latest shift status**, không thay thế màn nhập BM.06.
+M03 là **equipment overview + latest shift status + entry surface cho BM.06 trên `/equipment`**. Từ P6, nhập BM.06 SHIFT_1–SHIFT_4 được lồng ghép dưới mục thiết bị để giảm chuyển màn hình; không tách KTV sang workflow `/tasks`/`/calendar`.
 
 Bắt buộc:
 
+- dùng BM.06 v4.1 hiện hành; v4.0 chỉ render cho kỳ lịch sử;
 - đúng 25 machine rows từ master data;
 - source order 1–25 được bảo toàn trong BM.06 matrix/entry;
 - status nghiệp vụ là `BT | KSD | H`;
 - 4 shift đúng spec;
+- lượng sử dụng hiển thị bằng ca/khung giờ cố định, không input numeric;
+- không bulk/default `BT`; từng máy phải được xác nhận;
 - current/latest status phải truy xuất được về record/shift nguồn;
 - không merge thiết bị trùng tên;
 - ảnh thiết bị chỉ optional; không được dùng ảnh giả để quyết định identity.
 
-Có thể có search/filter/pagination ở overview. Khi nhập BM.06 mobile, vẫn phải bảo đảm rule `24/25 không Complete`, `25/25 mới Complete`.
+Có thể có search/filter/pagination ở overview. Khi nhập BM.06 mobile trên `/equipment#bm06-entry`, vẫn phải bảo đảm rule `24/25 không Complete`, `25/25 mới Complete`, Draft/Saving/Saved/Error/Completed rõ ràng và refresh/read-back đúng trạng thái.
 
 ---
 
@@ -382,9 +397,9 @@ Không mặc định Storage backup là business requirement nếu vẫn không 
 - [ ] P5 regression PASS.
 - [ ] RLS mới PASS.
 - [ ] M01–M08 visual/accessibility PASS.
-- [ ] Performance budget hợp lý trên mobile.
+- [ ] Performance budget hợp lý trên mobile với BEFORE/AFTER measurable metrics.
 - [ ] Backup/restore dữ liệu P5 mới PASS.
-- [ ] PWA offline/reconnect PASS.
+- [ ] PWA offline/reconnect PASS: global offline banner/state rõ ràng, không offline write/background sync/queue mutation, save khi offline bị chặn hoặc báo lỗi rõ, reconnect refresh/read-back đúng server state. `/offline` route riêng không phải blocker nếu các điều kiện này PASS.
 - [ ] Preview/Staging không có known 404/5xx trên core flow.
 
 ---

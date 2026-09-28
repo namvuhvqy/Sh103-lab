@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(54);
+select plan(55);
 
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,email_confirmed_at,created_at,updated_at) values
 ('40000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','head-p4@test.local','',now(),now(),now()),
@@ -24,6 +24,7 @@ select has_function('public','approve_correction',array['uuid'],'approve correct
 select ok((select relrowsecurity from pg_class where oid='public.period_actions'::regclass),'period actions RLS enabled');
 select ok((select relrowsecurity from pg_class where oid='public.audit_events'::regclass),'audit RLS enabled');
 select ok((select relrowsecurity from pg_class where oid='public.correction_requests'::regclass),'correction RLS enabled');
+select ok((select relrowsecurity from pg_class where oid='public.correction_transaction_authorizations'::regclass),'internal correction transaction authorizations RLS enabled');
 
 set local role authenticated;
 select set_config('request.jwt.claim.role','authenticated',true);

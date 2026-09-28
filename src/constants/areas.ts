@@ -58,9 +58,9 @@ export interface TemperatureAreaConfig {
 }
 
 export const TEMPERATURE_AREAS: TemperatureAreaConfig[] = [
-  { code: "NUOC_TIEU", name: "Khu vực Nước tiểu", normTemp: "21–26°C", normHumidity: "20–80%" },
-  { code: "SINH_HOA", name: "Khu vực Sinh hóa", normTemp: "21–26°C", normHumidity: "20–80%" },
-  { code: "MIEN_DICH", name: "Khu vực Miễn dịch", normTemp: "21–26°C", normHumidity: "20–80%" },
-  { code: "AUTOMATION", name: "Hệ Automation", normTemp: "21–26°C", normHumidity: "20–80%" },
-  { code: "LOC_NUOC_RO", name: "Lọc nước RO", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "SINH_HOA", name: "Khu vực làm xét nghiệm Sinh hóa", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "MIEN_DICH", name: "Khu vực làm xét nghiệm Miễn dịch", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "NUOC_TIEU", name: "Khu vực làm xét nghiệm Nước tiểu", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "LY_TAM", name: "Khu vực Ly tâm", normTemp: "21–26°C", normHumidity: "20–80%" },
+  { code: "NHAN_BENH_PHAM", name: "Khu vực Nhận bệnh phẩm", normTemp: "21–26°C", normHumidity: "20–80%" },
 ];

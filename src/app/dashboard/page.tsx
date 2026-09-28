@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const summary = await getOperationalDashboard();
   const kpis = [
-    { label: "Tỷ lệ hoàn thành", value: `${summary.completionRate}%`, status: `${summary.completed + summary.na}/${summary.total} đã xử lý`, href: "/tasks", tone: "success" as const, icon: Activity },
-    { label: "Còn thiếu hôm nay", value: summary.pending, status: "Nghĩa vụ PENDING", href: "/tasks?status=pending", tone: summary.pending ? "warning" as const : "success" as const, icon: FileClock },
+    { label: "Tỷ lệ hoàn thành", value: `${summary.completionRate}%`, status: `${summary.completed + summary.na}/${summary.total} đã xử lý`, href: "/quick-duty", tone: "success" as const, icon: Activity },
+    { label: "Còn thiếu hôm nay", value: summary.pending, status: "Trong phiên làm việc", href: "/quick-duty", tone: summary.pending ? "warning" as const : "success" as const, icon: FileClock },
     { label: "Đo bất thường", value: summary.abnormal, status: "Theo threshold snapshot", href: "/temperature", tone: summary.abnormal ? "danger" as const : "success" as const, icon: CircleAlert },
     { label: "Máy H trong BM.06", value: summary.broken, status: "Ca hiện tại", href: "/equipment", tone: summary.broken ? "danger" as const : "success" as const, icon: TestTube2 },
-    { label: "Bảo dưỡng còn thiếu", value: summary.maintenancePending, status: "Daily / Weekly / Monthly", href: "/tasks", tone: summary.maintenancePending ? "warning" as const : "success" as const, icon: Wrench },
+    { label: "Bảo dưỡng còn thiếu", value: summary.maintenancePending, status: "Trong Phiên làm việc", href: "/quick-duty", tone: summary.maintenancePending ? "warning" as const : "success" as const, icon: Wrench },
     { label: "Khử nhiễm còn thiếu", value: summary.decontaminationPending, status: "Daily / Weekly", href: "/decontamination", tone: summary.decontaminationPending ? "warning" as const : "success" as const, icon: Sparkles },
     { label: "Kỳ chờ phê duyệt", value: summary.readyPeriods, status: `${summary.returnedPeriods} kỳ đã trả lại`, href: "/approvals", tone: summary.readyPeriods ? "warning" as const : "neutral" as const, icon: ClipboardCheck },
     { label: "Sự cố đang mở", value: summary.openIncidents, status: "OPEN / IN_REVIEW", href: "/incidents", tone: summary.openIncidents ? "danger" as const : "neutral" as const, icon: CircleAlert },

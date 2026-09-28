@@ -130,16 +130,9 @@ export default async function CorrectionPage({
 
         {record.record_type === "EQUIPMENT_SHIFT" ? (
           <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="font-semibold">
-                Giá trị sử dụng
-                <input type="number" step="0.01" name="usage_value" defaultValue={shift?.usage_value} className={fieldClass} />
-              </label>
-              <label className="font-semibold">
-                Đơn vị
-                <input name="usage_unit" defaultValue={shift?.usage_unit} className={fieldClass} />
-              </label>
-            </div>
+            <p className="rounded-xl border border-teal-100 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-900">
+              Lượng sử dụng được xác định bằng ca cố định ({record.slot_code}); chỉ đính chính trạng thái BT/KSD/H của từng thiết bị.
+            </p>
             <fieldset className="space-y-3">
               <legend className="font-semibold">Trạng thái thiết bị</legend>
               {statuses.map((status) => (

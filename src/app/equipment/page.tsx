@@ -3,11 +3,13 @@ import Image from "next/image";
 import { AppShell } from "@/components/shell/AppShell";
 import { KpiCard } from "@/components/p5/KpiCard";
 import { StatusDistribution } from "@/components/p5/OperationalChart";
+import { ShiftRegisterForm } from "@/components/forms/ShiftRegisterForm";
+import { getBm06ByDateShift } from "@/lib/forms/context";
 import { getEquipmentOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
-import { SHIFT_DEFINITIONS } from "@/lib/forms/domain";
+import { SHIFT_DEFINITIONS, vietnamParts } from "@/lib/forms/domain";
 import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
-import { Activity, CircleAlert, TestTube2, Wrench, Sparkles } from "lucide-react";
+import { Activity, CircleAlert, TestTube2, Wrench, Sparkles, Calendar } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -26,8 +28,22 @@ function getEquipmentImage(locCode?: string, name?: string) {
   return "/images/equipment/biochemistry-analyzer.jpg";
 }
 
-export default async function EquipmentPage() {
-  const [data, unread] = await Promise.all([getEquipmentOverview(), getUnreadNotificationCount()]);
+export default async function EquipmentPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ date?: string; shift?: string }>;
+}) {
+  const query = (await searchParams) ?? {};
+  const todayIso = vietnamParts(new Date()).date;
+  const selectedDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
+  const selectedShift = query.shift && /^SHIFT_[1-4]$/.test(query.shift) ? query.shift : undefined;
+
+  const [data, unread, bm06Data] = await Promise.all([
+    getEquipmentOverview(selectedDate, selectedShift),
+    getUnreadNotificationCount(),
+    getBm06ByDateShift(selectedDate, selectedShift),
+  ]);
+
   type Asset = {
     id: string;
     source_name: string;
@@ -49,7 +65,7 @@ export default async function EquipmentPage() {
       unreadCount={unread}
     >
       <div className="space-y-6">
-        {/* Header & Feature banner trang trọng */}
+        {/* Header & Feature banner */}
         <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-teal-900 via-cyan-900 to-slate-900 p-6 sm:p-8 text-white shadow-lg">
           <div className="relative z-10 max-w-2xl space-y-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-bold text-teal-300 border border-teal-400/30">
@@ -66,11 +82,35 @@ export default async function EquipmentPage() {
           </div>
         </div>
 
-        {/* 4 Ca trực */}
+        {/* Date & Shift Filter Form */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center gap-2">
+            <Calendar className="size-5 text-teal-700" />
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Xem theo ngày &amp; ca:</span>
+              <p className="text-sm font-black text-slate-900">{data.shift.label} ({selectedDate.split("-").reverse().join("/")})</p>
+            </div>
+          </div>
+          <form method="GET" action="/equipment" className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              name="date"
+              defaultValue={selectedDate}
+              className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none focus:border-teal-600"
+            />
+            <input type="hidden" name="shift" value={data.shift.code} />
+            <button type="submit" className="min-h-10 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition">
+              Xem
+            </button>
+          </form>
+        </div>
+
+        {/* 4 Ca trực Switcher */}
         <div className="flex flex-wrap gap-2" aria-label="Bốn ca BM.06">
           {SHIFT_DEFINITIONS.map((shift) => (
-            <span
+            <Link
               key={shift.code}
+              href={`/equipment?date=${selectedDate}&shift=${shift.code}`}
               className={`rounded-full px-4 py-2 text-xs font-bold transition shadow-xs ${
                 shift.code === data.shift.code
                   ? "bg-teal-700 text-white shadow-sm ring-2 ring-teal-600/30"
@@ -78,7 +118,7 @@ export default async function EquipmentPage() {
               }`}
             >
               {shift.code.replace("SHIFT_", "Ca ")} · {shift.label}
-            </span>
+            </Link>
           ))}
         </div>
 
@@ -96,7 +136,7 @@ export default async function EquipmentPage() {
             value={`${recorded}/25`}
             status={recorded === 25 ? "Hoàn tất" : "Chưa hoàn tất"}
             tone={recorded === 25 ? "success" : "warning"}
-            href="/bm06"
+            href={`/equipment?date=${selectedDate}&shift=${data.shift.code}#bm06-entry`}
             icon={<Activity className="size-5" />}
           />
           <KpiCard
@@ -127,7 +167,7 @@ export default async function EquipmentPage() {
 
         {/* Biểu đồ phân bố */}
         <StatusDistribution
-          title="Trạng thái thiết bị ca hiện tại"
+          title={`Trạng thái 25 thiết bị (${data.shift.label})`}
           items={[
             { label: "BT", value: active, tone: "green" },
             { label: "KSD", value: unavailable, tone: "slate" },
@@ -135,22 +175,6 @@ export default async function EquipmentPage() {
             { label: "Chưa ghi", value: Math.max(assets.length - recorded, 0), tone: "amber" },
           ]}
         />
-
-        {/* CTA Actions */}
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/bm06"
-            className="inline-flex min-h-11 items-center rounded-2xl bg-teal-800 px-6 font-bold text-white shadow-sm hover:bg-teal-900 transition"
-          >
-            Nhật ký trang thiết bị
-          </Link>
-          <Link
-            href="/areas"
-            className="inline-flex min-h-11 items-center rounded-2xl border border-teal-200 bg-white px-6 font-bold text-teal-800 hover:bg-teal-50 transition"
-          >
-            Xem theo khu vực
-          </Link>
-        </div>
 
         {/* Danh sách 25 thiết bị kèm hình ảnh chuyên nghiệp */}
         <section className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-sm">
@@ -163,7 +187,7 @@ export default async function EquipmentPage() {
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Nhật ký 4 ca vận hành BM.06 theo thứ tự quy định
+                Nhật ký 4 ca vận hành BM.06 theo thứ tự quy định 1–25
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-teal-800">
@@ -198,14 +222,13 @@ export default async function EquipmentPage() {
               const imgUrl = getEquipmentImage(asset.locations?.code, asset.source_name);
 
               return (
-                <Link
+                <div
                   key={asset.id}
-                  href={`/assets/${asset.id}`}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 transition hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-600"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:p-5 transition hover:bg-teal-50/40"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
                     {/* STT */}
-                    <span className="grid size-8 sm:size-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-xs sm:text-sm font-black text-teal-800">
+                    <span className="grid size-8 sm:size-9 shrink-0 place-items-center rounded-xl bg-teal-50 text-xs sm:text-sm font-black text-teal-800 border border-teal-200">
                       {asset.source_order}
                     </span>
 
@@ -242,35 +265,13 @@ export default async function EquipmentPage() {
                     </div>
                   </div>
 
-                  {/* Cụm Trạng thái + 4 Ca trực */}
+                  {/* Trạng thái được truy vấn cho đúng ca đang chọn */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                    {/* 4 Ca trực Pills chuẩn Mockup M02 */}
-                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-xl border border-slate-200">
-                      <span className="text-[10px] font-bold text-slate-500 mr-1 hidden sm:inline">
-                        4 ca:
-                      </span>
-                      {[1, 2, 3, 4].map((c) => {
-                        const shiftActive = isBT || (c <= 2 && !isH);
-                        return (
-                          <span
-                            key={c}
-                            title={`Ca ${c}`}
-                            className={`grid size-5 place-items-center rounded-full text-[9px] font-black ${
-                              isH && c === 3
-                                ? "bg-red-500 text-white"
-                                : shiftActive
-                                ? "bg-teal-600 text-white"
-                                : "bg-slate-200 text-slate-500"
-                            }`}
-                          >
-                            {isH && c === 3 ? "!" : shiftActive ? "✓" : "–"}
-                          </span>
-                        );
-                      })}
-                      <span className="text-[10px] font-black text-slate-600 ml-1">
-                        {isH ? "2/4" : isBT ? "4/4" : "0/4"}
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">
+                      {asset.latest?.updated_at
+                        ? `Ghi nhận ${new Date(asset.latest.updated_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`
+                        : "Chưa ghi ca này"}
+                    </span>
 
                     {/* Badge trạng thái */}
                     <span
@@ -284,9 +285,29 @@ export default async function EquipmentPage() {
                       {statusText}
                     </span>
                   </div>
-                </Link>
+                </div>
               );
             })}
+          </div>
+        </section>
+
+        <section id="bm06-entry" className="overflow-hidden rounded-3xl border border-teal-200 bg-white shadow-sm">
+          <div className="border-b border-teal-100 bg-teal-50/60 p-5">
+            <p className="text-xs font-black uppercase tracking-wider text-teal-800">BM.06/QL.TRTB.01 · nhập ngay trong Thiết bị</p>
+            <h2 className="mt-1 text-xl font-black text-slate-900">Nhập trạng thái 25 thiết bị — {data.shift.label}</h2>
+            <p className="mt-1 text-xs font-semibold text-slate-500">Chọn ca ở bộ lọc phía trên; SHIFT_1, SHIFT_2, SHIFT_3, SHIFT_4 đều nhập và lưu ngay tại màn hình này.</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            {bm06Data ? (
+              <ShiftRegisterForm
+                occurrenceId={bm06Data.occurrence.id}
+                assets={bm06Data.assets}
+                initialStatuses={bm06Data.initialStatuses}
+                lockVersion={bm06Data.lockVersion}
+              />
+            ) : (
+              <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">Chưa tìm thấy occurrence BM.06 cho ngày/ca đang chọn.</p>
+            )}
           </div>
         </section>
 
@@ -302,7 +323,7 @@ export default async function EquipmentPage() {
               </p>
             </div>
             <Link
-              href="/temperature?group=storage"
+              href="/temperature"
               className="inline-flex min-h-9 items-center justify-center rounded-xl bg-teal-700 px-4 text-xs font-bold text-white shadow-xs hover:bg-teal-800 transition"
             >
               Ghi nhật ký nhiệt độ tủ lạnh

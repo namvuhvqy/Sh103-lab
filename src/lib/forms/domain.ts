@@ -1,8 +1,8 @@
 export const SHIFT_DEFINITIONS = [
   { code: "SHIFT_1", label: "Ca 1 - Sáng (07:00–11:30)", name: "Ca sáng", startMinutes: 7 * 60, endMinutes: 11 * 60 + 30, isDuty: false },
   { code: "SHIFT_2", label: "Ca 2 - Trực trưa (11:30–13:30)", name: "Ca trực trưa", startMinutes: 11 * 60 + 30, endMinutes: 13 * 60 + 30, isDuty: true },
-  { code: "SHIFT_3", label: "Ca 3 - Chiều (13:30–16:40)", name: "Ca chiều", startMinutes: 13 * 60 + 30, endMinutes: 16 * 60 + 40, isDuty: false },
-  { code: "SHIFT_4", label: "Ca 4 - Trực đêm (16:40–07:00 hôm sau)", name: "Ca trực đêm", startMinutes: 16 * 60 + 40, endMinutes: 7 * 60, isDuty: true },
+  { code: "SHIFT_3", label: "Ca 3 - Chiều (13:30–16:30)", name: "Ca chiều", startMinutes: 13 * 60 + 30, endMinutes: 16 * 60 + 30, isDuty: false },
+  { code: "SHIFT_4", label: "Ca 4 - Trực đêm (16:30–07:00 hôm sau)", name: "Ca trực đêm", startMinutes: 16 * 60 + 30, endMinutes: 7 * 60, isDuty: true },
 ] as const;
 
 export function vietnamParts(date: Date) {
@@ -51,7 +51,7 @@ export function currentShift(now = new Date()) {
     statusSubtitle: isWeekend
       ? "Trực liên tục từ 07:00 hôm nay đến 07:00 hôm sau"
       : baseShift.label,
-    timeRange: isWeekend ? "07:00 – 07:00 hôm sau" : (baseShift.code === "SHIFT_1" ? "07:00–11:30" : baseShift.code === "SHIFT_2" ? "11:30–13:30" : baseShift.code === "SHIFT_3" ? "13:30–16:40" : "16:40–07:00"),
+    timeRange: isWeekend ? "07:00 – 07:00 hôm sau" : (baseShift.code === "SHIFT_1" ? "07:00–11:30" : baseShift.code === "SHIFT_2" ? "11:30–13:30" : baseShift.code === "SHIFT_3" ? "13:30–16:30" : "16:30–07:00"),
   };
 }
 

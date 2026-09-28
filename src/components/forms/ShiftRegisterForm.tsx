@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { shiftProgress } from "@/lib/forms/domain";
-import { Zap, RotateCcw, HelpCircle } from "lucide-react";
+import { RotateCcw, HelpCircle } from "lucide-react";
 
 export type ShiftAsset = { id: string; sourceOrder: number; name: string; locationCode: string };
 
@@ -21,6 +21,7 @@ export function ShiftRegisterForm({
 }) {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const visible = areaCode ? assets.filter((a) => a.locationCode === areaCode) : assets;
   const progress = shiftProgress(
@@ -38,24 +39,6 @@ export function ShiftRegisterForm({
     [statuses, areaCode, visible]
   );
 
-  // Thao tác nhanh cho kíp trực 25 máy trên 1 màn hình
-  const handleSetAll = (code: string) => {
-    const updated = { ...statuses };
-    visible.forEach((a) => {
-      updated[a.id] = code;
-    });
-    setStatuses(updated);
-  };
-
-  const handleSetRemaining = (code: string) => {
-    const updated = { ...statuses };
-    visible.forEach((a) => {
-      if (!updated[a.id]) {
-        updated[a.id] = code;
-      }
-    });
-    setStatuses(updated);
-  };
 
   const handleClearAll = () => {
     const updated = { ...statuses };
@@ -66,11 +49,21 @@ export function ShiftRegisterForm({
   };
 
   return (
-    <form action="/api/forms/bm06" method="post" className="space-y-4">
+    <form action="/api/forms/bm06" method="post" onSubmit={() => setIsSubmitting(true)} className="space-y-4">
       <input type="hidden" name="occurrenceId" value={occurrenceId} />
       <input type="hidden" name="lockVersion" value={lockVersion} />
       <input type="hidden" name="statuses" value={payload} />
       <input type="hidden" name="areaCode" value={areaCode ?? ""} />
+
+      {/* Sticky Progress Header */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 shadow-xs" aria-label="Trạng thái lưu BM.06">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">Draft · Bản nháp</span>
+          <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-800">{isSubmitting ? "Saving · Đang lưu" : "Saved · Đã lưu sau khi server xác nhận"}</span>
+          <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-800">Error · Lỗi sẽ hiển thị ở đầu trang sau khi redirect</span>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800">Completed · Hoàn tất khi đủ 25/25</span>
+        </div>
+      </div>
 
       {/* Sticky Progress Header */}
       <div className="sticky top-16 z-20 rounded-2xl border border-teal-200 bg-white/95 p-4 shadow-sm backdrop-blur">
@@ -91,23 +84,6 @@ export function ShiftRegisterForm({
         {/* Thanh thao tác nhanh tập trung 1 màn hình */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleSetAll("BT")}
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-teal-700 hover:bg-teal-800 px-3 text-xs font-bold text-white transition shadow-xs"
-              title="Đặt nhanh tất cả máy trong danh sách ở trạng thái Bình thường"
-            >
-              <Zap className="size-3.5" />
-              ⚡ Đặt tất cả = BT
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSetRemaining("BT")}
-              className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-teal-200 bg-teal-50/80 hover:bg-teal-100 px-2.5 text-xs font-bold text-teal-800 transition"
-              title="Chỉ điền BT cho những máy chưa được chọn"
-            >
-              Điền còn lại = BT
-            </button>
             <button
               type="button"
               onClick={handleClearAll}
@@ -216,36 +192,8 @@ export function ShiftRegisterForm({
         })}
       </div>
 
-      {/* Thông tin vận hành bổ sung - Tối ưu Input Ergonomics */}
+      {/* Lượng sử dụng được xác định bởi slot/khung giờ của occurrence. */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="block text-xs font-bold text-slate-700">
-            Lượng sử dụng trong ca
-            <input
-              required
-              name="usageValue"
-              type="number"
-              min="0"
-              step="0.1"
-              inputMode="decimal"
-              defaultValue="4.5"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
-              placeholder="VD: 4.5"
-            />
-          </label>
-          <label className="block text-xs font-bold text-slate-700">
-            Đơn vị tính
-            <select
-              name="usageUnit"
-              defaultValue="HOURS"
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-slate-200 px-3 text-sm font-semibold outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 bg-white"
-            >
-              <option value="HOURS">Số giờ chạy thực tế</option>
-              <option value="SHIFTS">Số ca trực</option>
-            </select>
-          </label>
-        </div>
-
         <label className="block text-xs font-bold text-slate-700">
           Ghi chú bàn giao &amp; Sự cố thiết bị
           <textarea
@@ -266,19 +214,30 @@ export function ShiftRegisterForm({
         <button
           name="intent"
           value="draft"
-          disabled={Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
+          disabled={isSubmitting || Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
           className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 active:scale-95 transition-all select-none shadow-xs"
         >
-          {areaCode ? "Lưu nháp khu vực" : "Lưu nháp"}
+          {areaCode ? "Lưu nháp khu vực" : `Lưu nháp (${progress.completed}/${progress.total} máy)`}
         </button>
         {!areaCode ? (
           <button
             name="intent"
             value="finalize"
-            disabled={!progress.canFinalize}
-            className="min-h-12 rounded-xl bg-teal-700 hover:bg-teal-800 font-bold text-white disabled:bg-slate-200 disabled:text-slate-400 active:scale-95 transition-all select-none shadow-xs shadow-teal-700/20"
+            disabled={isSubmitting || !progress.canFinalize}
+            className={`min-h-12 rounded-xl font-bold transition-all select-none shadow-xs ${
+              progress.canFinalize
+                ? "bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-700/20 active:scale-95 cursor-pointer"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            }`}
+            title={
+              progress.canFinalize
+                ? "Đủ 25/25 máy — Hoàn tất và khóa ca trực"
+                : `Cần ghi nhận đủ 25/25 máy để hoàn tất ca (Hiện có: ${progress.completed}/25)`
+            }
           >
-            Hoàn tất ca
+            {progress.canFinalize
+              ? "Hoàn tất ca (25/25 máy)"
+              : `Hoàn tất ca (Thiếu ${Math.max(progress.total - progress.completed, 0)} máy)`}
           </button>
         ) : null}
       </div>
