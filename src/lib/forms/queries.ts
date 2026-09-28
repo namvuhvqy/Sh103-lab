@@ -19,15 +19,23 @@ export async function getAreaSummaries() {
   const shift = currentShift();
   const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: shift.businessDate });
   if (ensureError) throw new Error(`Không khởi tạo được kỳ vận hành: ${ensureError.message}`);
-  const [{ data: locations, error: locationError }, { data: assets, error: assetError }, { data: occurrence, error: occurrenceError }] = await Promise.all([
+  const [{ data: locations, error: locationError }, { data: assets, error: assetError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
     supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order"),
     supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true),
-    supabase.from("schedule_occurrences").select("fulfilled_by_record_id,register_periods!inner(form_template_versions!inner(form_templates!inner(code)))").eq("business_date", shift.businessDate).eq("slot_code", shift.code).eq("register_periods.form_template_versions.form_templates.code", "BM.06/QL.TRTB.01").maybeSingle(),
+    supabase.from("schedule_occurrences")
+      .select("fulfilled_by_record_id,register_periods!inner(form_template_versions!inner(status,form_templates!inner(code)))")
+      .eq("business_date", shift.businessDate)
+      .eq("slot_code", shift.code)
+      .eq("register_periods.form_template_versions.status", "PUBLISHED")
+      .eq("register_periods.form_template_versions.form_templates.code", "BM.06/QL.TRTB.01")
+      .limit(1),
   ]);
   if (locationError) throw new Error(`Không tải được khu vực: ${locationError.message}`);
   if (assetError) throw new Error(`Không tải được thiết bị: ${assetError.message}`);
   if (occurrenceError) throw new Error(`Không tải được ca BM.06: ${occurrenceError.message}`);
 
+  type HomeBm06Occurrence = { fulfilled_by_record_id: string | null };
+  const occurrence = ((occurrences ?? []) as HomeBm06Occurrence[])[0] ?? null;
   let completedAssetIds = new Set<string>();
   if (occurrence?.fulfilled_by_record_id) {
     const { data: statuses, error: statusError } = await supabase.from("equipment_shift_statuses").select("asset_id").eq("shift_record_id", occurrence.fulfilled_by_record_id);

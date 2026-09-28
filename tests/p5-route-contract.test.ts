@@ -47,4 +47,11 @@ describe("P5 M01-M06 route contract", () => {
     expect(queries).toContain("equipment_shift_details!inner(records!inner");
     expect(queries).not.toContain("status_code,records!inner");
   });
+  it("loads Home BM.06 summary from only the published form version occurrence", () => {
+    const queries = read("src/lib/forms/queries.ts");
+    expect(queries).toContain('register_periods!inner(form_template_versions!inner(status,form_templates!inner(code)))');
+    expect(queries).toContain('.eq("register_periods.form_template_versions.status", "PUBLISHED")');
+    const homeSummaryQuery = queries.slice(queries.indexOf("export async function getAreaSummaries"), queries.indexOf("export async function getArea(code"));
+    expect(homeSummaryQuery).not.toContain('.maybeSingle()');
+  });
 });
