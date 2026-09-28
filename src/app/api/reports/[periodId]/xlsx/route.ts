@@ -42,7 +42,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     ["Kỳ", model.period.period_label ?? `${model.period.period_start} – ${model.period.period_end}`],
     ["Đối tượng", model.objectLabel],
     ["Trạng thái", model.approvalStatusLabel],
-    ["Phê duyệt lúc", model.approvalTimestampLabel],
+    ["Xác nhận lịch sử lúc", model.approvalTimestampLabel],
     ["Số bản ghi hiệu lực", model.recordCount],
     ["Mẫu nguồn", model.sourceTemplatePath ?? ""],
     ["Cấu hình chữ ký", `${model.signatureConfig.reviewerLabel} | ${model.signatureConfig.approverLabel}`],
@@ -66,8 +66,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   }));
 
   for (const rowModel of model.rows) {
-    const row = data.addRow(Object.fromEntries(rowModel.cells.map((cell, index) => [`c${index}`, cell])));
-    if (rowModel.pageBreakAfter) row.addPageBreak();
+    data.addRow(Object.fromEntries(rowModel.cells.map((cell, index) => [`c${index}`, cell])));
   }
 
   const header = data.getRow(1);

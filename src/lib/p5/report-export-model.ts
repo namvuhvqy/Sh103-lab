@@ -1,7 +1,11 @@
 import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 
-export const BM06_SOURCE_TEMPLATE_PATH = "docs/danh mục biểu mẫu/BM.06_QL.TRTB.01_Nhat_Ky_25_TTB_4_Ca_v4.1.docx";
-export const BM06_DAYS_PER_SOURCE_PAGE = 15;
+export const BM06_SOURCE_TEMPLATE_PATH = "docs/danh mục biểu mẫu/BM.06_QL.TRTB.01_Nhat_Ky_25_TTB_4_Ca_v4.1.xlsx";
+// The authorized XLSX has no explicit row breaks. Its page setup uses
+// fitToWidth=1 and fitToHeight=0, so the spreadsheet renderer owns
+// automatic vertical pagination from the source layout. Do not invent
+// a day-count page boundary in application code.
+export const BM06_HAS_EXPLICIT_ROW_BREAKS = false;
 
 export const SIGNATURE_CONFIG = {
   reviewerLabel: "Người nhập / theo dõi",
@@ -128,10 +132,10 @@ export function buildReportExportModel(input: { period: ReportPeriod; records: R
   const templateCode = period.form_template_versions.form_templates.code;
   const templateName = period.form_template_versions.form_templates.name;
   const isApproved = Boolean(input.official && period.status === "APPROVED");
-  const approvalStatusLabel = isApproved ? "ĐÃ PHÊ DUYỆT" : "BẢN NHÁP (CHƯA PHÊ DUYỆT)";
-  const approvalTimestampLabel = isApproved && period.approved_at ? period.approved_at : isApproved ? "" : "Chưa phê duyệt";
-  const filenamePrefix = isApproved ? "" : "[BAN_NHAP]_";
-  const objectLabel = period.locations?.name ?? period.assets?.source_name ?? "Toàn khoa";
+  const approvalStatusLabel = isApproved ? "ĐÃ PHÊ DUYỆT (LỊCH SỬ)" : "ĐANG THEO DÕI";
+  const approvalTimestampLabel = isApproved && period.approved_at ? period.approved_at : "";
+  const filenamePrefix = isApproved ? "" : "[DANG_THEO_DOI]_";
+  const objectLabel = period.locations?.name ?? period.assets?.source_name ?? "";
   const dates = daysFor(input.start ?? period.period_start);
 
   let columns: string[] = [];
@@ -189,9 +193,7 @@ export function buildReportExportModel(input: { period: ReportPeriod; records: R
       const detail = firstItem(r?.equipment_shift_details);
       const statuses = detail ? (Array.isArray(detail.equipment_shift_statuses) ? detail.equipment_shift_statuses : detail.equipment_shift_statuses ? [detail.equipment_shift_statuses] : []) : [];
       const byOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
-      const pageNumber = Math.ceil(d.day / BM06_DAYS_PER_SOURCE_PAGE);
-      const pageBreakAfter = d.day % BM06_DAYS_PER_SOURCE_PAGE === 0 && shift.slot === "SHIFT_4";
-      rows.push(mkRow(`${d.dateStr}-${shift.slot}`, [r?.id ?? null, d.dateStr, shift.label, shift.time, r?.profiles?.full_name ?? null, ...HOSPITAL_MACHINES_25.map((m) => byOrder.get(m.order) ?? null), r?.note ?? null], r ? [r.id] : [], pageNumber, pageBreakAfter));
+      rows.push(mkRow(`${d.dateStr}-${shift.slot}`, [r?.id ?? null, d.dateStr, shift.label, shift.time, r?.profiles?.full_name ?? null, ...HOSPITAL_MACHINES_25.map((m) => byOrder.get(m.order) ?? null), r?.note ?? null], r ? [r.id] : []));
     }
   } else {
     columns = ["STT", "Ngày", "Ca / Thời gian", "Loại bản ghi", "Thời điểm thực hiện", "Người thực hiện", "Ghi chú"];

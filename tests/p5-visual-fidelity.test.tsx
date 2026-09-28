@@ -44,12 +44,10 @@ describe("P5 mobile visual fidelity and data visualization", () => {
 
   it("provides the export workspace flow from the attached mockup", () => {
     const route = read("src/app/reports/export/page.tsx");
-    expect(route).toMatch(/Kỳ báo cáo cần xuất/);
-    expect(route).toMatch(/Chọn 1 trong/);
-    expect(route).toMatch(/Xem trước/);
+    expect(route).toMatch(/6 biểu mẫu đầu ra/);
+    expect(route).toMatch(/Preview/);
     expect(route).toMatch(/Excel \(\.xlsx\)/);
-    expect(route).toMatch(/PrintButton/);
-    expect(read("src/components/p5/PrintButton.tsx")).toMatch(/In phiếu \/ Lưu PDF/);
+    expect(route).not.toMatch(/PrintButton|PDF|CSV/);
     expect(route).toMatch(/getExportWorkspace/);
   });
 

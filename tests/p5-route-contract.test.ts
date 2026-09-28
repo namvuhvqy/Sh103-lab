@@ -66,11 +66,13 @@ describe("P5 M01-M06 route contract", () => {
     const exportPage = read("src/app/reports/export/page.tsx");
     expect(exportPage).toContain("Preview");
     expect(exportPage).toContain("Excel");
-    expect(exportPage).toContain("PDF");
+    expect(exportPage).not.toContain("PDF");
+    expect(exportPage).not.toContain("CSV");
+    expect(exportPage).not.toContain("PrintButton");
     expect(exportPage).not.toContain("Duyệt tại P4");
     expect(exportPage).toContain("Trang trước");
     expect(exportPage).toContain("Trang sau");
-    expect(exportPage).toContain("Trang X / N");
+    expect(exportPage).toContain("Trang 1 / 1");
   });
 
 });

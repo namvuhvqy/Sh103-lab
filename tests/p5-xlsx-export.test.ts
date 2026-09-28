@@ -34,7 +34,7 @@ describe("official XLSX export", () => {
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Tổng quan", "Bản ghi hiệu lực"]);
     expect(workbook.getWorksheet("Bản ghi hiệu lực")?.getCell("A2").value).toBe("record-1");
-    expect(workbook.getWorksheet("Tổng quan")?.getCell("B6").value).toBe("ĐÃ PHÊ DUYỆT");
+    expect(workbook.getWorksheet("Tổng quan")?.getCell("B6").value).toBe("ĐÃ PHÊ DUYỆT (LỊCH SỬ)");
   });
 
   it("passes workspace filters into the official report query", async () => {
