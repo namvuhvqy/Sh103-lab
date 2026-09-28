@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
+import { InstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import fs from "fs";
 import path from "path";
 
@@ -71,5 +72,62 @@ describe("P1 PWA & Offline UX Requirements", () => {
     // P6 does not support offline working mode: no business API/mutation cache.
     expect(swContent).not.toMatch(/STATIC_ASSETS\s*=\s*\[[\s\S]*?["']\/["']/);
     expect(swContent).not.toMatch(/background\s*sync|sync\s*event|mutation\s*queue|offline\s*write/i);
+  });
+
+  it("shows compact install button and calls beforeinstallprompt on supported browsers", async () => {
+    const prompt = vi.fn().mockResolvedValue(undefined);
+    render(<InstallAppPrompt />);
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("beforeinstallprompt", {
+          detail: undefined,
+        }) as Event
+      );
+    });
+
+    const event = new Event("beforeinstallprompt") as Event & {
+      preventDefault: () => void;
+      prompt: () => Promise<void>;
+      userChoice: Promise<{ outcome: "accepted" }>;
+    };
+    event.preventDefault = vi.fn();
+    event.prompt = prompt;
+    event.userChoice = Promise.resolve({ outcome: "accepted" });
+
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    const button = await screen.findByRole("button", { name: /Cài ứng dụng/i });
+    fireEvent.click(button);
+    await waitFor(() => expect(prompt).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows iOS Add to Home Screen guidance when native install prompt is unavailable", async () => {
+    Object.defineProperty(window.navigator, "userAgent", {
+      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+      configurable: true,
+    });
+    render(<InstallAppPrompt />);
+    expect(await screen.findByText(/Chia sẻ → Thêm vào Màn hình chính/i)).toBeInTheDocument();
+  });
+
+  it("hides install button when app is already installed", () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(display-mode: standalone)",
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as typeof window.matchMedia;
+
+    const { container } = render(<InstallAppPrompt />);
+    expect(container.firstChild).toBeNull();
+    window.matchMedia = originalMatchMedia;
   });
 });

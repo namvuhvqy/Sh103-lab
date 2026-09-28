@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
+import { InstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import { BarChart3, Bell, CalendarDays, CircleAlert, ClipboardCheck, ClipboardList, History, UserRound } from "lucide-react";
 
 const links = [
@@ -17,6 +18,9 @@ export default function MorePage() {
   return <AppShell headerTitle="Thêm">
     <h1 className="text-3xl font-bold text-slate-950">Tiện ích</h1>
     <p className="mt-2 text-slate-600">Đi tới các phân hệ hỗ trợ, báo cáo và tài khoản cá nhân.</p>
+    <div className="mt-5">
+      <InstallAppPrompt />
+    </div>
     <div className="mt-6 grid gap-3 sm:grid-cols-2">{links.map(({ href, label, description, icon: Icon }) => <Link key={href} href={href} className="flex min-h-20 items-center gap-4 rounded-2xl border bg-white p-4 shadow-sm focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800"><Icon aria-hidden="true" className="h-5 w-5" /></span><span><b className="block text-slate-950">{label}</b><span className="text-sm text-slate-600">{description}</span></span></Link>)}</div>
   </AppShell>;
 }
