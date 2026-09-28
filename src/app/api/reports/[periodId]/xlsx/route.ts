@@ -22,11 +22,16 @@ type MaintenanceDetail = {
   result: string | null;
 };
 
+type EquipmentStatus = {
+  asset_display_order_snapshot: number;
+  status_code: string | null;
+  asset_label_snapshot: string | null;
+};
+
 type EquipmentShiftDetail = {
-  equipment_shift_statuses: {
-    status_code: string | null;
-    asset_label_snapshot: string | null;
-  } | null;
+  usage_value?: number | null;
+  usage_unit?: string | null;
+  equipment_shift_statuses: EquipmentStatus[] | EquipmentStatus | null;
 };
 
 type ReportRecord = {
@@ -172,27 +177,29 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { slot: "SHIFT_4", label: "Ca 4", time: "16:30 – 07:00" },
     ];
 
-    let rowIndex = 0;
     for (let d = startDayNum; d <= daysInMonth; d++) {
       const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
       for (const shift of SHIFT_DEFS) {
-        rowIndex++;
         const matchingRecord = records.find(
           (r) => r.business_date === dateStr && (r.slot_code === shift.slot || r.slot_code === shift.label)
         );
 
-        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
-        const performer = matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV trực" : "—");
+        const rowId = matchingRecord?.id ?? null;
+        const performer = matchingRecord?.profiles?.full_name ?? null;
         const note = matchingRecord?.note ?? "";
 
-        const machineData: Record<string, string> = {};
+        const machineData: Record<string, string | null> = {};
+        const shiftDetail = firstItem(matchingRecord?.equipment_shift_details);
+        const statuses = shiftDetail
+          ? (Array.isArray(shiftDetail.equipment_shift_statuses)
+              ? shiftDetail.equipment_shift_statuses
+              : shiftDetail.equipment_shift_statuses
+                ? [shiftDetail.equipment_shift_statuses]
+                : [])
+          : [];
+        const statusesByOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
         HOSPITAL_MACHINES_25.forEach((m) => {
-          if (matchingRecord) {
-            const s = firstItem(matchingRecord.equipment_shift_details)?.equipment_shift_statuses;
-            machineData[`machine_${m.order}`] = s?.status_code ?? "BT";
-          } else {
-            machineData[`machine_${m.order}`] = "BT";
-          }
+          machineData[`machine_${m.order}`] = statusesByOrder.get(m.order) ?? null;
         });
 
         data.addRow({
@@ -201,7 +208,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           slot_code: shift.label,
           shift_time: shift.time,
           entered_by: performer,
-          usage_hours: matchingRecord ? "Đủ ca" : "Theo ca",
+          usage_hours: matchingRecord ? (shiftDetail?.usage_value ?? null) : null,
           ...machineData,
           note,
         });
@@ -229,24 +236,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { slot: "AFTERNOON", label: "Chiều", time: "14:30" },
     ];
 
-    let rowIndex = 0;
     for (let d = startDayNum; d <= daysInMonth; d++) {
       const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
       for (const slot of SLOTS) {
-        rowIndex++;
         const matchingRecord = records.find(
           (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
         );
-        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+        const rowId = matchingRecord?.id ?? null;
         const m = firstItem(matchingRecord?.measurement_details);
         const isAbnormal = m?.temperature_abnormal || m?.humidity_abnormal;
         const isoEval = matchingRecord
           ? matchingRecord.is_na
             ? `N/A: ${matchingRecord.na_reason ?? ""}`
-            : isAbnormal
-            ? "NGOÀI NGƯỠNG"
-            : "ĐẠT CHUẨN"
-          : "ĐẠT CHUẨN";
+            : m
+              ? isAbnormal
+                ? "NGOÀI NGƯỠNG"
+                : "ĐẠT CHUẨN"
+              : ""
+          : "";
 
         data.addRow({
           id: rowId,
@@ -256,12 +263,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           performed_at: matchingRecord?.performed_at
             ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
             : slot.time,
-          temperature_c: m?.temperature_c ?? 23.5,
+          temperature_c: m?.temperature_c ?? null,
           temperature_norm: "21°C – 26°C",
-          humidity_pct: m?.humidity_pct ?? 55,
+          humidity_pct: m?.humidity_pct ?? null,
           humidity_norm: "20% – 80%",
-          iso_eval: isoEval,
-          entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV trực" : "KTV Sinh hóa"),
+          iso_eval: isoEval || null,
+          entered_by: matchingRecord?.profiles?.full_name ?? null,
           note: matchingRecord?.note ?? "",
         });
       }
@@ -288,32 +295,35 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { slot: "AFTERNOON", label: "Chiều (15:30)", time: "15:00" },
     ];
 
-    let rowIndex = 0;
     for (let d = startDayNum; d <= daysInMonth; d++) {
       const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
       for (const slot of SLOTS) {
-        rowIndex++;
         const matchingRecord = records.find(
           (r) => r.business_date === dateStr && (r.slot_code === slot.slot || r.slot_code === slot.label)
         );
-        const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+        const rowId = matchingRecord?.id ?? null;
         const m = firstItem(matchingRecord?.measurement_details);
-        const defaultTemp = isFreezer ? -22.0 : 4.5;
-        const actualTemp = m?.temperature_c ?? defaultTemp;
+        const evaluation = matchingRecord
+          ? matchingRecord.is_na
+            ? `N/A: ${matchingRecord.na_reason ?? ""}`
+            : m
+              ? m.temperature_abnormal ? "NGOÀI NGƯỠNG" : "ĐẠT CHUẨN"
+              : null
+          : null;
 
         data.addRow({
           id: rowId,
           business_date: dateStr,
-          asset_name: period.assets?.source_name ?? (isFreezer ? "Tủ âm sâu Overmed (TU-01)" : "Tủ lạnh TOWASHI (TU 02)"),
+          asset_name: period.assets?.source_name ?? null,
           slot_code: slot.label,
           performed_at: matchingRecord?.performed_at
             ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
             : slot.time,
-          temperature_c: actualTemp,
+          temperature_c: m?.temperature_c ?? null,
           temperature_norm: tempRange,
-          iso_eval: "ĐẠT CHUẨN",
-          entered_by: matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV quản lý tủ" : "KTV phụ trách"),
-          note: matchingRecord?.note ?? (d === 1 ? "Ghi chép hằng ngày theo phân công" : ""),
+          iso_eval: evaluation,
+          entered_by: matchingRecord?.profiles?.full_name ?? null,
+          note: matchingRecord?.note ?? "",
         });
       }
     }
@@ -330,24 +340,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { header: "Ghi chú & Biện pháp", key: "note", width: 26 },
     ];
 
-    let rowIndex = 0;
     for (let d = startDayNum; d <= daysInMonth; d++) {
-      rowIndex++;
       const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
       const matchingRecord = records.find((r) => r.business_date === dateStr);
-      const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+      const rowId = matchingRecord?.id ?? null;
       const decontam = firstItem(matchingRecord?.decontamination_details);
-      const dayOfWeek = new Date(dateStr).getDay();
-      const isWeekendWeekly = dayOfWeek === 6 || dayOfWeek === 0;
-
       data.addRow({
         id: rowId,
         business_date: dateStr,
         location_name: period.locations?.name ?? "Khu vực làm xét nghiệm",
-        daily_done: decontam?.daily_done ?? true ? "ĐÃ HOÀN THÀNH" : "CHƯA THỰC HIỆN",
-        weekly_done: decontam?.weekly_done ?? isWeekendWeekly ? "ĐÃ HOÀN THÀNH" : "—",
-        spill_done: decontam?.spill_event_done ? "ĐÃ XỬ LÝ ĐẠT" : "KHÔNG PHÁT SINH",
-        entered_by: matchingRecord?.profiles?.full_name ?? "KTV phụ trách",
+        daily_done: matchingRecord ? (decontam?.daily_done ? "ĐÃ HOÀN THÀNH" : "CHƯA THỰC HIỆN") : null,
+        weekly_done: matchingRecord ? (decontam?.weekly_done ? "ĐÃ HOÀN THÀNH" : "—") : null,
+        spill_done: matchingRecord ? (decontam?.spill_event_done ? "ĐÃ XỬ LÝ ĐẠT" : "KHÔNG PHÁT SINH") : null,
+        entered_by: matchingRecord?.profiles?.full_name ?? null,
         note: matchingRecord?.note ?? "",
       });
     }
@@ -364,23 +369,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       { header: "Ghi chú kỹ thuật", key: "note", width: 26 },
     ];
 
-    let rowIndex = 0;
     for (let d = startDayNum; d <= daysInMonth; d++) {
-      rowIndex++;
       const dateStr = `${monthPrefix}-${String(d).padStart(2, "0")}`;
       const matchingRecord = records.find((r) => r.business_date === dateStr);
-      const rowId = matchingRecord?.id ?? (rowIndex === 1 ? (records[0]?.id ?? "") : "");
+      const rowId = matchingRecord?.id ?? null;
       const maint = firstItem(matchingRecord?.maintenance_details);
-      const resultText = maint?.result === "FAIL" ? "KHÔNG ĐẠT" : "ĐẠT YÊU CẦU";
+      const resultText = maint?.result === "FAIL" ? "KHÔNG ĐẠT" : maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : null;
 
       data.addRow({
         id: rowId,
         business_date: dateStr,
         asset_name: period.assets?.source_name ?? "Trang thiết bị xét nghiệm",
-        cadence: maint?.cadence ?? "Hằng ngày",
-        task_content: "Chạy quy trình rửa W1 & Kiểm tra kim hút",
+        cadence: maint?.cadence ?? null,
+        task_content: matchingRecord ? "Đã thực hiện theo quy trình bảo dưỡng được phê duyệt" : null,
         result: resultText,
-        entered_by: matchingRecord?.profiles?.full_name ?? "KTV vận hành",
+        entered_by: matchingRecord?.profiles?.full_name ?? null,
         note: matchingRecord?.note ?? "",
       });
     }
