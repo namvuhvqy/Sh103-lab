@@ -43,8 +43,8 @@ describe("BM06 mobile form",()=>{
   expect(screen.getByText("0/25 máy đã ghi nhận")).toBeInTheDocument();
   expect(screen.getByText("#1")).toBeInTheDocument();
   expect(screen.getByText("#25")).toBeInTheDocument();
-  expect(screen.getByRole("button",{name:"Lưu nháp"})).toBeDisabled();
-  expect(screen.getByRole("button",{name:"Hoàn tất ca"})).toBeDisabled();
+  expect(screen.getByRole("button", { name: /Lưu nháp/i })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /Hoàn tất ca/i })).toBeDisabled();
  });
  it("limits area-first entry to area assets and never exposes finalize",()=>{
   const initial=Object.fromEntries(assets.map(asset=>[asset.id,"BT"]));

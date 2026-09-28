@@ -579,9 +579,14 @@ Tạo:
 
 - online/offline detector;
 - global offline banner;
-- offline page;
 - không fake save;
-- không background write queue.
+- không background write queue;
+- không offline write;
+- không background sync;
+- không queue mutation;
+- reconnect phải refresh/read-back trạng thái server.
+
+`/offline` route/fallback có thể tồn tại để tương thích shell/PWA cũ, nhưng từ P6 trở đi **không phải gate bắt buộc**. Gate offline/reconnect dựa trên global offline banner/state, mutation blocking/error rõ ràng và reconnect read-back server.
 
 ## 13.8. P1-OPS-01 — Environment
 
@@ -623,7 +628,8 @@ README phải giúp một người mới:
 - typecheck;
 - basic render;
 - manifest load;
-- offline page;
+- global offline banner/state;
+- mutation offline không fake saved;
 - no secret scan;
 - mobile shell 360/390;
 - desktop shell.
@@ -754,7 +760,7 @@ Seed đúng:
 - source order;
 - source name nguyên bản;
 - không tự sửa/gộp tên trùng;
-- **Gán `location_id` trỏ về 4 khu vực làm việc có máy** theo bảng ánh xạ đã khóa chính thức trong file 02:
+- **Gán `location_id` trỏ về 4 khu vực làm việc có máy** theo bảng ánh xạ đã khóa chính thức trong file 02 (trong tổng 5 khu vực làm việc; Nhận bệnh phẩm 0 máy, `KHO` auxiliary):
   + Khu Sinh hóa: 9 máy (STT 1, 2, 5, 6, 9, 11, 12, 17, 19);
   + Khu Miễn dịch: 8 máy (STT 4, 7, 13, 14, 15, 18, 20, 23);
   + Khu Nước tiểu: 4 máy (STT 3, 8, 10, 16);
@@ -1182,13 +1188,9 @@ S06:
 - 25 máy;
 - progress 0–25;
 - segmented BT/KSD/H;
-- bulk save.
-
-Có thể có:
-
-`Đánh dấu tất cả BT`
-
-nhưng phải confirm, không auto-default.
+- lưu nháp/finalize toàn ca qua một transaction, nhưng không có bulk-fill trạng thái.
+- không có `Đánh dấu tất cả BT`, không status mặc định; người dùng xác nhận từng máy.
+- lượng sử dụng được biểu diễn bằng ca/khung giờ cố định; không nhập numeric usage.
 
 ## 19.5. Completion
 
@@ -1222,16 +1224,17 @@ Không Complete khi:
 
 ## 20.1. S01 Trang chủ Area-first
 - Khối trạng thái ca trực hiện tại (khung giờ, người trực, tiến độ hoàn thành);
-- **4 Thẻ Khu vực làm việc chính:** Sinh hóa (`SINH_HOA`), Miễn dịch (`MIEN_DICH`), Nước tiểu (`NUOC_TIEU`), Ly tâm (`LY_TAM`) kèm số máy và trạng thái vận hành ca;
+- **5 khu vực làm việc BM.01/KNBM:** Sinh hóa, Miễn dịch, Nước tiểu, Ly tâm, Nhận bệnh phẩm; riêng trạng thái máy/BM.06 chỉ áp dụng 4 khu có thiết bị (Nhận bệnh phẩm 0 máy);
 - Khối Công việc chung toàn khoa (Nhiệt độ PXN BM.01, 13 dòng tủ BM.02/03);
 - Khối Chờ duyệt (Trưởng khoa) / Quản trị (Admin) / Dashboard tóm tắt.
 
-## 20.2. S02 Việc hôm nay
-- Bộ lọc theo 4 Khu vực làm việc (`Tất cả` | `Sinh hóa` | `Miễn dịch` | `Nước tiểu` | `Ly tâm` | `Chung`);
-- Phân loại: Cần làm, Đã làm, N/A, Còn thiếu / Nhập bù, Returned.
+## 20.2. S02 Phiên làm việc / Nhập nhanh (`/quick-duty`) — P6 supersedes Today/Calendar as entry workflow
+- `/quick-duty` là workspace chính cho KTV: roster tự nhận kíp từ danh sách nhân sự chính thức + các section nhập nhanh theo ca.
+- `/tasks` và `/calendar` không còn là màn hình nhập chính; nếu còn route thì chỉ redirect/backward compatibility cho saved links.
+- Phân loại trạng thái theo section: Chưa ghi, Draft, Saving, Saved, Error, Completed, Returned khi phù hợp.
 
 ## 20.3. S03 Danh sách Khu vực & S04 Chi tiết Khu vực (Area Detail)
-- `S03` Tổng quan 4 khu vực (`/areas`);
+- `S03` Tổng quan 5 khu vực làm việc (`/areas`), phân biệt rõ Nhận bệnh phẩm 0 máy và `KHO` chỉ auxiliary;
 - `S04` Chi tiết khu vực (`/areas/:areaCode`):
   + Danh sách máy thuộc riêng khu vực đó;
   + Nhật ký ca BM.06 theo khu vực (có nút Lưu nháp);
@@ -1246,8 +1249,9 @@ Không Complete khi:
 - Lịch sử vận hành và các biểu mẫu áp dụng riêng.
 
 ## 20.5. S08 Lịch, S09 Việc chung & S11 Sổ/Kỳ theo dõi
-- Lịch công việc (`/calendar`): Day/Week/Month, lọc theo khu vực;
-- Việc chung toàn khoa (`/general-tasks`): BM.01 môi trường, BM.02/03 tủ lạnh;
+- `/calendar` là legacy redirect/backward compatibility, không còn là workflow nhập chính;
+- Nhiệt độ & Độ ẩm (`/temperature`): BM.01 môi trường, BM.02/03 tủ lạnh; `/general-tasks` là route cũ và redirect 308 về `/temperature`;
+- Thiết bị / BM.06 (`/equipment#bm06-entry`): lồng ghép nhập SHIFT_1–SHIFT_4 dưới danh sách thiết bị;
 - Sổ/Kỳ (`/periods/:periodId`):
   + Measurement: ma trận ngày × slot;
   + KNBM: ngày × daily/weekly/spill;
@@ -1260,11 +1264,11 @@ Không Complete khi:
 P3 PASS khi:
 
 - [ ] Điều hướng Area-first hoạt động chuẩn: Trang chủ → 4 Khu vực → Thiết bị → Phiếu;
-- [ ] Thiết bị hiển thị đúng khu vực (14 máy xác định + 11 máy OPEN ITEM có nhãn cảnh báo);
+- [ ] Thiết bị hiển thị đúng khu vực: đủ 25/25 máy đã Owner xác nhận, 0 OPEN ITEM; không còn mô hình 14 + 11;
 - [ ] Không đưa 25 máy vào danh sách phẳng lộn xộn khi tác nghiệp theo khu;
 - [ ] BM.06 cho phép lưu nháp theo khu và hoàn tất khi đủ 25/25 máy;
 - [ ] 6 biểu mẫu Core Pilot nhập và lưu dữ liệu thành công;
-- [ ] Today và Calendar lọc được theo Khu vực làm việc;
+- [ ] `/quick-duty` và `/equipment` là luồng nhập chính; `/tasks` và `/calendar` chỉ là legacy redirect/backward compatibility;
 - [ ] Period view và Matrix hiển thị đúng cấu trúc sổ;
 - [ ] Mobile 360/390px thao tác mượt mà, không lỗi giao diện;
 - [ ] Không có Báo cáo sự cố;
@@ -1596,20 +1600,22 @@ Ma trận test:
 Tối thiểu:
 
 1. Login.
-2. Today.
+2. **Home → Phiên làm việc (`/quick-duty`) → roster tự nhận kíp từ danh sách nhân sự chính thức → nhập biểu mẫu → save → refresh → trạng thái đúng → export đúng.**
 3. BM.01 normal.
 4. BM.01 abnormal.
 5. Nhập bù.
 6. N/A.
-7. BM.06 25 statuses.
+7. BM.06 v4.1 đủ 25 statuses theo `source_order` 1–25 trên `/equipment#bm06-entry`.
 8. KNBM daily+weekly.
 9. Maintenance.
-10. Mark Ready.
+10. Mark Ready / approve incomplete nếu policy P6 cho phép và có audit `APPROVE_INCOMPLETE`.
 11. Head Return.
 12. Resubmit.
 13. Head Approve.
 14. Correction.
-15. Report.
+15. Report/export parse được và đối soát đúng dữ liệu server.
+
+E2E không được chỉ dựa vào toast/UI tạm; phải refresh/read-back hoặc parse export để chứng minh dữ liệu persisted.
 
 ---
 
@@ -1684,10 +1690,15 @@ Sau restore:
 
 ---
 
-# 30. P6G — Error handling
+# 30. P6G — Error handling & Mutation State
 
 Mọi mutation có:
 
+- `Draft`: partial save/nháp, không báo completed.
+- `Saving`: đang gửi server, chống double-submit.
+- `Saved`: server xác nhận thành công và refresh/read-back đúng.
+- `Error`: validation/permission/conflict/server error, không báo đã lưu.
+- `Completed`: chỉ khi đủ điều kiện hoàn tất nghiệp vụ.
 - validation error;
 - permission error;
 - conflict;
@@ -1712,8 +1723,29 @@ Không log:
 | Medium | có workaround, không sai dữ liệu lõi | Có điều kiện |
 | Low | thẩm mỹ/tiện dụng nhỏ | Có thể backlog |
 
+# 31A. P6I — Codebase Cleanup & Simplification Gate
+
+Trước khi refactor/code P6 tiếp theo:
+
+- [ ] Audit route/component trùng vai trò và CTA nghiệp vụ dư thừa.
+- [ ] Cắt/gộp màn hình để KTV ưu tiên `/quick-duty`, `/equipment`, `/temperature`, `/approvals`.
+- [ ] `/tasks` và `/calendar` chỉ legacy redirect/backward compatibility.
+- [ ] Không làm mất saved links nếu route cũ còn người dùng đã mở.
+- [ ] Không gọi “đã tối ưu” nếu chưa có BEFORE/AFTER measurable evidence.
+
+# 31B. P6J — Performance BEFORE/AFTER Gate
+
+Performance phải có metrics đo được:
+
+- [ ] BEFORE baseline trước thay đổi.
+- [ ] AFTER sau thay đổi.
+- [ ] Cùng route, viewport/device profile, môi trường đo.
+- [ ] Tối thiểu ghi TTFB, DOMContentLoaded, LCP hoặc chỉ số tương đương; request count/JS size nếu có.
+- [ ] Báo cáo rõ phần nào cải thiện/không cải thiện; không dùng cảm tính.
+
 ## Exit Gate P6
 
+- [ ] Roadmap/canonical docs P6 được Owner duyệt trước khi refactor/code.
 - [ ] Không Critical.
 - [ ] Không High.
 - [ ] Unit PASS.

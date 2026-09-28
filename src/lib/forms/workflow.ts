@@ -58,7 +58,7 @@ export async function getApprovalQueue(): Promise<ApprovalPeriod[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("register_periods")
     .select("id,period_label,period_start,period_end,status,lock_version,returned_reason,approved_at,approved_by,locations(name,code),assets(source_name),form_template_versions(form_templates(code,name))")
-    .eq("status", "READY_FOR_REVIEW").order("period_start", { ascending: true });
+    .in("status", ["OPEN", "RETURNED", "READY_FOR_REVIEW"]).order("period_start", { ascending: true });
   if (error) throw new Error(`Không tải được hàng đợi phê duyệt: ${error.message}`);
   return (data ?? []) as unknown as ApprovalPeriod[];
 }

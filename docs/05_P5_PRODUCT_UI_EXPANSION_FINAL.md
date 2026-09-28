@@ -9,6 +9,17 @@
 
 ---
 
+# 0.1. Owner Decision addendum — unified shift entry
+
+- Workflow chính là `Phiên làm việc / Nhập nhanh` tại `/quick-duty`; đây chỉ là UI orchestrator, không tạo super-record hoặc record tổng 24 giờ.
+- Mỗi section lưu độc lập vào đúng form version, kỳ, occurrence, record/detail table và RPC chuyên biệt.
+- BM.01 version hiện hành áp dụng đúng 5 khu: `SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`; `KHO` chỉ là auxiliary context cho BM.02/BM.03 khi source/master yêu cầu.
+- BM.06 v4.1 là source revision hiện hành; v4.0 được giữ bất biến làm historical source. Lượng sử dụng được thể hiện bằng 4 ca cố định, không numeric input, không mặc định `4.5`, không bulk/default `BT`.
+- Nhân sự được định danh bằng `user_id`; STT Phụ lục chỉ là source/display order. Không dùng họ tên free-text hoặc tạo mã `staff_number` mới.
+- `/general-tasks` không còn là màn nghiệp vụ độc lập và redirect 308 về `/temperature`.
+
+---
+
 # 1. Nguyên tắc thiết kế P5
 
 1. **Data-first, không hard-code số liệu nghiệp vụ vào UI.** Mọi count/progress/status phải đến từ Supabase/query thật.
@@ -502,7 +513,8 @@ Mới:
 Nâng cấp:
 
 - `/`
-- `/general-tasks`
+- `/temperature`; `/general-tasks` chỉ còn redirect 308 về `/temperature`
+- `/quick-duty` thành `Phiên làm việc / Nhập nhanh`
 - `/areas/:areaCode/knbm`
 - `/approvals`
 - `/periods/:periodId/review`

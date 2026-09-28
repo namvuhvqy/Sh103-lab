@@ -56,10 +56,10 @@ describe("official CSV export", () => {
     const headerIndex = lines.findIndex((line) => line.includes('"STT","Ngày vận hành"'));
     const row = parseCsvLine(lines[headerIndex + 1]);
 
-    expect(row[6]).toBe("H");
-    expect(row[7]).toBe("KSD");
-    expect(row[8]).toBe("");
-    expect(row[30]).toBe("BT");
-    expect(parseCsvLine(lines[headerIndex + 2])[6]).toBe("");
+    expect(row[5]).toBe("H");
+    expect(row[6]).toBe("KSD");
+    expect(row[7]).toBe("");
+    expect(row[29]).toBe("BT");
+    expect(parseCsvLine(lines[headerIndex + 2])[5]).toBe("");
   });
 });

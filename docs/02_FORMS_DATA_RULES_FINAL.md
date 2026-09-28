@@ -74,7 +74,7 @@ Bảng này cố tình ghi rõ những điểm từng có dữ liệu khác nhau
 | 3 | `BM.03/QL.HTAT.01` | Theo dõi tủ đông/tủ đá | Excel; v3.0; tab `NganDa` | Đo nhiệt độ tủ/ngăn đông | Tháng; 2 lần/ngày | Trưởng khoa cuối kỳ/tháng |
 | 4 | `BM.01_KNBM` | Phiếu theo dõi khử nhiễm bề mặt khu vực làm việc | Word; phiên bản nguồn không xác định trong file đã nhận | Sổ đánh dấu công việc | Tháng; hằng ngày/hằng tuần/sự kiện tràn đổ | Trưởng khoa cuối kỳ/tháng |
 | 5 | `BM.02/QL.TRTB.01` | Bảng theo dõi – bảo dưỡng trang thiết bị | Excel; v4.0 | Sổ bảo dưỡng | Hằng ngày/hằng tuần/hằng tháng | Trưởng khoa cuối kỳ/tháng |
-| 6 | `BM.06/QL.TRTB.01` | Nhật ký hoạt động trang thiết bị | Word; v4.0 | Nhật ký nhiều máy theo ca | 4 khung giờ/ngày; kỳ từ ngày–đến ngày | Trưởng khoa khi chốt kỳ |
+| 6 | `BM.06/QL.TRTB.01` | Nhật ký hoạt động trang thiết bị | Word; v4.0 (lịch sử) / v4.1 (hiện hành) | Nhật ký nhiều máy theo ca | 4 khung giờ/ngày; kỳ từ ngày–đến ngày | Trưởng khoa khi chốt kỳ |
 
 **Không có Báo cáo sự cố trong MVP.**
 
@@ -196,11 +196,14 @@ MVP số hóa sổ này theo từng ngày và hai lần đo/ngày, sau đó tổ
 
 ## 5.2. Phạm vi khu vực
 
-Áp dụng cho cả ba khu vực:
+Áp dụng chính thức cho đúng 5 khu vực làm việc xét nghiệm:
+1. **Khu vực làm xét nghiệm Sinh hóa** (`SINH_HOA`) — thiết bị theo dõi `NAKĐT-01`.
+2. **Khu vực làm xét nghiệm Miễn dịch** (`MIEN_DICH`) — thiết bị theo dõi `NAKĐT-02`.
+3. **Khu vực làm xét nghiệm Nước tiểu** (`NUOC_TIEU`).
+4. **Khu vực Ly tâm** (`LY_TAM`).
+5. **Khu vực Nhận bệnh phẩm** (`NHAN_BENH_PHAM`).
 
-1. **Khu vực làm xét nghiệm sinh hóa** — thiết bị theo dõi `NAKĐT-01`.
-2. **Khu vực làm xét nghiệm miễn dịch** — thiết bị theo dõi `NAKĐT-02`.
-3. **Kho** — thiết bị theo dõi `NAKĐT-03`.
+*Lưu ý vị trí phụ trợ:* Vị trí **Kho** (`KHO` — thiết bị theo dõi `NAKĐT-03`) là vị trí phụ trợ theo dõi nhiệt độ bảo quản môi trường kho và tủ lưu trữ, không phải là khu vực làm việc BM.01.
 
 ## 5.3. Lịch đo FINAL
 
@@ -218,7 +221,7 @@ Quy tắc nhập:
 
 ## 5.4. Ngưỡng FINAL
 
-Cả 3 khu vực dùng cùng ngưỡng:
+Cả 5 khu vực BM.01 v3.1 dùng cùng ngưỡng:
 
 - **Nhiệt độ phòng hợp lệ:** từ **21°C đến 26°C**, tính cả hai đầu.
 - **Độ ẩm hợp lệ:** từ **20% đến 80%**, tính cả hai đầu.
@@ -232,7 +235,7 @@ Cờ bất thường:
 
 | Trường nghiệp vụ | Bắt buộc | Quy tắc |
 |---|---|---|
-| Khu vực | Có | Chọn 1 trong 3 khu vực trên. |
+| Khu vực | Có | Chọn 1 trong 5 khu vực BM.01 v3.1 (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`). `KHO` không phải work area BM.01. |
 | Thiết bị theo dõi | Có | Tự lấy từ danh mục khu vực tại thời điểm ghi; vẫn lưu tham chiếu lịch sử. |
 | Tháng/năm | Có | Xác định kỳ/sổ. |
 | Ngày đo | Có | Ngày 1–31 hợp lệ của tháng. |
@@ -578,33 +581,34 @@ Không yêu cầu file đính kèm trong MVP.
 
 # 10. BM.06/QL.TRTB.01 — Nhật ký hoạt động trang thiết bị
 
-## 10.1. Cấu trúc nguồn
+## 10.1. Cấu trúc nguồn và Phiên bản biểu mẫu
 
-Bản giấy v4.0 có:
+- **Phiên bản biểu mẫu:** Giữ nguyên phiên bản BM.06 v4.0 trong dữ liệu lịch sử; ban hành và áp dụng BM.06 v4.1 làm biểu mẫu hiện hành theo thẩm quyền.
+- **Tính bất biến của bằng chứng nguồn:** Toàn bộ bằng chứng lịch sử không bị thay đổi, dữ liệu cũ giữ nguyên v4.0.
+- Cấu trúc:
+  - Quyển số;
+  - Từ ngày / Đến ngày;
+  - Ngày tháng/năm;
+  - Người sử dụng;
+  - Khung giờ / Ca trực (chuẩn hóa lượng sử dụng);
+  - 25 máy xét nghiệm theo đúng thứ tự Phụ lục;
+  - Mã trạng thái: `BT` (Bình thường), `KSD` (Không sử dụng), `H` (Hỏng);
+  - Ghi chú;
+  - Phần Lãnh đạo BMK cuối sổ.
 
-- Quyển số;
-- Từ ngày / Đến ngày;
-- Ngày tháng/năm;
-- Người sử dụng;
-- Lượng sử dụng (số giờ, số ca hoạt động);
-- nhiều cột máy;
-- mã trạng thái:
-  - `BT` = Bình thường;
-  - `KSD` = Không sử dụng;
-  - `H` = Hỏng;
-- Ghi chú;
-- phần Lãnh đạo BMK cuối sổ.
+## 10.2. Khung giờ FINAL và Quy tắc Lượng sử dụng
 
-## 10.2. Khung giờ FINAL
+Mỗi ngày chia 4 khung giờ ca cố định:
 
-Mỗi ngày chia 4 khung giờ:
+1. **SHIFT_1: 07:00–11:30**
+2. **SHIFT_2: 11:30–13:30**
+3. **SHIFT_3: 13:30–16:30**
+4. **SHIFT_4: 16:30–07:00 hôm sau** (ngày nghiệp vụ `business_date` tính theo ngày bắt đầu ca)
 
-1. **07:00–11:30**
-2. **11:30–13:30**
-3. **13:30–16:30**
-4. **16:30–07:00 hôm sau**
-
-Không dùng các khung giờ cũ 07:00–12:00 / 13:30–16:00 trong bản nguồn cũ.
+**Quy tắc Lượng sử dụng (Quantity-of-use):**
+- Lượng sử dụng được định nghĩa và chuẩn hóa trực tiếp thông qua 4 khung giờ ca cố định ở trên.
+- **Không yêu cầu nhập số lượng sử dụng thủ công:** Không có ô nhập số hay đơn vị, không gán default số, không có cơ chế bulk BT tự động.
+- **Tương thích ngược database:** Các trường số cũ (`usage_value`, `usage_unit`) được duy trì nullable trong schema để tương thích với dữ liệu và hệ thống cũ.
 
 ## 10.3. Danh sách máy FINAL và thứ tự hiển thị
 
@@ -671,7 +675,7 @@ Không tự thêm trạng thái khác vào MVP nếu chưa cập nhật đặc t
 | Ngày | Có | Ngày của ca. |
 | Khung giờ | Có | Một trong 4 khung giờ FINAL. |
 | Người sử dụng/người ghi | Có | Từ tài khoản; UI có thể hiển thị họ tên. |
-| Lượng sử dụng | Có trong cấu trúc nguồn | Cho nhập số giờ hoặc số ca hoạt động theo cách khoa đang ghi; không dùng để thay thế trạng thái từng máy. |
+| Lượng sử dụng | Có trong cấu trúc nguồn | Biểu diễn bằng `slot_code` và khung giờ cố định của ca; không nhập số giờ/số ca numeric. `usage_value`/`usage_unit` cũ chỉ nullable để tương thích lịch sử. |
 | Trạng thái từng máy | Có | Mỗi máy chọn BT/KSD/H. |
 | Ghi chú | Không | Văn bản. |
 | Thời điểm nhập hệ thống | Có | Tự động. |
@@ -687,9 +691,9 @@ Một ca chỉ được coi là hoàn tất khi:
 
 Nếu máy không dùng trong ca → `KSD`; nếu hỏng → `H`.
 
-## 10.6. UI nhập và dữ liệu lưu (Hỗ trợ theo Khu vực và Toàn khoa)
+## 10.6. UI nhập và dữ liệu lưu (BM.06 v4.1 — 25 cột thiết bị, theo Khu vực, Toàn khoa và Quick Duty Orchestrator)
 
-Nghiệp vụ yêu cầu một ca có nhiều máy, dữ liệu hỗ trợ nhập linh hoạt theo 2 phương thức:
+Nghiệp vụ yêu cầu một ca có nhiều máy, dữ liệu hỗ trợ nhập linh hoạt theo các phương thức:
 
 1. **Phương thức theo Khu vực (Area-first — ưu tiên hàng ngày):**
    - KTV vào Khu vực làm việc (Sinh hóa / Miễn dịch / Nước tiểu / Ly tâm);
@@ -697,9 +701,12 @@ Nghiệp vụ yêu cầu một ca có nhiều máy, dữ liệu hỗ trợ nhậ
    - Chỉ hiển thị các máy thuộc khu vực đó để KTV kiểm tra và chọn BT/KSD/H;
    - Cho phép lưu nháp (Draft) tiến độ nhập của khu vực mà không bắt buộc phải hoàn tất cả 25 máy ngay lập tức.
 2. **Phương thức Toàn khoa (Tổng hợp ca):**
-   - Xem tổng quan toàn bộ 25 máy theo đúng thứ tự nguồn;
+   - Xem tổng quan toàn bộ 25 máy theo đúng thứ tự nguồn `source_order` 1–25; export/sổ BM.06 v4.1 phải render đủ 25 cột/dòng thiết bị, không còn 14 + 11 OPEN ITEM;
    - Kiểm tra các máy đã có trạng thái và các máy còn thiếu theo từng khu vực;
    - Hoàn tất ca (Finalize) khi và chỉ khi toàn bộ 25/25 máy của cả 4 khu vực đã có trạng thái BT/KSD/H.
+3. **Quick Duty Orchestrator (Điều phối ca trực nhanh):**
+   - Điều phối việc cập nhật trạng thái các máy theo ca trực một cách linh hoạt.
+   - **Không tạo bản ghi tổng hợp giả (no super-record):** Orchestrator chỉ cập nhật và điều phối các bản ghi thiết bị riêng biệt; dữ liệu lưu trữ luôn là 25 bản ghi trạng thái máy cụ thể, đảm bảo tính toàn vẹn và truy vết chính xác.
 
 Không bắt người dùng mở 25 biểu mẫu riêng lẻ cho 25 máy.
 
@@ -771,7 +778,7 @@ Và vị trí lưu trữ phụ trợ: **Kho / Lưu mẫu** (`KHO`).
 | `NUOC_TIEU` | Khu vực làm xét nghiệm Nước tiểu | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt), BM.06 (4 máy), BM.02 (Bảo dưỡng) | Tổng phân tích nước tiểu & cặn lắng |
 | `LY_TAM` | Khu vực Ly tâm | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt), BM.06 (4 máy), BM.02 (Bảo dưỡng) | Tách huyết thanh/huyết tương |
 | `NHAN_BENH_PHAM` | Khu vực Nhận bệnh phẩm | *(Chờ khoa bổ sung điểm đo nếu có)* | BM.01_KNBM (Khử nhiễm bề mặt hằng ngày, tuần, tràn đổ) | Tiếp nhận, đối chiếu mẫu ban đầu; **không có máy** |
-| `KHO` | Kho hóa chất / Kho lưu mẫu | NAKĐT-03 | BM.01 (Môi trường kho), BM.02/BM.03 (Tủ lưu kho chính/kho lẻ) | Lưu trữ hóa chất, sinh phẩm, mẫu lưu |
+| `KHO` | Kho hóa chất / Kho lưu mẫu | NAKĐT-03 | **Auxiliary/location context only**; không phải khu vực làm việc BM.01 v3.1. Dùng cho BM.02/BM.03 (Tủ lưu kho chính/kho lẻ) và ngữ cảnh lưu trữ khi source/master data yêu cầu. | Lưu trữ hóa chất, sinh phẩm, mẫu lưu |
 
 Khi thiết bị theo dõi thay đổi trong tương lai, dữ liệu cũ phải vẫn biết thiết bị nào đã được dùng tại thời điểm ghi; không cập nhật ngược lịch sử sang thiết bị mới.
 
@@ -833,7 +840,7 @@ Khi thiết bị theo dõi thay đổi trong tương lai, dữ liệu cũ phải
 1. **BM.06 (Nhật ký 4 ca):** Áp dụng bắt buộc cho toàn bộ 25 máy theo 4 khung giờ mỗi ngày (9 Sinh hóa, 8 Miễn dịch, 4 Nước tiểu, 4 Ly tâm).
 2. **BM.02/QL.TRTB.01 (Bảo dưỡng thiết bị):** Áp dụng theo chu kỳ Daily / Weekly / Monthly cho các máy có yêu cầu bảo dưỡng theo danh mục kỹ thuật của khoa.
 3. **BM.01_KNBM (Khử nhiễm bề mặt):** Áp dụng theo **Khu vực làm việc** (`location_id`) cho cả 5 khu vực (`SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`), gồm chu kỳ Hằng ngày (Daily), Hằng tuần (Weekly) và Xử lý tràn đổ (Spill).
-4. **BM.01 (Nhiệt độ - Độ ẩm PXN):** Áp dụng cho các điểm đo môi trường được gán vào khu vực Sinh hóa, Miễn dịch và Kho.
+4. **BM.01 (Nhiệt độ - Độ ẩm PXN) v3.1:** Áp dụng chính thức cho đúng 5 khu vực làm việc `SINH_HOA`, `MIEN_DICH`, `NUOC_TIEU`, `LY_TAM`, `NHAN_BENH_PHAM`. `KHO` chỉ là auxiliary/location context cho bảo quản/tủ khi source/master data yêu cầu, không phải work area BM.01.
 5. **BM.02 / BM.03 (Tủ lạnh mát / Tủ đá):** Áp dụng cho 13 dòng tủ/ngăn tủ; hiển thị tại nhóm "Công việc chung toàn khoa" hoặc theo vị trí đặt tủ (Kho lẻ, Kho chính, Tủ lưu mẫu, QC/Cal).
 
 ---
@@ -842,6 +849,8 @@ Khi thiết bị theo dõi thay đổi trong tương lai, dữ liệu cũ phải
 
 Chi tiết mô hình vai trò thuộc `00_PRODUCT_SCOPE_FINAL.md`. File này chỉ khóa những điểm ảnh hưởng trực tiếp đến biểu mẫu:
 
+- **Định danh người dùng:** Sử dụng `user_id` (UUID), không sử dụng `staff_number`. Số thứ tự trong Phụ lục (STT) chỉ đóng vai trò thứ tự hiển thị và trích xuất nguồn.
+- **Loại trừ tài khoản thử nghiệm:** Loại trừ tài khoản TEST `TS.BS Vũ Văn Nam` khỏi danh sách nhân sự chính thức.
 - vai trò nghiệp vụ: Trưởng khoa / Bác sĩ phụ trách / Kỹ thuật viên;
 - chỉ Trưởng khoa có quyền phê duyệt nghiệp vụ;
 - KTV và Bác sĩ phụ trách có thể nhập biểu mẫu theo phạm vi được cấp;

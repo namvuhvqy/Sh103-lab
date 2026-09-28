@@ -94,9 +94,9 @@ insert into public.profiles(user_id,full_name,business_role,is_admin) values('30
 select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000002',true);
 select throws_ok($$select public.assert_entry_access((select id from public.register_periods limit 1))$$,'P0001','Entry scope denied','admin flag alone cannot enter business records');
 select set_config('request.jwt.claim.sub','30000000-0000-0000-0000-000000000001',true);
-select is(public.ensure_operational_month('2026-10-15'),47,'operational month creates all 47 scoped periods');
-select is((select count(*)::integer from public.register_periods where period_start='2026-10-01'),47,'October has exactly 47 periods');
-select is(public.ensure_operational_month('2026-10-15'),47,'operational month bootstrap is repeatable');
+select is(public.ensure_operational_month('2026-10-15'),49,'operational month creates all 49 scoped periods');
+select is((select count(*)::integer from public.register_periods where period_start='2026-10-01'),49,'October has exactly 49 periods');
+select is(public.ensure_operational_month('2026-10-15'),49,'operational month bootstrap is repeatable');
 select is((select count(*)::integer from public.schedule_occurrences o join public.register_periods p on p.id=o.period_id join public.form_schedule_rules r on r.id=o.schedule_rule_id where p.period_start='2026-10-01' and r.schedule_type='EVENT'),0,'spill event creates no scheduled obligation');
 
 select * from finish();

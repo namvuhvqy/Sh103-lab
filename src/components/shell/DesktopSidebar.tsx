@@ -5,10 +5,8 @@ import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import {
   Home,
-  CheckSquare,
-  Calendar,
   Layers,
-  FileSpreadsheet,
+
   BookOpen,
   History,
   CheckCircle2,
@@ -36,11 +34,9 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
-    { label: "Kíp trực 24/7 & Lễ", href: "/quick-duty", icon: ShieldCheck },
-    { label: "Việc hôm nay", href: "/tasks", icon: CheckSquare },
-    { label: "Lịch công việc", href: "/calendar", icon: Calendar },
-    { label: "Công việc chung toàn khoa", href: "/general-tasks", icon: Layers },
-    { label: "Nhật ký trang thiết bị", href: "/bm06", icon: FileSpreadsheet },
+    { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
+    { label: "Nhiệt độ & Độ ẩm", href: "/temperature", icon: Layers },
+    { label: "Thiết bị / BM.06", href: "/equipment", icon: Layers },
     { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
     { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },
     { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },

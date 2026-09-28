@@ -134,13 +134,13 @@ describe("official XLSX export", () => {
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     const sheet = workbook.getWorksheet("Bản ghi hiệu lực")!;
 
-    expect(sheet.getRow(2).getCell(7).value).toBe("H");
-    expect(sheet.getRow(2).getCell(8).value).toBe("KSD");
-    expect(sheet.getRow(2).getCell(9).value).toBeNull();
-    expect(sheet.getRow(2).getCell(31).value).toBe("BT");
+    expect(sheet.getRow(2).getCell(6).value).toBe("H");
+    expect(sheet.getRow(2).getCell(7).value).toBe("KSD");
+    expect(sheet.getRow(2).getCell(8).value).toBeNull();
+    expect(sheet.getRow(2).getCell(30).value).toBe("BT");
     expect(sheet.getRow(3).getCell(5).value).toBeNull();
     expect(sheet.getRow(3).getCell(6).value).toBeNull();
-    expect(sheet.getRow(3).getCell(7).value).toBeNull();
+    expect(sheet.getRow(3).getCell(6).value).toBeNull();
   });
 
   it("does not mark a measurement record as normal when its detail is missing", async () => {

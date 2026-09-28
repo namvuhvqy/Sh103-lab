@@ -19,6 +19,16 @@ describe("P5 M01-M06 route contract", () => {
     expect(home).not.toMatch(/Việc ưu tiên|Thao tác nhanh|mẫu hôm nay|patient|LIS/i);
     expect(home).toMatch(/OperationalBanner/);
   });
+  it("restores Home notification stream using existing notifications source", () => {
+    const home = read("src/app/page.tsx");
+    expect(home).toContain("getNotifications");
+    expect(home).toMatch(/homeNotifications/);
+    const notificationComponent = read("src/components/p5/HomeNotifications.tsx");
+    expect(notificationComponent).toContain("Thông báo");
+    expect(notificationComponent).toContain("/notifications");
+    expect(notificationComponent).toMatch(/Chưa có thông báo|Không có thông báo/);
+    expect(home).not.toMatch(/fake|mock|hardcode/i);
+  });
   it("provides authenticated official PDF and Excel export endpoints", () => {
     const csv = read("src/app/api/reports/[periodId]/csv/route.ts");
     const pdf = read("src/app/api/reports/[periodId]/pdf/route.ts");

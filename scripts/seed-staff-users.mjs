@@ -12,8 +12,8 @@ envContent.split("\n").forEach((line) => {
   if (k && v.length) env[k.trim()] = v.join("=").trim().replace(/^["']|["']$/g, "");
 });
 
-const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !serviceKey) {
   console.error("Missing SUPABASE env vars");
@@ -112,6 +112,8 @@ async function seed() {
       business_role: staff.role,
       is_admin: staff.isAdmin,
       active: true,
+      account_kind: "STAFF",
+      source_order: staff.stt,
     });
 
     if (profileErr) {

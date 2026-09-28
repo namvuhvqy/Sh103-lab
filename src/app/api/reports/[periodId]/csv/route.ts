@@ -200,7 +200,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       "Ca trực",
       "Khung giờ",
       "Người trực ca",
-      "Giờ chạy máy",
       ...HOSPITAL_MACHINES_25.map((m) => `#${m.order} ${m.name}`),
       "Ghi chú",
     ];
@@ -234,7 +233,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           shift.label,
           shift.time,
           matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV trực" : "—"),
-          matchingRecord ? "Theo ca" : "",
           ...machineCells,
           matchingRecord?.note ?? "",
         ]);
