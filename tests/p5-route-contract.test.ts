@@ -34,8 +34,8 @@ describe("P5 M01-M06 route contract", () => {
     const pdf = read("src/app/api/reports/[periodId]/pdf/route.ts");
     const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
     for (const route of [csv, pdf, xlsx]) {
-      expect(route).toMatch(/APPROVED/);
-      expect(route).toMatch(/status: 409/);
+      expect(route).not.toMatch(/status: 409/);
+      expect(route).not.toMatch(/Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt/);
       expect(route).not.toMatch(/allowDraft|draft=true/);
       expect(route).toMatch(/search\.get\("start"\)/);
       expect(route).toMatch(/search\.get\("shift"\)/);
@@ -54,4 +54,23 @@ describe("P5 M01-M06 route contract", () => {
     const homeSummaryQuery = queries.slice(queries.indexOf("export async function getAreaSummaries"), queries.indexOf("export async function getArea(code"));
     expect(homeSummaryQuery).not.toContain('.maybeSingle()');
   });
+  it("renames approvals into form monitoring and removes approval gate from main UX", () => {
+    const approvals = read("src/app/approvals/page.tsx");
+    expect(approvals).toContain("Theo dõi biểu mẫu");
+    expect(approvals).toContain("Kiểm soát hoàn thiện");
+    expect(approvals).not.toContain("Trung tâm phê duyệt");
+    expect(approvals).not.toContain("BatchApprovalSection");
+    expect(approvals).not.toContain("READY_FOR_REVIEW");
+  });
+  it("simplifies export workspace to independent preview/export flow", () => {
+    const exportPage = read("src/app/reports/export/page.tsx");
+    expect(exportPage).toContain("Preview");
+    expect(exportPage).toContain("Excel");
+    expect(exportPage).toContain("PDF");
+    expect(exportPage).not.toContain("Duyệt tại P4");
+    expect(exportPage).toContain("Trang trước");
+    expect(exportPage).toContain("Trang sau");
+    expect(exportPage).toContain("Trang X / N");
+  });
+
 });

@@ -34,13 +34,12 @@ describe("P5 mobile visual fidelity and data visualization", () => {
     expect(read("src/app/reports/page.tsx")).toMatch(/StatusDistribution/);
   });
 
-  it("presents approval as a Head-only period and register center", () => {
+  it("presents form monitoring as the main completion-control center", () => {
     const approvals = read("src/app/approvals/page.tsx");
-    expect(approvals).toMatch(/if \(!access\?\.canApprove\) redirect/);
-    expect(approvals).toMatch(/Chờ phê duyệt/);
-    expect(approvals).toMatch(/Đã phê duyệt/);
-    expect(approvals).toMatch(/Bị trả lại/);
-    expect(approvals).toMatch(/toàn kỳ\/sổ/);
+    expect(approvals).toMatch(/Theo dõi biểu mẫu/);
+    expect(approvals).toMatch(/Kiểm soát hoàn thiện/);
+    expect(approvals).not.toMatch(/if \(!access\?\.canApprove\) redirect/);
+    expect(approvals).not.toMatch(/BatchApprovalSection/);
   });
 
   it("provides the export workspace flow from the attached mockup", () => {
@@ -54,10 +53,10 @@ describe("P5 mobile visual fidelity and data visualization", () => {
     expect(route).toMatch(/getExportWorkspace/);
   });
 
-  it("keeps export data official, approved and effective", () => {
+  it("keeps export data effective and independent from approval", () => {
     const queries = read("src/lib/p5/operational-queries.ts");
     expect(queries).toMatch(/getExportWorkspace/);
-    expect(queries).toContain('status", "APPROVED');
+    expect(queries).toContain("không phụ thuộc APPROVED");
     expect(queries).toMatch(/is_effective/);
     expect(read("src/app/reports/page.tsx")).toContain("/reports/export");
   });

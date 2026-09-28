@@ -73,10 +73,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     shift: search.get("shift") ?? undefined,
   });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
-  if (!(report.official && report.period?.status === "APPROVED")) {
-    return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
-  }
-
   type Period = {
     period_label: string | null;
     period_start: string;
@@ -140,7 +136,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       draw(`${row.business_date} · ${slot} · ${period.assets?.source_name ?? "Tủ"} · Nhiệt độ: ${m?.temperature_c ?? "—"}°C · ${evalText} · KTV: ${row.profiles?.full_name ?? "—"}`);
     } else if (templateCode.includes("BM.01_KNBM") || templateCode.includes("KNBM")) {
       const d = firstItem(row.decontamination_details);
-      draw(`${row.business_date} · Khu vực: ${period.locations?.name ?? "PXN"} · Ngày: ${d?.daily_done ? "Đạt" : "—"} · Tuần: ${d?.weekly_done ? "Đạt" : "—"} · KTV: ${row.profiles?.full_name ?? "—"}`);
+      draw(`${row.business_date} · Khu vực: ${period.locations?.name ?? "PXN"} · Ngày: ${d?.daily_done ? "" : "—"} · Tuần: ${d?.weekly_done ? "" : "—"} · KTV: ${row.profiles?.full_name ?? "—"}`);
     } else if (templateCode.includes("BM.02/QL.TRTB")) {
       const m = firstItem(row.maintenance_details);
       draw(`${row.business_date} · Máy: ${period.assets?.source_name ?? "Thiết bị"} · Chu kỳ: ${m?.cadence ?? "—"} · Kết quả: ${m?.result ?? "—"} · KTV: ${row.profiles?.full_name ?? "—"}`);

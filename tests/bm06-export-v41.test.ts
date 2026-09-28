@@ -11,16 +11,16 @@ const routes = [
   "src/app/api/reports/[periodId]/pdf/route.ts",
 ];
 
-describe("BM.06 v4.1 official exports", () => {
-  it.each(routes)("%s rejects unofficial periods", (route) => {
+describe("BM.06 v4.1 template-bound exports", () => {
+  it.each(routes)("%s allows incomplete/unapproved periods to export", (route) => {
     const source = read(route);
-    expect(source).toContain('status === "APPROVED"');
-    expect(source).toMatch(/report\.official/);
+    expect(source).not.toContain("status: 409");
+    expect(source).not.toContain("Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt");
   });
 
-  it.each(routes)("%s does not expose numeric usage as business data", (route) => {
+  it.each(routes)("%s does not expose numeric usage or fabricated business defaults", (route) => {
     const source = read(route);
-    expect(source).not.toMatch(/usage_value|usage_unit|usage_hours|Giờ chạy máy|Số giờ \/ Ca/);
+    expect(source).not.toMatch(/usage_value|usage_unit|usage_hours|Giờ chạy máy|Số giờ \/ Ca|Đạt chuẩn|KTV"|Đã thực hiện/);
   });
 
   it.each(routes)("%s presents the four fixed shift windows", (route) => {

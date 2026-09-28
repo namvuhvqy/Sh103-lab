@@ -65,10 +65,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     shift: search.get("shift") ?? undefined,
   });
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
-  const isApproved = report.official && report.period?.status === "APPROVED";
-  if (!isApproved) {
-    return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
-  }
 
   type Period = {
     period_label: string | null;
@@ -118,10 +114,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           dateStr,
           slot.label,
           matchingRecord?.performed_at ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : slot.time,
-          m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
-          m?.humidity_pct ?? (matchingRecord?.is_na ? "N/A" : ""),
-          matchingRecord ? (matchingRecord.is_na ? `N/A: ${matchingRecord.na_reason ?? ""}` : isAbnormal ? "Ngoài ngưỡng" : "Đạt chuẩn") : "",
-          matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          m?.temperature_c ?? "",
+          m?.humidity_pct ?? "",
+          matchingRecord ? (matchingRecord.is_na ? `N/A: ${matchingRecord.na_reason ?? ""}` : isAbnormal ? "Ngoài ngưỡng" : "") : "",
+          matchingRecord?.profiles?.full_name ?? "",
           matchingRecord?.note ?? "",
         ]);
       }
@@ -147,10 +143,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           stt,
           dateStr,
           slot.label,
-          period.assets?.source_name ?? (isFreezer ? "Tủ lạnh đá" : "Tủ lạnh mát"),
-          m?.temperature_c ?? (matchingRecord?.is_na ? "N/A" : ""),
+          period.assets?.source_name ?? "",
+          m?.temperature_c ?? "",
           matchingRecord ? (matchingRecord.is_na ? `N/A: ${matchingRecord.na_reason ?? ""}` : m?.temperature_abnormal ? "Ngoài dải an toàn" : safeRule) : "",
-          matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+          matchingRecord?.profiles?.full_name ?? "",
           matchingRecord?.note ?? "",
         ]);
       }
@@ -166,11 +162,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       rows.push([
         stt,
         dateStr,
-        period.locations?.name ?? "Khu vực xét nghiệm",
-        dec?.daily_done ? "Đã thực hiện" : (matchingRecord ? "Chưa" : ""),
-        dec?.weekly_done ? "Đã thực hiện" : (matchingRecord ? "—" : ""),
-        dec?.spill_event_done ? "Có xử lý" : (matchingRecord ? "Không có" : ""),
-        matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        period.locations?.name ?? "",
+        dec?.daily_done ? "" : (matchingRecord ? "" : ""),
+        dec?.weekly_done ? "" : (matchingRecord ? "—" : ""),
+        dec?.spill_event_done ? "" : (matchingRecord ? "Không có" : ""),
+        matchingRecord?.profiles?.full_name ?? "",
         matchingRecord?.note ?? "",
       ]);
     }
@@ -187,8 +183,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
         dateStr,
         period.assets?.source_name ?? "Thiết bị xét nghiệm",
         maint?.cadence === "DAILY" ? "Hằng ngày" : maint?.cadence === "WEEKLY" ? "Hằng tuần" : maint?.cadence === "MONTHLY" ? "Hằng tháng" : (maint?.cadence ?? (matchingRecord ? "Hằng ngày" : "")),
-        maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : (maint?.result ?? (matchingRecord ? "ĐẠT" : "")),
-        matchingRecord?.profiles?.full_name ?? (matchingRecord ? "KTV" : "—"),
+        maint?.result === "PASS" ? "" : (maint?.result ?? (matchingRecord ? "" : "")),
+        matchingRecord?.profiles?.full_name ?? "",
         matchingRecord?.note ?? "",
       ]);
     }

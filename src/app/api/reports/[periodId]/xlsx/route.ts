@@ -73,9 +73,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   if (!report) return Response.json({ error: "Không tìm thấy kỳ" }, { status: 404 });
 
   const isApproved = report.official && report.period?.status === "APPROVED";
-  if (!isApproved) {
-    return Response.json({ error: "Chỉ xuất báo cáo chính thức từ kỳ đã phê duyệt" }, { status: 409 });
-  }
 
   type Period = {
     period_label: string | null;
@@ -249,14 +246,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
             : m
               ? isAbnormal
                 ? "NGOÀI NGƯỠNG"
-                : "ĐẠT CHUẨN"
+                : ""
               : ""
           : "";
 
         data.addRow({
           id: rowId,
           business_date: dateStr,
-          location_name: period.locations?.name ?? "Khu vực Sinh hóa",
+          location_name: period.locations?.name ?? "",
           slot_code: slot.label,
           performed_at: matchingRecord?.performed_at
             ? new Date(matchingRecord.performed_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" })
@@ -305,7 +302,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
           ? matchingRecord.is_na
             ? `N/A: ${matchingRecord.na_reason ?? ""}`
             : m
-              ? m.temperature_abnormal ? "NGOÀI NGƯỠNG" : "ĐẠT CHUẨN"
+              ? m.temperature_abnormal ? "NGOÀI NGƯỠNG" : ""
               : null
           : null;
 
@@ -346,10 +343,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       data.addRow({
         id: rowId,
         business_date: dateStr,
-        location_name: period.locations?.name ?? "Khu vực làm xét nghiệm",
-        daily_done: matchingRecord ? (decontam?.daily_done ? "ĐÃ HOÀN THÀNH" : "CHƯA THỰC HIỆN") : null,
-        weekly_done: matchingRecord ? (decontam?.weekly_done ? "ĐÃ HOÀN THÀNH" : "—") : null,
-        spill_done: matchingRecord ? (decontam?.spill_event_done ? "ĐÃ XỬ LÝ ĐẠT" : "KHÔNG PHÁT SINH") : null,
+        location_name: period.locations?.name ?? "",
+        daily_done: matchingRecord ? (decontam?.daily_done ? "" : "CHƯA THỰC HIỆN") : null,
+        weekly_done: matchingRecord ? (decontam?.weekly_done ? "" : "—") : null,
+        spill_done: matchingRecord ? (decontam?.spill_event_done ? "ĐÃ XỬ LÝ ĐẠT" : "") : null,
         entered_by: matchingRecord?.profiles?.full_name ?? null,
         note: matchingRecord?.note ?? "",
       });
@@ -372,14 +369,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
       const matchingRecord = records.find((r) => r.business_date === dateStr);
       const rowId = matchingRecord?.id ?? null;
       const maint = firstItem(matchingRecord?.maintenance_details);
-      const resultText = maint?.result === "FAIL" ? "KHÔNG ĐẠT" : maint?.result === "PASS" ? "ĐẠT YÊU CẦU" : null;
+      const resultText = maint?.result === "FAIL" ? "" : maint?.result === "PASS" ? "" : null;
 
       data.addRow({
         id: rowId,
         business_date: dateStr,
-        asset_name: period.assets?.source_name ?? "Trang thiết bị xét nghiệm",
+        asset_name: period.assets?.source_name ?? "",
         cadence: maint?.cadence ?? null,
-        task_content: matchingRecord ? "Đã thực hiện theo quy trình bảo dưỡng được phê duyệt" : null,
+        task_content: matchingRecord ? "" : null,
         result: resultText,
         entered_by: matchingRecord?.profiles?.full_name ?? null,
         note: matchingRecord?.note ?? "",
@@ -406,7 +403,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
         slot_code: row.slot_code ?? "—",
         performed_at: row.performed_at ?? "—",
         entered_at: row.entered_at ?? "—",
-        is_na: row.is_na ? "Có" : "Không",
+        is_na: row.is_na ? "Có" : "",
         note: row.note ?? "",
         entered_by: row.profiles?.full_name ?? "—",
         revision_no: row.revision_no ?? 1,

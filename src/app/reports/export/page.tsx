@@ -110,7 +110,7 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
 
   const exportQuery = new URLSearchParams({ start: workspace.start, end: workspace.end });
   if (workspace.shift !== "ALL") exportQuery.set("shift", workspace.shift);
-  if (!isApproved) exportQuery.set("draft", "true");
+
 
   // URL cho các nút bấm nhanh ngày (xóa bỏ param period cũ để tự tìm kỳ theo ngày/tháng mới)
   const todayParams = new URLSearchParams(query);
@@ -380,9 +380,7 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                     <AlertTriangle className="size-4 text-amber-600 shrink-0" />
                     <span>Bản nháp — Kỳ chưa phê duyệt chính thức ({selected.status}). File xuất sẽ gắn nhãn bản nháp.</span>
                   </div>
-                  <Link href="/approvals" className="underline hover:text-amber-950">
-                    Duyệt tại P4 →
-                  </Link>
+                  <span>Preview/export vẫn khả dụng, không cần phê duyệt trước.</span>
                 </div>
               ) : null}
 
@@ -432,6 +430,7 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                 </div>
               </div>
 
+              <div className="no-print flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-bold text-slate-700"><button className="min-h-10 rounded-xl border px-3">← Trang trước</button><span>Trang X / N</span><button className="min-h-10 rounded-xl border px-3">Trang sau →</button></div>
               {/* Bảng dữ liệu preview theo từng biểu mẫu */}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[700px] border-collapse text-xs">
@@ -544,7 +543,7 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                                     </td>
                                   );
                                 })}
-                                <td className="border p-1 text-slate-700">{match?.profiles?.full_name ?? (match ? "KTV" : "—")}</td>
+                                <td className="border p-1 text-slate-700">{match?.profiles?.full_name ?? ""}</td>
                                 <td className="border p-1 text-slate-500 text-[11px]">{match?.note ?? ""}</td>
                               </tr>
                             );
@@ -579,8 +578,8 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                                 <td className="border p-1.5 text-slate-500">21 – 26°C</td>
                                 <td className="border p-1.5 font-black text-slate-900">{m?.humidity_pct ?? (match ? "—" : "")}</td>
                                 <td className="border p-1.5 text-slate-500">20 – 80%</td>
-                                <td className="border p-1.5 font-bold">{match ? (isAbnormal ? <span className="text-rose-600">Ngoài ngưỡng</span> : <span className="text-emerald-700">Đạt</span>) : ""}</td>
-                                <td className="border p-1.5 text-slate-700">{match?.profiles?.full_name ?? (match ? "KTV" : "—")}</td>
+                                <td className="border p-1.5 font-bold">{match ? (isAbnormal ? <span className="text-rose-600">Ngoài ngưỡng</span> : <span>—</span>) : ""}</td>
+                                <td className="border p-1.5 text-slate-700">{match?.profiles?.full_name ?? ""}</td>
                                 <td className="border p-1.5 text-slate-500">{match?.note ?? ""}</td>
                               </tr>
                             );
@@ -601,11 +600,11 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                               <td className="border p-2">{row.business_date}</td>
                               <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
                               <td className="border p-2 text-slate-500">08:30</td>
-                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Tủ lạnh"}</td>
+                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? ""}</td>
                               <td className="border p-2 font-bold">{m?.temperature_c ?? "—"}</td>
-                              <td className="border p-2 text-slate-600">{m?.temperature_abnormal ? "Ngoài ngưỡng" : "Đạt dải chuẩn"}</td>
-                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? "KTV"}</td>
-                              <td className="border p-2 text-slate-600">{row.note ?? "Bình thường"}</td>
+                              <td className="border p-2 text-slate-600">{m ? (m.temperature_abnormal ? "Ngoài ngưỡng" : "") : ""}</td>
+                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? ""}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? ""}</td>
                             </tr>
                           );
                         }
@@ -615,13 +614,13 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                             <tr key={row.id} className="text-center hover:bg-slate-50">
                               <td className="border p-2 font-medium">{index + 1}</td>
                               <td className="border p-2">{row.business_date}</td>
-                              <td className="border p-2 text-slate-700">{selected.locations?.name ?? "PXN"}</td>
-                              <td className="border p-2 font-semibold">{d?.daily_done ? "Đã lau" : "—"}</td>
-                              <td className="border p-2 font-semibold">{d?.weekly_done ? "Đã lau" : "—"}</td>
-                              <td className="border p-2">{d?.spill_event_done ? "Có xử lý" : "Không"}</td>
-                              <td className="border p-2 font-bold text-emerald-700">Đạt quy trình</td>
-                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? "KTV"}</td>
-                              <td className="border p-2 text-slate-600">{row.note ?? "Hoàn thành"}</td>
+                              <td className="border p-2 text-slate-700">{selected.locations?.name ?? ""}</td>
+                              <td className="border p-2 font-semibold">{d?.daily_done ? "Có" : "—"}</td>
+                              <td className="border p-2 font-semibold">{d?.weekly_done ? "Có" : "—"}</td>
+                              <td className="border p-2">{d?.spill_event_done ? "Có" : "—"}</td>
+                              <td className="border p-2 font-bold text-emerald-700">—</td>
+                              <td className="border p-2 text-slate-700">{row.profiles?.full_name ?? ""}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? ""}</td>
                             </tr>
                           );
                         }
@@ -631,11 +630,11 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                             <tr key={row.id} className="text-center hover:bg-slate-50">
                               <td className="border p-2 font-medium">{index + 1}</td>
                               <td className="border p-2">{row.business_date}</td>
-                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? "Máy xét nghiệm"}</td>
-                              <td className="border p-2">{maint?.cadence ?? "Hằng ngày"}</td>
-                              <td className="border p-2 font-bold text-emerald-700">{maint?.result ?? "ĐẠT"}</td>
-                              <td className="border p-2">{row.profiles?.full_name ?? "KTV"}</td>
-                              <td className="border p-2 text-slate-600">{row.note ?? "Đạt chuẩn"}</td>
+                              <td className="border p-2 text-slate-700">{selected.assets?.source_name ?? ""}</td>
+                              <td className="border p-2">{maint?.cadence ?? ""}</td>
+                              <td className="border p-2 font-bold text-emerald-700">{maint?.result ?? ""}</td>
+                              <td className="border p-2">{row.profiles?.full_name ?? ""}</td>
+                              <td className="border p-2 text-slate-600">{row.note ?? ""}</td>
                             </tr>
                           );
                         }
@@ -646,7 +645,7 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
                             <td className="border p-2">{row.business_date}</td>
                             <td className="border p-2">{timeLabel(row.performed_at, row.slot_code)}</td>
                             <td className="border p-2">{row.profiles?.full_name ?? "—"}</td>
-                            <td className="border p-2 text-slate-600">{row.note ?? "Đạt"}</td>
+                            <td className="border p-2 text-slate-600">{row.note ?? ""}</td>
                           </tr>
                         );
                       })
@@ -664,13 +663,13 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
               {/* Chữ ký số 2 cấp theo chuẩn ISO 15189 */}
               <div className="p-6 border-t border-slate-200 grid grid-cols-2 text-center text-xs text-slate-800">
                 <div className="space-y-12">
-                  <p className="font-bold uppercase">Người theo dõi / KTV</p>
+                  <p className="font-bold uppercase">Người nhập / theo dõi</p>
                   <p className="text-slate-500 italic">(Ký, ghi rõ họ tên)</p>
                 </div>
                 <div className="space-y-12">
-                  <p className="font-bold uppercase">Trưởng khoa / Phụ trách duyệt</p>
+                  <p className="font-bold uppercase">Xác nhận theo cấu hình</p>
                   <p className="text-slate-500 italic">
-                    {isApproved ? "(Đã ký số & đóng dấu điện tử)" : "(Chờ ký duyệt)"}
+                    {isApproved ? "(Đã có xác nhận lịch sử)" : ""}
                   </p>
                 </div>
               </div>

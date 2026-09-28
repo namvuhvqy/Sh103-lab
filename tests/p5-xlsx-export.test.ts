@@ -47,10 +47,10 @@ describe("official XLSX export", () => {
     expect(getOfficialPeriodReport).toHaveBeenCalledWith("period-approved", { start: "2026-09-25", end: "2026-09-25", shift: "SHIFT_2" });
   });
 
-  it("rejects non-approved periods", async () => {
-    getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN" }, records: [] });
-    const response = await GET(new Request("https://example.test?draft=true"), context);
-    expect(response.status).toBe(409);
+  it("exports non-approved periods without approval gate", async () => {
+    getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN", period_start: "2026-09-01", period_end: "2026-09-30", period_label: null, approved_at: null, locations: null, assets: null, form_template_versions: { version_label: "v1", form_templates: { code: "BM.01", name: "Theo dõi nhiệt độ" } } }, records: [] });
+    const response = await GET(new Request("https://example.test"), context);
+    expect(response.status).toBe(200);
   });
 
   it("leaves missing BM.01 measurements empty instead of fabricating normal values", async () => {

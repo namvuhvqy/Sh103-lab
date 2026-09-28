@@ -1,7 +1,7 @@
 # 00_PRODUCT_SCOPE_FINAL
 
-**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa  
-**Trạng thái:** FINAL – phạm vi sản phẩm và các quyết định nghiệp vụ lõi đã khóa  
+**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa
+**Trạng thái:** FINAL – phạm vi sản phẩm và các quyết định nghiệp vụ lõi đã khóa
 **Mục đích:** Là tài liệu gốc để AI coding, bác sĩ/KTV và người quản trị cùng hiểu **app làm gì, không làm gì, ai được làm gì, và mốc nào được coi là hoàn thành**.
 
 > Nguyên tắc: nếu code, màn hình hoặc tài liệu khác mâu thuẫn với file này thì **không tự đoán**. Dừng thay đổi, đối chiếu lại nghiệp vụ và cập nhật đặc tả trước.
@@ -293,28 +293,28 @@ Chỉ được mở toàn khoa khi các phase chất lượng/vận hành tươn
 
 ## 7. Nguyên tắc thiết kế sản phẩm
 
-1. **Mobile-first cho người nhập liệu**  
+1. **Mobile-first cho người nhập liệu**
    KTV/Bác sĩ phải nhập thuận tiện trên điện thoại, không bắt nhập bảng rộng kiểu Excel.
 
-2. **Sổ tháng là cách xem/tổng hợp, không nhất thiết là cách nhập**  
+2. **Sổ tháng là cách xem/tổng hợp, không nhất thiết là cách nhập**
    Người dùng có thể nhập theo ngày/ca; hệ thống tổng hợp thành sổ tháng để xem và xuất.
 
-3. **Không tự đặt nghiệp vụ**  
+3. **Không tự đặt nghiệp vụ**
    AI không được tự tạo ngưỡng, vai trò, giờ đo, cách duyệt hoặc quy tắc chuyên môn.
 
-4. **Không sửa lịch sử âm thầm**  
+4. **Không sửa lịch sử âm thầm**
    Dữ liệu đã phê duyệt phải truy vết được.
 
-5. **Phân quyền phải có hiệu lực ở tầng dữ liệu/backend**  
+5. **Phân quyền phải có hiệu lực ở tầng dữ liệu/backend**
    Không coi việc ẩn nút trên UI là bảo mật.
 
-6. **Mẫu biểu có phiên bản**  
+6. **Mẫu biểu có phiên bản**
    Khi mẫu thay đổi sau này, dữ liệu cũ vẫn phải gắn với phiên bản cũ tương ứng.
 
-7. **Giữ MVP đơn giản**  
+7. **Giữ MVP đơn giản**
    Không thêm service, plugin hoặc automation nếu không cần cho chức năng lõi.
 
-8. **Điều hướng Area-first (Khu vực → Thiết bị → Phiếu)**  
+8. **Điều hướng Area-first (Khu vực → Thiết bị → Phiếu)**
    Mô hình tư duy: nhân viên khoa nghĩ "Tôi đang làm việc ở khu nào?" trước khi chọn máy và phiếu. Mỗi máy chỉ hiển thị trong đúng khu vực nghiệp vụ tương ứng. Không đưa toàn bộ 25 máy vào một danh sách phẳng lộn xộn nếu người dùng đang làm việc theo khu vực.
 
 ---
@@ -368,9 +368,9 @@ Phạm vi trách nhiệm:
 
 ## 10. Trạng thái Phase 0 theo file này
 
-**Phạm vi sản phẩm: LOCKED.**  
-**Vai trò và mô hình quyền: LOCKED.**  
-**Scope biểu mẫu Core Pilot: LOCKED.**  
+**Phạm vi sản phẩm: LOCKED.**
+**Vai trò và mô hình quyền: LOCKED.**
+**Scope biểu mẫu Core Pilot: LOCKED.**
 **Nguyên tắc duyệt / nhập bù / N-A / đính chính: LOCKED.**
 
 Phase 0 chỉ được coi là hoàn tất toàn bộ sau khi file `02_FORMS_DATA_RULES_FINAL.md` được đối chiếu và khóa các quy tắc chi tiết còn lại của từng biểu mẫu.
@@ -401,3 +401,22 @@ Không dùng repo tham khảo trên Internet để thay thế quyết định ng
 - **Trưởng khoa:** ____________________  Ngày: __________
 
 Khi có thay đổi phạm vi sau khi file này đã được commit, phải sửa file và ghi rõ lý do trong commit/PR; không thay đổi âm thầm trong code.
+
+---
+
+# OWNER DECISION — Form Monitoring + Export Simplification (2026-09-28)
+
+This section supersedes older approval-gated workflow text where there is conflict. Historical approval/audit data remains preserved.
+
+- Production is feature-frozen while this refactor is built on `refactor/simplify-form-monitoring-export`; do not merge to `master` or deploy Production during Owner preview.
+- Approval is no longer a required workflow in daily use. The primary control surface is **Theo dõi biểu mẫu / Kiểm soát hoàn thiện**.
+- Users must be able to see each of the 6 core forms by required obligations, entered records, missing items, abnormalities, entered-by attribution, and change history where needed.
+- Export is independent of approval state: Preview, PDF, Excel, CSV, and Print must work for incomplete or unapproved periods. No API may return `409` solely because a period is not `APPROVED`.
+- Legacy states such as `APPROVED`, `READY_FOR_REVIEW`, `RETURNED`, `period_actions`, audit events, and correction history are retained for historical integrity but are not prerequisites for export.
+- `/reports/export` flow is: choose form → choose month/year and relevant contextual filters only → preview → Excel/PDF. CSV and Print are secondary.
+- Preview/export must follow source templates as closely as possible: A4, orientation, administrative header, form code/version/title, merged-cell intent, borders, rows/columns, spacing, signature/admin sections, ordering, and page breaks. Data fills source-template slots; it must not become a generic data table.
+- BM.06 preview is multi-page. Page boundaries must follow the source form/layout rules shared by preview/PDF/Excel; do not assume arbitrary row/page counts or fabricate pages.
+- Missing database values render blank, `—`, or `Chưa nhập`; never fabricate KTV names, normal/đạt/hoàn thành values, or any business value not entered by a user.
+- Signature/administrative sections must be configurable so Owner can later merge “Người xem xét” and “Chỉ huy khoa” without editing each renderer/template by hand.
+- Source template policy: table-like forms prefer XLSX templates; narrative forms remain DOCX; CSV is raw-data export only and is not a source template. Raw original source files must not be overwritten. If conversion is needed, keep original and create a versioned normalized copy.
+- No destructive migration in this phase: do not drop approval tables/columns, audit, correction history, approved records, or rewrite historical data. Schema cleanup is deferred to a later stabilization phase.
