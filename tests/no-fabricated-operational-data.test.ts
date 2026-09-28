@@ -31,7 +31,7 @@ describe("real operational data contract", () => {
   it("never fabricates pass or normal values in official exports", () => {
     const xlsx = source("src/app/api/reports/[periodId]/xlsx/route.ts");
     const csv = source("src/app/api/reports/[periodId]/csv/route.ts");
-    const pdf = source("src/app/api/reports/[periodId]/pdf/route.ts");
+    const pdf = source("src/app/api/reports/[periodId]/pdf/route.ts") + source("src/lib/p5/report-export-model.ts");
 
     for (const route of [xlsx, csv, pdf]) {
       expect(route).not.toContain('?? "BT"');

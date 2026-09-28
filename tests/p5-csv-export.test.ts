@@ -53,7 +53,7 @@ describe("official CSV export", () => {
 
     const response = await GET(new Request("https://example.test"), context);
     const lines = (await response.text()).replace(/^\uFEFF/, "").split("\r\n");
-    const headerIndex = lines.findIndex((line) => line.includes('"STT","Ngày vận hành"'));
+    const headerIndex = lines.findIndex((line) => line.includes('"Mã bản ghi","Ngày vận hành"'));
     const row = parseCsvLine(lines[headerIndex + 1]);
 
     expect(row[5]).toBe("H");

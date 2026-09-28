@@ -6,6 +6,7 @@ import { getExportWorkspace } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { PrintButton } from "@/components/p5/PrintButton";
 import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
+import { SIGNATURE_CONFIG } from "@/lib/p5/report-export-model";
 import {
   CalendarDays,
   Check,
@@ -663,13 +664,13 @@ export default async function ExportWorkspacePage({ searchParams }: { searchPara
               {/* Chữ ký số 2 cấp theo chuẩn ISO 15189 */}
               <div className="p-6 border-t border-slate-200 grid grid-cols-2 text-center text-xs text-slate-800">
                 <div className="space-y-12">
-                  <p className="font-bold uppercase">Người nhập / theo dõi</p>
-                  <p className="text-slate-500 italic">(Ký, ghi rõ họ tên)</p>
+                  <p className="font-bold uppercase">{SIGNATURE_CONFIG.reviewerLabel}</p>
+                  <p className="text-slate-500 italic">{SIGNATURE_CONFIG.reviewerHint}</p>
                 </div>
                 <div className="space-y-12">
-                  <p className="font-bold uppercase">Xác nhận theo cấu hình</p>
+                  <p className="font-bold uppercase">{SIGNATURE_CONFIG.approverLabel}</p>
                   <p className="text-slate-500 italic">
-                    {isApproved ? "(Đã có xác nhận lịch sử)" : ""}
+                    {isApproved ? SIGNATURE_CONFIG.approvedHint : SIGNATURE_CONFIG.draftHint}
                   </p>
                 </div>
               </div>

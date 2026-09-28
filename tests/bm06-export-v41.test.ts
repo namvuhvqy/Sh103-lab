@@ -24,7 +24,7 @@ describe("BM.06 v4.1 template-bound exports", () => {
   });
 
   it.each(routes)("%s presents the four fixed shift windows", (route) => {
-    const source = read(route);
+    const source = read(route) + read("src/lib/p5/report-export-model.ts");
     expect(source).toContain("07:00 – 11:30");
     expect(source).toContain("11:30 – 13:30");
     expect(source).toContain("13:30 – 16:30");
@@ -34,7 +34,7 @@ describe("BM.06 v4.1 template-bound exports", () => {
 
   it("XLSX and CSV render all 25 machine columns in source order", () => {
     for (const route of routes.slice(0, 2)) {
-      const source = read(route);
+      const source = read(route) + read("src/lib/p5/report-export-model.ts");
       expect(source).toContain("HOSPITAL_MACHINES_25.map");
       expect(source).toContain("asset_display_order_snapshot");
     }
