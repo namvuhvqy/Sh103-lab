@@ -201,7 +201,7 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const typedTemplates = (templates ?? []) as unknown as Array<{ id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } }>;
   const templateCode = filters.templateCode ?? typedTemplates[0]?.form_templates?.code ?? "BM.01/QL.HTAT.01";
   
-  // Lọc các kỳ thuộc đúng biểu mẫu đang chọn (STRICT FILTER theo ISO 15189: status", "APPROVED")
+  // Lọc các kỳ thuộc đúng biểu mẫu đang chọn; export độc lập trạng thái approval
   let matching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
 
   // Gán nhãn thân thiện cho các kỳ không gắn location/asset cụ thể (như BM.06)
@@ -215,10 +215,8 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
     return p;
   });
 
-  // Chọn kỳ: ưu tiên kỳ người dùng bấm chọn -> kỳ đã APPROVED -> kỳ đầu tiên của đúng biểu mẫu đó
-  const approvedOnes = matching.filter((p) => p.status === "APPROVED");
+  // Chọn kỳ: ưu tiên kỳ người dùng bấm chọn -> kỳ đầu tiên theo biểu mẫu/thời gian; không phụ thuộc APPROVED.
   const selectedPeriod = matching.find((period) => period.id === filters.periodId) 
-    ?? approvedOnes[0] 
     ?? matching[0] 
     ?? null;
 

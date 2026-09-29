@@ -34,7 +34,7 @@ describe("official XLSX export", () => {
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual(["Tổng quan", "Bản ghi hiệu lực"]);
     expect(workbook.getWorksheet("Bản ghi hiệu lực")?.getCell("A2").value).toBe("record-1");
-    expect(workbook.getWorksheet("Tổng quan")?.getCell("B6").value).toBe("ĐÃ PHÊ DUYỆT");
+    expect(workbook.getWorksheet("Tổng quan")?.getCell("B6").value).toBe("ĐÃ PHÊ DUYỆT (LỊCH SỬ)");
   });
 
   it("passes workspace filters into the official report query", async () => {
@@ -47,10 +47,10 @@ describe("official XLSX export", () => {
     expect(getOfficialPeriodReport).toHaveBeenCalledWith("period-approved", { start: "2026-09-25", end: "2026-09-25", shift: "SHIFT_2" });
   });
 
-  it("rejects non-approved periods", async () => {
-    getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN" }, records: [] });
-    const response = await GET(new Request("https://example.test?draft=true"), context);
-    expect(response.status).toBe(409);
+  it("exports non-approved periods without approval gate", async () => {
+    getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN", period_start: "2026-09-01", period_end: "2026-09-30", period_label: null, approved_at: null, locations: null, assets: null, form_template_versions: { version_label: "v1", form_templates: { code: "BM.01", name: "Theo dõi nhiệt độ" } } }, records: [] });
+    const response = await GET(new Request("https://example.test"), context);
+    expect(response.status).toBe(200);
   });
 
   it("leaves missing BM.01 measurements empty instead of fabricating normal values", async () => {
@@ -132,15 +132,15 @@ describe("official XLSX export", () => {
     const response = await GET(new Request("https://example.test"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
-    const sheet = workbook.getWorksheet("Bản ghi hiệu lực")!;
+    expect(workbook.worksheets.map((sheet) => sheet.name).slice(0, 3)).toEqual(["Trang 1", "Trang 2", "Trang 3"]);
+    const page1 = workbook.getWorksheet("Trang 1")!;
+    const page3 = workbook.getWorksheet("Trang 3")!;
 
-    expect(sheet.getRow(2).getCell(6).value).toBe("H");
-    expect(sheet.getRow(2).getCell(7).value).toBe("KSD");
-    expect(sheet.getRow(2).getCell(8).value).toBeNull();
-    expect(sheet.getRow(2).getCell(30).value).toBe("BT");
-    expect(sheet.getRow(3).getCell(5).value).toBeNull();
-    expect(sheet.getRow(3).getCell(6).value).toBeNull();
-    expect(sheet.getRow(3).getCell(6).value).toBeNull();
+    expect(page1.getCell("D7").value).toBe("H");
+    expect(page1.getCell("E7").value).toBe("KSD");
+    expect(page1.getCell("F7").value).toBeNull();
+    expect(page3.getCell("K7").value).toBe("BT");
+    expect(page1.getCell("D8").value).toBeNull();
   });
 
   it("does not mark a measurement record as normal when its detail is missing", async () => {
