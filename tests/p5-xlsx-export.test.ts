@@ -132,15 +132,15 @@ describe("official XLSX export", () => {
     const response = await GET(new Request("https://example.test"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
-    const sheet = workbook.getWorksheet("Bản ghi hiệu lực")!;
+    expect(workbook.worksheets.map((sheet) => sheet.name).slice(0, 3)).toEqual(["Trang 1", "Trang 2", "Trang 3"]);
+    const page1 = workbook.getWorksheet("Trang 1")!;
+    const page3 = workbook.getWorksheet("Trang 3")!;
 
-    expect(sheet.getRow(2).getCell(6).value).toBe("H");
-    expect(sheet.getRow(2).getCell(7).value).toBe("KSD");
-    expect(sheet.getRow(2).getCell(8).value).toBeNull();
-    expect(sheet.getRow(2).getCell(30).value).toBe("BT");
-    expect(sheet.getRow(3).getCell(5).value).toBeNull();
-    expect(sheet.getRow(3).getCell(6).value).toBeNull();
-    expect(sheet.getRow(3).getCell(6).value).toBeNull();
+    expect(page1.getCell("D7").value).toBe("H");
+    expect(page1.getCell("E7").value).toBe("KSD");
+    expect(page1.getCell("F7").value).toBeNull();
+    expect(page3.getCell("K7").value).toBe("BT");
+    expect(page1.getCell("D8").value).toBeNull();
   });
 
   it("does not mark a measurement record as normal when its detail is missing", async () => {

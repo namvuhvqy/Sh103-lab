@@ -25,14 +25,15 @@ describe("Preview/export quality gates", () => {
     expect(source).toContain("buildReportExportModel");
   });
 
-  it("does not invent BM.06 day-count page breaks absent from the authorized XLSX", () => {
+  it("uses Owner-approved BM.06 no-cover XLSX template without invented page breaks", () => {
     const model = read("src/lib/p5/report-export-model.ts");
+    const template = read("src/lib/p5/bm06-template.ts");
     const page = read("src/app/reports/export/page.tsx");
     const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
     expect(model).toContain("BM06_SOURCE_TEMPLATE_PATH");
-    expect(model).toContain("BM06_HAS_EXPLICIT_ROW_BREAKS = false");
+    expect(template).toContain("no_cover_owner_approved.xlsx");
+    expect(template).toContain("BM06_TEMPLATE_DEVICE_COUNT");
     expect(model).not.toContain("BM06_DAYS_PER_SOURCE_PAGE");
-    expect(model).toContain("Do not invent");
     expect(xlsx).not.toContain("addPageBreak");
     expect(page).toContain("pageNumber");
   });

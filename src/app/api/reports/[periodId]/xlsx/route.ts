@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { getOfficialPeriodReport } from "@/lib/p5/operational-queries";
+import { buildBm06WorkbookFromTemplate } from "@/lib/p5/bm06-template-xlsx";
 import { buildReportExportModel, type ReportPeriod, type ReportRecord } from "@/lib/p5/report-export-model";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +29,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     official: report.official,
   });
 
-  const workbook = new ExcelJS.Workbook();
+  const workbook = model.templateCode.includes("BM.06") ? await buildBm06WorkbookFromTemplate(model) : new ExcelJS.Workbook();
   workbook.creator = "BỆNH VIỆN QUÂN Y 103 · KHOA SINH HÓA";
   workbook.created = new Date();
   workbook.modified = new Date();
+
+  if (model.templateCode.includes("BM.06")) {
+    const bytes = await workbook.xlsx.writeBuffer();
+    const safeCode = model.templateCode.replace(/[\/\\?%*:|"<>]/g, "_");
+    const periodSlug = (model.period.period_label ?? `${model.period.period_start}_${model.period.period_end}`).replace(/[\/\\?%*:|"<> ]/g, "_");
+    const filename = `${model.filenamePrefix}${safeCode}_${periodSlug}.xlsx`;
+    return new Response(Buffer.from(bytes), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "private, no-store",
+      },
+    });
+  }
 
   const summary = workbook.addWorksheet("Tổng quan", { views: [{ showGridLines: true }] });
   summary.columns = [{ width: 24 }, { width: 72 }];

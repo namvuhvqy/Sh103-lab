@@ -72,7 +72,7 @@ describe("P5 M01-M06 route contract", () => {
     expect(exportPage).not.toContain("Duyệt tại P4");
     expect(exportPage).toContain("Trang trước");
     expect(exportPage).toContain("Trang sau");
-    expect(exportPage).toContain("Trang 1 / 1");
+    expect(exportPage).toContain("Trang {currentPage} / {pageCount}");
   });
 
 });

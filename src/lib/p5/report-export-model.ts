@@ -1,11 +1,7 @@
+import { BM06_CANONICAL_TEMPLATE_PATH, BM06_FINAL_SHIFT_WINDOWS, BM06_TEMPLATE_PAGES } from "@/lib/p5/bm06-template";
 import { HOSPITAL_MACHINES_25 } from "@/constants/machines";
 
-export const BM06_SOURCE_TEMPLATE_PATH = "docs/danh mục biểu mẫu/BM.06_QL.TRTB.01_Nhat_Ky_25_TTB_4_Ca_v4.1.xlsx";
-// The authorized XLSX has no explicit row breaks. Its page setup uses
-// fitToWidth=1 and fitToHeight=0, so the spreadsheet renderer owns
-// automatic vertical pagination from the source layout. Do not invent
-// a day-count page boundary in application code.
-export const BM06_HAS_EXPLICIT_ROW_BREAKS = false;
+export const BM06_SOURCE_TEMPLATE_PATH = BM06_CANONICAL_TEMPLATE_PATH;
 
 export const SIGNATURE_CONFIG = {
   reviewerLabel: "Người nhập / theo dõi",
@@ -83,6 +79,8 @@ export type ExportRow = {
   sourceRecordIds: string[];
   pageNumber: number;
   pageBreakAfter: boolean;
+  templatePageName?: string;
+  templateDeviceOrders?: number[];
 };
 
 export type ReportExportModel = {
@@ -122,8 +120,8 @@ function findSlot(records: ReportRecord[], dateStr: string, slot: string, label:
   return records.find((r) => r.business_date === dateStr && (r.slot_code === slot || r.slot_code === label));
 }
 
-function mkRow(key: string, cells: ExportCell[], sourceRecordIds: string[], pageNumber = 1, pageBreakAfter = false): ExportRow {
-  return { key, cells, sourceRecordIds, pageNumber, pageBreakAfter };
+function mkRow(key: string, cells: ExportCell[], sourceRecordIds: string[], pageNumber = 1, pageBreakAfter = false, templatePageName?: string, templateDeviceOrders?: number[]): ExportRow {
+  return { key, cells, sourceRecordIds, pageNumber, pageBreakAfter, templatePageName, templateDeviceOrders };
 }
 
 export function buildReportExportModel(input: { period: ReportPeriod; records: ReportRecord[]; start?: string; official?: boolean }): ReportExportModel {
@@ -181,20 +179,18 @@ export function buildReportExportModel(input: { period: ReportPeriod; records: R
     }
   } else if (templateCode.includes("BM.06")) {
     sourceTemplatePath = BM06_SOURCE_TEMPLATE_PATH;
-    columns = ["Mã bản ghi", "Ngày vận hành", "Ca trực", "Khung giờ", "Người trực ca", ...HOSPITAL_MACHINES_25.map((m) => `#${m.order} ${m.name}`), "Ghi chú"];
-    const shifts = [
-      { slot: "SHIFT_1", label: "Ca 1", time: "07:00 – 11:30" },
-      { slot: "SHIFT_2", label: "Ca 2", time: "11:30 – 13:30" },
-      { slot: "SHIFT_3", label: "Ca 3", time: "13:30 – 16:30" },
-      { slot: "SHIFT_4", label: "Ca 4", time: "16:30 – 07:00" },
-    ];
-    for (const d of dates) for (const shift of shifts) {
-      const r = findSlot(records, d.dateStr, shift.slot, shift.label);
-      const detail = firstItem(r?.equipment_shift_details);
-      const statuses = detail ? (Array.isArray(detail.equipment_shift_statuses) ? detail.equipment_shift_statuses : detail.equipment_shift_statuses ? [detail.equipment_shift_statuses] : []) : [];
-      const byOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
-      rows.push(mkRow(`${d.dateStr}-${shift.slot}`, [r?.id ?? null, d.dateStr, shift.label, shift.time, r?.profiles?.full_name ?? null, ...HOSPITAL_MACHINES_25.map((m) => byOrder.get(m.order) ?? null), r?.note ?? null], r ? [r.id] : []));
+    for (const templatePage of BM06_TEMPLATE_PAGES) {
+      columns = ["Mã bản ghi", "Ngày vận hành", "Người sử dụng", "Lượng sử dụng", ...templatePage.devices.map((m) => `#${m.order} ${m.name}`), "Ghi chú"];
+      for (const d of dates) for (const shift of BM06_FINAL_SHIFT_WINDOWS) {
+        const r = findSlot(records, d.dateStr, shift.slot, shift.label);
+        const detail = firstItem(r?.equipment_shift_details);
+        const statuses = detail ? (Array.isArray(detail.equipment_shift_statuses) ? detail.equipment_shift_statuses : detail.equipment_shift_statuses ? [detail.equipment_shift_statuses] : []) : [];
+        const byOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
+        const note = r?.note ?? null;
+        rows.push(mkRow(`${templatePage.name}-${d.dateStr}-${shift.slot}`, [r?.id ?? null, d.dateStr, r?.profiles?.full_name ?? null, shift.time, ...templatePage.devices.map((m) => byOrder.get(m.order) ?? null), note], r ? [r.id] : [], Number(templatePage.name.replace("Trang ", "")), false, templatePage.name, templatePage.devices.map((device) => device.order)));
+      }
     }
+    columns = ["Mã bản ghi", "Ngày vận hành", "Người sử dụng", "Lượng sử dụng", ...HOSPITAL_MACHINES_25.map((m) => `#${m.order} ${m.name}`), "Ghi chú"];
   } else {
     columns = ["STT", "Ngày", "Ca / Thời gian", "Loại bản ghi", "Thời điểm thực hiện", "Người thực hiện", "Ghi chú"];
     rows = records.map((r, index) => mkRow(r.id, [r.id, index + 1, r.business_date, r.slot_code ?? null, r.record_type, r.performed_at ?? null, r.profiles?.full_name ?? null, r.note ?? null], [r.id]));
