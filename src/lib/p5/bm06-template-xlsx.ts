@@ -179,7 +179,7 @@ export async function buildBm06WorkbookFromTemplate(model: ReportExportModel) {
       const note = rest.at(-1);
       const statusValues = rest.slice(0, pageSpec.devices.length);
       sheet.getCell(`A${rowNumber}`).value = index % BM06_FINAL_SHIFT_WINDOWS.length === 0 ? cellValue(businessDate) : null;
-      sheet.getCell(`B${rowNumber}`).value = index % BM06_FINAL_SHIFT_WINDOWS.length === 0 ? cellValue(userName) : null;
+      sheet.getCell(`B${rowNumber}`).value = cellValue(userName);
       sheet.getCell(`C${rowNumber}`).value = cellValue(time);
       pageSpec.devices.forEach((device, deviceIndex) => {
         sheet.getCell(`${device.column}${rowNumber}`).value = cellValue(statusValues[deviceIndex]);

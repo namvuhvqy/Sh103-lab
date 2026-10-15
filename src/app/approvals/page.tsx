@@ -19,13 +19,16 @@ type PeriodMonitor = {
   locations: { code?: string; name: string } | null;
   assets: { source_name: string } | null;
   form_template_versions: { form_templates: { code: string; name: string } };
+  schedule_occurrences?: Array<{ id: string; status: string; fulfilled_by_record_id: string | null }>;
 };
 
 const enteredStates = [`READY_${"FOR_REVIEW"}`, "APPROVED"];
 
-const friendlyStatus = (status: string) => {
+const friendlyStatus = (status: string, done = 0, total = 1) => {
   if (status === "APPROVED") return "Đã có xác nhận lịch sử";
   if (status === "RETURNED") return "Có yêu cầu xem lại";
+  if (done >= total && total > 0) return "Đã hoàn thành ca";
+  if (done > 0) return `Đã ghi ${done}/${total}`;
   if (enteredStates.includes(status)) return "Đã nhập, cần kiểm soát";
   return "Đang theo dõi";
 };
@@ -44,8 +47,16 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
   })).values());
   const selectedTemplate = query.template ?? templates[0]?.code ?? "ALL";
   const visible = selectedTemplate === "ALL" ? periods : periods.filter((period) => period.form_template_versions.form_templates.code === selectedTemplate);
-  const entered = visible.filter((period) => enteredStates.includes(period.status)).length;
-  const missing = Math.max(visible.length - entered, 0);
+  
+  const totalOccurrences = visible.reduce((sum, p) => sum + (p.schedule_occurrences?.length || 1), 0);
+  const completedOccurrences = visible.reduce((sum, p) => {
+    const occs = p.schedule_occurrences;
+    if (occs && occs.length > 0) {
+      return sum + occs.filter((o) => o.status === "COMPLETED" || o.fulfilled_by_record_id !== null).length;
+    }
+    return sum + (enteredStates.includes(p.status) ? 1 : 0);
+  }, 0);
+  const missingOccurrences = Math.max(totalOccurrences - completedOccurrences, 0);
   const abnormal = visible.filter((period) => period.status === "RETURNED").length;
 
   return (
@@ -66,10 +77,11 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
 
         <WorkflowFeedback error={query.error} saved={query.saved} />
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="clinical-card p-3"><ClipboardList className="size-4 text-teal-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Cần nhập</p><b className="text-xl text-slate-950">{visible.length}</b></div>
-          <div className="clinical-card border-emerald-200 bg-emerald-50/40 p-3"><CheckCircle2 className="size-4 text-emerald-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Đã nhập</p><b className="text-xl text-emerald-800">{entered}</b></div>
-          <div className="clinical-card border-amber-200 bg-amber-50/40 p-3"><AlertTriangle className="size-4 text-amber-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Còn thiếu / cần xem</p><b className="text-xl text-amber-800">{missing + abnormal}</b></div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="clinical-card p-3"><ClipboardList className="size-4 text-teal-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Tổng ca / lượt</p><b className="text-xl text-slate-950">{totalOccurrences}</b></div>
+          <div className="clinical-card border-emerald-200 bg-emerald-50/40 p-3"><CheckCircle2 className="size-4 text-emerald-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Đã nhập</p><b className="text-xl text-emerald-800">{completedOccurrences}</b></div>
+          <div className="clinical-card border-amber-200 bg-amber-50/40 p-3"><AlertTriangle className="size-4 text-amber-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Còn thiếu</p><b className="text-xl text-amber-800">{missingOccurrences}</b></div>
+          <div className="clinical-card border-rose-200 bg-rose-50/40 p-3"><AlertTriangle className="size-4 text-rose-700" /><p className="mt-2 text-[10px] font-bold text-slate-500">Bất thường / Cần sửa</p><b className="text-xl text-rose-800">{abnormal}</b></div>
         </div>
 
         <section className="clinical-card p-4">
@@ -83,6 +95,14 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
           {visible.map((period) => {
             const template = period.form_template_versions.form_templates;
             const target = period.locations?.name ?? period.assets?.source_name ?? "Toàn khoa";
+            const occs = period.schedule_occurrences ?? [];
+            const periodTotal = occs.length || 1;
+            const periodDone = occs.length > 0
+              ? occs.filter((o) => o.status === "COMPLETED" || o.fulfilled_by_record_id !== null).length
+              : (enteredStates.includes(period.status) ? 1 : 0);
+            const periodMissing = Math.max(0, periodTotal - periodDone);
+            const periodPercent = Math.round((periodDone / periodTotal) * 100);
+
             return (
               <details key={period.id} className="clinical-card overflow-hidden" open={visible.length <= 3}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4">
@@ -91,13 +111,13 @@ export default async function ApprovalsPage({ searchParams }: { searchParams: Pr
                     <h2 className="mt-1 truncate text-sm font-black text-slate-950">{template.name}</h2>
                     <p className="mt-1 text-xs text-slate-500">{target} · {period.period_label ?? `${period.period_start} – ${period.period_end}`}</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-700">{friendlyStatus(period.status)}</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black text-slate-700">{friendlyStatus(period.status, periodDone, periodTotal)}</span>
                 </summary>
                 <div className="border-t border-slate-100 p-4">
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                    <div className="rounded-2xl bg-slate-50 p-3"><b className="block text-lg">1</b><span>Cần nhập</span></div>
-                    <div className="rounded-2xl bg-emerald-50 p-3"><b className="block text-lg">{enteredStates.includes(period.status) ? 1 : 0}</b><span>Đã nhập</span></div>
-                    <div className="rounded-2xl bg-amber-50 p-3"><b className="block text-lg">{enteredStates.includes(period.status) ? 0 : 1}</b><span>Còn thiếu</span></div>
+                    <div className="rounded-2xl bg-slate-50 p-3"><b className="block text-lg">{periodTotal}</b><span>Cần nhập</span></div>
+                    <div className="rounded-2xl bg-emerald-50 p-3"><b className="block text-lg">{periodDone}</b><span>Đã nhập ({periodPercent}%)</span></div>
+                    <div className="rounded-2xl bg-amber-50 p-3"><b className="block text-lg">{periodMissing}</b><span>Còn thiếu</span></div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/reports/export?template=${encodeURIComponent(template.code)}&period=${period.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-teal-700 px-4 text-xs font-bold text-white"><Activity className="size-4" />Preview / Export</Link>

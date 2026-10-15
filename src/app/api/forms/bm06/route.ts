@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { validateShiftStatuses } from "@/lib/forms/validation";
 
@@ -100,6 +101,18 @@ export async function POST(request: Request) {
 
   if (error) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
+  }
+
+  try {
+    revalidatePath("/");
+    revalidatePath("/equipment");
+    revalidatePath("/bm06");
+    revalidatePath("/quick-duty");
+    revalidatePath("/dashboard");
+    revalidatePath("/approvals");
+    revalidatePath("/reports");
+  } catch {
+    // Revalidation may be a no-op in standalone test environments
   }
 
   return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);

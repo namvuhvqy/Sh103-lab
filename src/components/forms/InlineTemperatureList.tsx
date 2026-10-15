@@ -7,9 +7,10 @@ import { CircleAlert } from "lucide-react";
 
 interface InlineTemperatureListProps {
   initialOccurrences: InlineOccurrence[];
+  onMeasurementSaved?: (occId: string, temp: number | null, hum: number | null) => void;
 }
 
-export function InlineTemperatureList({ initialOccurrences }: InlineTemperatureListProps) {
+export function InlineTemperatureList({ initialOccurrences, onMeasurementSaved }: InlineTemperatureListProps) {
   const [occurrences, setOccurrences] = useState<InlineOccurrence[]>(initialOccurrences);
 
   const handleSaved = (occId: string, temp: number | null, hum: number | null) => {
@@ -25,6 +26,7 @@ export function InlineTemperatureList({ initialOccurrences }: InlineTemperatureL
           : occ
       )
     );
+    onMeasurementSaved?.(occId, temp, hum);
   };
 
   const doneCount = occurrences.filter((o) => o.initialTemperature != null).length;
