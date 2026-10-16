@@ -1,19 +1,25 @@
-import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import * as xlsx from "xlsx";
+import ExcelJS from "exceljs";
 import type { ReportExportModel } from "@/lib/p5/report-export-model";
 
-function setCell(ws: xlsx.WorkSheet, cellRef: string, value: string | number | null | undefined, type?: "s" | "n") {
-  if (value === null || value === undefined || value === "") return;
-  const t = type ?? (typeof value === "number" ? "n" : "s");
-  const existing = ws[cellRef];
-  if (existing) {
-    existing.v = value;
-    existing.t = t;
-  } else {
-    ws[cellRef] = { t, v: value };
-  }
-}
+const thinBorder: Partial<ExcelJS.Borders> = {
+  top: { style: "thin", color: { argb: "FF000000" } },
+  left: { style: "thin", color: { argb: "FF000000" } },
+  bottom: { style: "thin", color: { argb: "FF000000" } },
+  right: { style: "thin", color: { argb: "FF000000" } },
+};
+
+const centerAlign: Partial<ExcelJS.Alignment> = {
+  vertical: "middle",
+  horizontal: "center",
+  wrapText: true,
+};
+
+const leftAlign: Partial<ExcelJS.Alignment> = {
+  vertical: "middle",
+  horizontal: "left",
+  wrapText: true,
+};
 
 function parseMonthYear(startDateStr: string) {
   const parts = startDateStr.split("-");
@@ -28,6 +34,17 @@ function getDayFromDate(dateStr: string) {
   return Number.parseInt(parts[2] || "1", 10);
 }
 
+function applyCellFormat(cell: ExcelJS.Cell, value: unknown, align = centerAlign) {
+  if (value !== undefined && value !== null) {
+    cell.value = value as ExcelJS.CellValue;
+  }
+  cell.border = thinBorder;
+  cell.alignment = align;
+  if (!cell.font) {
+    cell.font = { name: "Times New Roman", size: 10 };
+  }
+}
+
 export async function buildCanonicalReportWorkbook(model: ReportExportModel): Promise<Buffer> {
   const templateDir = join(process.cwd(), "docs", "danh mục biểu mẫu");
   const { year, month } = parseMonthYear(model.period.period_start);
@@ -36,74 +53,99 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
   // 1. BM.01/QL.HTAT.01: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm
   if (code.includes("BM.01/QL.HTAT")) {
     const templatePath = join(templateDir, "BM.01_QL.HTAT.01_Nhiet_Do_PXN.xlsx");
-    const raw = await readFile(templatePath);
-    const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-
-    // Always update date on all sheets
-    for (const sheetName of wb.SheetNames) {
-      const s = wb.Sheets[sheetName];
-      if (s) setCell(s, "D4", `Thời gian: Tháng ${month} Năm ${year}`);
-    }
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
 
     // Map location to primary sheet
     const locName = (model.period.locations?.name || "").toLowerCase();
-    let primarySheet = "SINH_HOA";
-    if (locName.includes("nước tiểu") || locName.includes("nuoc tieu")) primarySheet = "NUOC_TIEU";
-    else if (locName.includes("sinh hóa") || locName.includes("sinh hoa")) primarySheet = "SINH_HOA";
-    else if (locName.includes("miễn dịch") || locName.includes("mien dich")) primarySheet = "MIEN_DICH";
-    else if (locName.includes("automation")) primarySheet = "AUTOMATION";
-    else if (locName.includes("ro") || locName.includes("lọc nước") || locName.includes("loc nuoc") || locName.includes("ly tâm")) primarySheet = "LOC_NUOC_RO";
+    let primarySheetName = "SINH_HOA";
+    if (locName.includes("nước tiểu") || locName.includes("nuoc tieu")) primarySheetName = "NUOC_TIEU";
+    else if (locName.includes("sinh hóa") || locName.includes("sinh hoa")) primarySheetName = "SINH_HOA";
+    else if (locName.includes("miễn dịch") || locName.includes("mien dich")) primarySheetName = "MIEN_DICH";
+    else if (locName.includes("automation")) primarySheetName = "AUTOMATION";
+    else if (locName.includes("ro") || locName.includes("lọc nước") || locName.includes("loc nuoc") || locName.includes("ly tâm")) primarySheetName = "LOC_NUOC_RO";
 
-    // Reorder sheet names so the active location is the first visible tab
-    if (wb.SheetNames.includes(primarySheet)) {
-      wb.SheetNames = [primarySheet, ...wb.SheetNames.filter((s) => s !== primarySheet)];
+    // Setup all sheets
+    for (const ws of wb.worksheets) {
+      ws.pageSetup = {
+        paperSize: 9, // A4
+        orientation: "portrait",
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+      };
+      const d4 = ws.getCell("D4");
+      d4.value = `Thời gian: Tháng ${month} Năm ${year}`;
+      d4.font = { name: "Times New Roman", size: 11, italic: true };
     }
 
-    const ws = wb.Sheets[primarySheet];
-    if (ws) {
-      for (const rowModel of model.rows) {
-        // rowModel.cells: [id, date, slot, time, temp, hum, evaluation, performer, note]
-        const [, dateStr, slotLabel, timeStr, tempVal, humVal, evalVal, performerName, noteVal] = rowModel.cells;
-        if (!dateStr) continue;
-        const day = getDayFromDate(String(dateStr));
-        if (day < 1 || day > 31) continue;
-        const r = 7 + day; // Day 1 = Row 8
+    const ws = wb.getWorksheet(primarySheetName) || wb.worksheets[0];
+    const primaryIdx = wb.worksheets.findIndex((w) => w.name === ws.name);
+    if (primaryIdx >= 0) {
+      wb.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: primaryIdx, visibility: "visible" }];
+    }
 
-        const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
-        if (isMorning) {
-          if (timeStr) setCell(ws, `B${r}`, String(timeStr));
-          if (tempVal !== null && tempVal !== undefined && tempVal !== "") setCell(ws, `C${r}`, Number(tempVal), "n");
-          if (humVal !== null && humVal !== undefined && humVal !== "") setCell(ws, `D${r}`, Number(humVal), "n");
-        } else {
-          if (timeStr) setCell(ws, `E${r}`, String(timeStr));
-          if (tempVal !== null && tempVal !== undefined && tempVal !== "") setCell(ws, `F${r}`, Number(tempVal), "n");
-          if (humVal !== null && humVal !== undefined && humVal !== "") setCell(ws, `G${r}`, Number(humVal), "n");
-        }
+    // Populate 31 days data
+    for (const rowModel of model.rows) {
+      const [, dateStr, slotLabel, timeStr, tempVal, humVal, evalVal, performerName, noteVal] = rowModel.cells;
+      if (!dateStr) continue;
+      const day = getDayFromDate(String(dateStr));
+      if (day < 1 || day > 31) continue;
+      const r = 7 + day;
 
-        if (evalVal) setCell(ws, `H${r}`, String(evalVal) === "Ngoài ngưỡng" ? "KĐ" : "Đạt");
-        else if (tempVal !== null && tempVal !== undefined && tempVal !== "") setCell(ws, `H${r}`, "Đạt");
+      const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
+      if (isMorning) {
+        applyCellFormat(ws.getCell(`B${r}`), timeStr || "08:30");
+        applyCellFormat(ws.getCell(`C${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
+        applyCellFormat(ws.getCell(`D${r}`), humVal !== null && humVal !== undefined ? Number(humVal) : null);
+      } else {
+        applyCellFormat(ws.getCell(`E${r}`), timeStr || "14:30");
+        applyCellFormat(ws.getCell(`F${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
+        applyCellFormat(ws.getCell(`G${r}`), humVal !== null && humVal !== undefined ? Number(humVal) : null);
+      }
 
-        if (noteVal) setCell(ws, `I${r}`, String(noteVal));
-        if (performerName) setCell(ws, `J${r}`, String(performerName));
+      const evalText = evalVal === "Ngoài ngưỡng" ? "KĐ" : tempVal !== null && tempVal !== undefined ? "Đạt" : null;
+      applyCellFormat(ws.getCell(`H${r}`), evalText);
+      applyCellFormat(ws.getCell(`I${r}`), noteVal || null, leftAlign);
+      applyCellFormat(ws.getCell(`J${r}`), performerName || null, leftAlign);
+    }
+
+    // Ensure all 31 rows are fully bordered
+    for (let d = 1; d <= 31; d++) {
+      const r = 7 + d;
+      for (const col of ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]) {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = thinBorder;
+        if (!c.alignment) c.alignment = centerAlign;
       }
     }
 
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    const bytes = await wb.xlsx.writeBuffer();
+    return Buffer.from(bytes);
   }
 
   // 2. BM.02/QL.HTAT.01: Theo dõi tủ lạnh mát (2°C – 8°C)
   if (code.includes("BM.02/QL.HTAT")) {
     const templatePath = join(templateDir, "BM.02_QL.HTAT.01_Tu_Lanh_Mat.xlsx");
-    const raw = await readFile(templatePath);
-    const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["Tu_Lanh_Mat"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+    const ws = wb.getWorksheet("Tu_Lanh_Mat") || wb.worksheets[0];
 
-    setCell(ws, "A4", `Tên thiết bị: ${model.period.assets?.source_name || "Tủ lạnh mát"}`);
-    setCell(ws, "D4", `Mã thiết bị: ${model.period.assets?.source_code || "TLM-103"}`);
-    setCell(ws, "D5", `Thời gian: Tháng ${month} Năm ${year}`);
+    ws.pageSetup = {
+      paperSize: 9, // A4
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+    };
+
+    ws.getCell("A4").value = `Tên thiết bị: ${model.period.assets?.source_name || "Tủ lạnh mát"}`;
+    ws.getCell("D4").value = `Mã thiết bị: ${model.period.assets?.source_code || "TLM-103"}`;
+    ws.getCell("D5").value = `Thời gian: Tháng ${month} Năm ${year}`;
 
     for (const rowModel of model.rows) {
-      // rowModel.cells: [stt, date, slot, asset, temp, eval, performer, note]
       const [, dateStr, slotLabel, , tempVal, evalVal, performerName, noteVal] = rowModel.cells;
       if (!dateStr) continue;
       const day = getDayFromDate(String(dateStr));
@@ -112,27 +154,46 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
       const r = isMorning ? 9 + (day - 1) * 2 : 10 + (day - 1) * 2;
 
-      setCell(ws, `C${r}`, isMorning ? "08:30" : "14:30");
-      if (tempVal !== null && tempVal !== undefined) setCell(ws, `D${r}`, Number(tempVal), "n");
-      setCell(ws, `E${r}`, "2 – 8°C");
-      setCell(ws, `F${r}`, evalVal ? "KĐ" : "Đạt");
-      if (performerName) setCell(ws, `G${r}`, String(performerName));
-      if (noteVal) setCell(ws, `H${r}`, String(noteVal));
+      applyCellFormat(ws.getCell(`C${r}`), isMorning ? "08:30" : "14:30");
+      applyCellFormat(ws.getCell(`D${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
+      applyCellFormat(ws.getCell(`E${r}`), "2 – 8°C");
+      applyCellFormat(ws.getCell(`F${r}`), evalVal === "Ngoài dải an toàn" ? "KĐ" : tempVal !== null && tempVal !== undefined ? "Đạt" : null);
+      applyCellFormat(ws.getCell(`G${r}`), performerName || null, leftAlign);
+      applyCellFormat(ws.getCell(`H${r}`), noteVal || null, leftAlign);
     }
 
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    // Border all cells from row 9 to 70
+    for (let r = 9; r <= 70; r++) {
+      for (const col of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = thinBorder;
+        if (!c.alignment) c.alignment = centerAlign;
+      }
+    }
+
+    const bytes = await wb.xlsx.writeBuffer();
+    return Buffer.from(bytes);
   }
 
-  // 3. BM.03/QL.HTAT.01: Theo dõi tủ đông/tủ đá (-10°C đến -30°C)
+  // 3. BM.03/QL.HTAT.01: Theo dõi tủ đông / tủ đá (-10°C đến -30°C)
   if (code.includes("BM.03/QL.HTAT")) {
     const templatePath = join(templateDir, "BM.03_QL.HTAT.01_Tu_Lanh_Da.xlsx");
-    const raw = await readFile(templatePath);
-    const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["Tu_Lanh_Da"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+    const ws = wb.getWorksheet("Tu_Lanh_Da") || wb.worksheets[0];
 
-    setCell(ws, "A4", `Tên thiết bị: ${model.period.assets?.source_name || "Tủ đông / tủ đá"}`);
-    setCell(ws, "D4", `Mã thiết bị: ${model.period.assets?.source_code || "TD-103"}`);
-    setCell(ws, "D5", `Thời gian: Tháng ${month} Năm ${year}`);
+    ws.pageSetup = {
+      paperSize: 9, // A4
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+    };
+
+    ws.getCell("A4").value = `Tên thiết bị: ${model.period.assets?.source_name || "Tủ đông / tủ đá"}`;
+    ws.getCell("D4").value = `Mã thiết bị: ${model.period.assets?.source_code || "TD-103"}`;
+    ws.getCell("D5").value = `Thời gian: Tháng ${month} Năm ${year}`;
 
     for (const rowModel of model.rows) {
       const [, dateStr, slotLabel, , tempVal, evalVal, performerName, noteVal] = rowModel.cells;
@@ -143,96 +204,148 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
       const r = isMorning ? 9 + (day - 1) * 2 : 10 + (day - 1) * 2;
 
-      setCell(ws, `C${r}`, isMorning ? "08:30" : "14:30");
-      if (tempVal !== null && tempVal !== undefined) setCell(ws, `D${r}`, Number(tempVal), "n");
-      setCell(ws, `E${r}`, "-30 đến -10°C");
-      setCell(ws, `F${r}`, evalVal ? "KĐ" : "Đạt");
-      if (performerName) setCell(ws, `G${r}`, String(performerName));
-      if (noteVal) setCell(ws, `H${r}`, String(noteVal));
+      applyCellFormat(ws.getCell(`C${r}`), isMorning ? "08:30" : "14:30");
+      applyCellFormat(ws.getCell(`D${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
+      applyCellFormat(ws.getCell(`E${r}`), "-30 đến -10°C");
+      applyCellFormat(ws.getCell(`F${r}`), evalVal === "Ngoài dải an toàn" ? "KĐ" : tempVal !== null && tempVal !== undefined ? "Đạt" : null);
+      applyCellFormat(ws.getCell(`G${r}`), performerName || null, leftAlign);
+      applyCellFormat(ws.getCell(`H${r}`), noteVal || null, leftAlign);
     }
 
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    for (let r = 9; r <= 70; r++) {
+      for (const col of ["A", "B", "C", "D", "E", "F", "G", "H"]) {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = thinBorder;
+        if (!c.alignment) c.alignment = centerAlign;
+      }
+    }
+
+    const bytes = await wb.xlsx.writeBuffer();
+    return Buffer.from(bytes);
   }
 
   // 4. BM.01_KNBM: Phiếu theo dõi khử nhiễm bề mặt khu vực làm việc
   if (code.includes("BM.01_KNBM") || code.includes("KNBM")) {
     const templatePath = join(templateDir, "BM.01_KNBM_Khu_Nhiem_Be_Mat.xlsx");
-    const raw = await readFile(templatePath);
-    const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["Khu_Nhiem"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+    const ws = wb.getWorksheet("Khu_Nhiem") || wb.worksheets[0];
 
-    setCell(ws, "A3", `Khu vực: ${model.period.locations?.name || "Khu vực xét nghiệm"}`);
-    setCell(ws, "C3", `Thời gian: Tháng ${month} Năm ${year}`);
+    ws.pageSetup = {
+      paperSize: 9, // A4
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+    };
+
+    ws.getCell("A3").value = `Khu vực: ${model.period.locations?.name || "Khu vực xét nghiệm"}`;
+    ws.getCell("C3").value = `Thời gian: Tháng ${month} Năm ${year}`;
 
     for (const rowModel of model.rows) {
-      // rowModel.cells: [stt, date, location, daily, weekly, spill, performer, note]
       const [, dateStr, , dailyVal, weeklyVal, spillVal, performerName, noteVal] = rowModel.cells;
       if (!dateStr) continue;
       const day = getDayFromDate(String(dateStr));
       if (day < 1 || day > 31) continue;
-      const r = 5 + day; // Day 1 = Row 6
+      const r = 5 + day;
 
-      if (dailyVal) setCell(ws, `B${r}`, "✓");
-      if (weeklyVal) setCell(ws, `C${r}`, "✓");
-      if (spillVal) setCell(ws, `D${r}`, "✓");
-      if (noteVal) setCell(ws, `E${r}`, String(noteVal));
-      if (performerName) setCell(ws, `F${r}`, String(performerName));
+      applyCellFormat(ws.getCell(`B${r}`), dailyVal ? "✓" : null);
+      applyCellFormat(ws.getCell(`C${r}`), weeklyVal ? "✓" : null);
+      applyCellFormat(ws.getCell(`D${r}`), spillVal ? "✓" : null);
+      applyCellFormat(ws.getCell(`E${r}`), noteVal || null, leftAlign);
+      applyCellFormat(ws.getCell(`F${r}`), performerName || null, leftAlign);
     }
 
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    for (let r = 6; r <= 36; r++) {
+      for (const col of ["A", "B", "C", "D", "E", "F"]) {
+        const c = ws.getCell(`${col}${r}`);
+        c.border = thinBorder;
+        if (!c.alignment) c.alignment = centerAlign;
+      }
+    }
+
+    const bytes = await wb.xlsx.writeBuffer();
+    return Buffer.from(bytes);
   }
 
   // 5. BM.02/QL.TRTB.01: Bảng theo dõi – bảo dưỡng trang thiết bị
   if (code.includes("BM.02/QL.TRTB")) {
     const templatePath = join(templateDir, "BM.02_QL.TRTB.01_Bao_Duong_TTB.xlsx");
-    const raw = await readFile(templatePath);
-    const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["Bao_Duong"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(templatePath);
+    const ws = wb.getWorksheet("Bao_Duong") || wb.worksheets[0];
 
-    setCell(ws, "A3", `Tên máy: ${model.period.assets?.source_name || "Máy xét nghiệm"}`);
-    setCell(ws, "D3", `Tháng ${month} Năm ${year}`);
+    ws.pageSetup = {
+      paperSize: 9, // A4
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+    };
+
+    ws.getCell("A3").value = `Tên máy: ${model.period.assets?.source_name || "Máy xét nghiệm"}`;
+    ws.getCell("D3").value = `Tháng ${month} Năm ${year}`;
 
     for (const rowModel of model.rows) {
-      // rowModel.cells: [stt, date, asset, cadence, result, performer, note]
       const [, dateStr, , cadenceVal, resultVal, performerName] = rowModel.cells;
       if (!dateStr) continue;
       const day = getDayFromDate(String(dateStr));
       if (day < 1 || day > 31) continue;
-      const colLetter = xlsx.utils.encode_col(day); // Day 1 = Col B (index 1)
+      const colIdx = 1 + day; // Day 1 = Col B (index 2 in 1-based ExcelJS)
 
       const cadence = String(cadenceVal || "DAILY").toUpperCase();
       if (cadence.includes("MONTH") || cadence.includes("THÁNG")) {
-        setCell(ws, `${colLetter}13`, resultVal === "FAIL" ? "KĐ" : "Đạt");
-        if (performerName) setCell(ws, `${colLetter}14`, String(performerName));
+        applyCellFormat(ws.getRow(13).getCell(colIdx), resultVal === "FAIL" ? "KĐ" : "Đạt");
+        applyCellFormat(ws.getRow(14).getCell(colIdx), performerName || null, leftAlign);
       } else if (cadence.includes("WEEK") || cadence.includes("TUẦN")) {
-        setCell(ws, `${colLetter}10`, resultVal === "FAIL" ? "KĐ" : "Đạt");
-        if (performerName) setCell(ws, `${colLetter}11`, String(performerName));
+        applyCellFormat(ws.getRow(10).getCell(colIdx), resultVal === "FAIL" ? "KĐ" : "Đạt");
+        applyCellFormat(ws.getRow(11).getCell(colIdx), performerName || null, leftAlign);
       } else {
-        setCell(ws, `${colLetter}7`, resultVal === "FAIL" ? "KĐ" : "Đạt");
-        if (performerName) setCell(ws, `${colLetter}8`, String(performerName));
+        applyCellFormat(ws.getRow(7).getCell(colIdx), resultVal === "FAIL" ? "KĐ" : "Đạt");
+        applyCellFormat(ws.getRow(8).getCell(colIdx), performerName || null, leftAlign);
       }
     }
 
-    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+    // Border table from row 5 to 14, columns 1 to 32
+    for (let r = 5; r <= 14; r++) {
+      const row = ws.getRow(r);
+      for (let c = 1; c <= 32; c++) {
+        const cell = row.getCell(c);
+        cell.border = thinBorder;
+        if (!cell.alignment) cell.alignment = centerAlign;
+      }
+    }
+
+    const bytes = await wb.xlsx.writeBuffer();
+    return Buffer.from(bytes);
   }
 
-  // 6. BM.06/QL.TRTB.01: Nhật ký hoạt động trang thiết bị (Phiên bản v4.1 hiện hành - 25 máy x 4 ca)
+  // 6. BM.06/QL.TRTB.01: Nhật ký hoạt động trang thiết bị (Phiên bản v4.1 - 25 máy x 4 ca)
   const templatePath = join(templateDir, "BM.06_QL.TRTB.01_Nhat_Ky_25_TTB_4_Ca_v4.1.xlsx");
-  const raw = await readFile(templatePath);
-  const wb = xlsx.read(raw, { type: "buffer", cellStyles: true });
-  const ws = wb.Sheets["BM.06 v4.1"] || wb.Sheets[wb.SheetNames[0]];
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile(templatePath);
+  const ws = wb.getWorksheet("BM.06 v4.1") || wb.worksheets[0];
 
-  setCell(ws, "A4", `Quyển số: ..................    Từ ngày: ${model.period.period_start}    Đến ngày: ${model.period.period_end}`);
+  ws.pageSetup = {
+    paperSize: 9, // A4
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 },
+  };
 
-  // Model rows for BM06 contain: [id, date, performer, shiftLabel/time, ...deviceStatuses(25), note]
+  ws.getCell("A4").value = `Quyển số: ..................    Từ ngày: ${model.period.period_start}    Đến ngày: ${model.period.period_end}`;
+
   for (const rowModel of model.rows) {
     const [, dateStr, performerName, , ...rest] = rowModel.cells;
     if (!dateStr) continue;
     const day = getDayFromDate(String(dateStr));
     if (day < 1 || day > 31) continue;
 
-    // Detect shift index 0..3
-    const key = rowModel.key; // e.g. "Trang 1-2026-09-01-SHIFT_1" or similar
+    const key = rowModel.key;
     let shiftIdx = 0;
     if (key.includes("SHIFT_2")) shiftIdx = 1;
     else if (key.includes("SHIFT_3")) shiftIdx = 2;
@@ -240,20 +353,34 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
     const r = 8 + (day - 1) * 4 + shiftIdx;
 
-    if (performerName) setCell(ws, `E${r}`, String(performerName));
+    if (performerName) {
+      applyCellFormat(ws.getCell(`E${r}`), String(performerName), leftAlign);
+    }
 
-    // Devices are in columns F (index 5) to AD (index 29)
     const deviceStatuses = rest.slice(0, 25);
     deviceStatuses.forEach((status, devIdx) => {
+      const colIdx = 6 + devIdx; // F = 6
       if (status !== null && status !== undefined && status !== "") {
-        const colLetter = xlsx.utils.encode_col(5 + devIdx);
-        setCell(ws, `${colLetter}${r}`, String(status));
+        applyCellFormat(ws.getRow(r).getCell(colIdx), String(status), centerAlign);
       }
     });
 
     const note = rest[25];
-    if (note) setCell(ws, `AE${r}`, String(note));
+    if (note) {
+      applyCellFormat(ws.getCell(`AE${r}`), String(note), leftAlign);
+    }
   }
 
-  return xlsx.write(wb, { type: "buffer", bookType: "xlsx" });
+  // Border all rows from 7 to 131, columns 1 to 31
+  for (let r = 7; r <= 131; r++) {
+    const row = ws.getRow(r);
+    for (let c = 1; c <= 31; c++) {
+      const cell = row.getCell(c);
+      cell.border = thinBorder;
+      if (!cell.alignment) cell.alignment = centerAlign;
+    }
+  }
+
+  const bytes = await wb.xlsx.writeBuffer();
+  return Buffer.from(bytes);
 }
