@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { getOfficialPeriodReport } from "@/lib/p5/operational-queries";
 import { buildBm06WorkbookFromTemplate } from "@/lib/p5/bm06-template-xlsx";
+import { buildCanonicalReportWorkbook } from "@/lib/p5/canonical-template-xlsx";
 import { buildReportExportModel, type ReportPeriod, type ReportRecord } from "@/lib/p5/report-export-model";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     start: search.get("start") ?? undefined,
     official: report.official,
   });
+
+  if (search.get("canonical") === "1" || search.get("canonical") === "true") {
+    try {
+      const canonicalBuffer = await buildCanonicalReportWorkbook(model);
+      const safeCode = model.templateCode.replace(/[\/\\?%*:|"<>]/g, "_");
+      const periodSlug = (model.period.period_label ?? `${model.period.period_start}_${model.period.period_end}`).replace(/[\/\\?%*:|"<> ]/g, "_");
+      const filename = `${model.filenamePrefix}${safeCode}_${periodSlug}.xlsx`;
+      return new Response(Buffer.from(canonicalBuffer), {
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
+    } catch (error) {
+      console.error("Canonical export error, falling back:", error);
+    }
+  }
 
   const workbook = model.templateCode.includes("BM.06") ? await buildBm06WorkbookFromTemplate(model) : new ExcelJS.Workbook();
   workbook.creator = "BỆNH VIỆN QUÂN Y 103 · KHOA SINH HÓA";
