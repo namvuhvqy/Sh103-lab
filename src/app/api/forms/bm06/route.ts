@@ -44,6 +44,7 @@ export async function POST(request: Request) {
   const occurrenceId = String(data.get("occurrenceId") ?? "");
   const areaCode = String(data.get("areaCode") ?? "");
   const intent = String(data.get("intent") ?? "draft");
+  const coWorkerUserId = String(data.get("coWorkerUserId") ?? "").trim() || null;
 
   let statuses: unknown;
   try {
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
     target_statuses: statuses,
     target_finalize: intent === "finalize",
     target_expected_lock: Number(data.get("lockVersion") || 1),
+    target_coworker_id: coWorkerUserId,
   });
 
   if (error) {

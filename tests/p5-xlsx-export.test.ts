@@ -121,7 +121,7 @@ describe("official XLSX export", () => {
         profiles: { full_name: "KTV kiểm thử" },
         equipment_shift_details: {
           equipment_shift_statuses: [
-            { asset_display_order_snapshot: 25, status_code: "BT", asset_label_snapshot: "Máy 25" },
+            { asset_display_order_snapshot: 20, status_code: "BT", asset_label_snapshot: "Máy 20" },
             { asset_display_order_snapshot: 2, status_code: "KSD", asset_label_snapshot: "Máy 2" },
             { asset_display_order_snapshot: 1, status_code: "H", asset_label_snapshot: "Máy 1" },
           ],
@@ -132,14 +132,14 @@ describe("official XLSX export", () => {
     const response = await GET(new Request("https://example.test"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
-    expect(workbook.worksheets.map((sheet) => sheet.name).slice(0, 3)).toEqual(["Trang 1", "Trang 2", "Trang 3"]);
+    expect(workbook.worksheets.map((sheet) => sheet.name).slice(0, 2)).toEqual(["Trang 1", "Trang 2"]);
     const page1 = workbook.getWorksheet("Trang 1")!;
-    const page3 = workbook.getWorksheet("Trang 3")!;
+    const page2 = workbook.getWorksheet("Trang 2")!;
 
     expect(page1.getCell("D7").value).toBe("H");
     expect(page1.getCell("E7").value).toBe("KSD");
     expect(page1.getCell("F7").value).toBeNull();
-    expect(page3.getCell("K7").value).toBe("BT");
+    expect(page2.getCell("J7").value).toBe("BT");
     expect(page1.getCell("D8").value).toBeNull();
   });
 

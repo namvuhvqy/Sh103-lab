@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import ExcelJS from "exceljs";
-import { BM06_FINAL_SHIFT_WINDOWS, BM06_TEMPLATE_PAGES } from "@/lib/p5/bm06-template";
+import { BM06_CANONICAL_TEMPLATE_PATH, BM06_FINAL_SHIFT_WINDOWS, BM06_TEMPLATE_PAGES } from "@/lib/p5/bm06-template";
 import type { ReportExportModel } from "@/lib/p5/report-export-model";
 
 const thinBorder: Partial<ExcelJS.Borders> = {
@@ -127,7 +127,7 @@ function cellValue(value: unknown) {
 }
 
 export async function buildBm06WorkbookFromTemplate(model: ReportExportModel) {
-  const raw = await readFile(join(process.cwd(), "docs", "danh mục biểu mẫu", "BM06_QL_TRTB_01_Nhat_ky_hoat_dong_TTB_no_cover_owner_approved.xlsx"));
+  const raw = await readFile(join(process.cwd(), BM06_CANONICAL_TEMPLATE_PATH));
   const normalized = normalizeOpenXmlNamespaces(raw);
   const templateWorkbook = new ExcelJS.Workbook();
   try {

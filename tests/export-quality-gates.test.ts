@@ -31,7 +31,7 @@ describe("Preview/export quality gates", () => {
     const page = read("src/app/reports/export/page.tsx");
     const xlsx = read("src/app/api/reports/[periodId]/xlsx/route.ts");
     expect(model).toContain("BM06_SOURCE_TEMPLATE_PATH");
-    expect(template).toContain("no_cover_owner_approved.xlsx");
+    expect(template).toContain("BM.06. Nhật kí hoạt động TTB.xlsx");
     expect(template).toContain("BM06_TEMPLATE_DEVICE_COUNT");
     expect(model).not.toContain("BM06_DAYS_PER_SOURCE_PAGE");
     expect(xlsx).not.toContain("addPageBreak");

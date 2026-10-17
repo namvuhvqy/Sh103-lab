@@ -30,10 +30,10 @@ describe("BM.06 v4.1 template-bound exports", () => {
     expect(source).not.toContain("16:40");
   });
 
-  it("XLSX renders all 25 machines through canonical source pages", () => {
+  it("XLSX renders all 20 machines through canonical source pages", () => {
     const source = read("src/app/api/reports/[periodId]/xlsx/route.ts") + read("src/lib/p5/report-export-model.ts") + read("src/lib/p5/bm06-template.ts");
     expect(source).toContain("BM06_TEMPLATE_PAGES");
     expect(source).toContain("asset_display_order_snapshot");
-    expect(source).toContain("order: 25");
+    expect(source).toContain("order: 20");
   });
 });

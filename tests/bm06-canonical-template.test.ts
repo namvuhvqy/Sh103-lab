@@ -7,16 +7,16 @@ import { BM06_CANONICAL_TEMPLATE_PATH, BM06_CANONICAL_TEMPLATE_SHA256, BM06_FINA
 const root = resolve(__dirname, "..");
 
 describe("BM06 Owner-approved canonical XLSX template", () => {
-  it("uses the no-cover Owner-approved workbook byte-for-byte", () => {
+  it("uses the Owner-approved canonical workbook byte-for-byte", () => {
     const bytes = readFileSync(resolve(root, BM06_CANONICAL_TEMPLATE_PATH));
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(BM06_CANONICAL_TEMPLATE_SHA256);
-    expect(BM06_CANONICAL_TEMPLATE_PATH).toContain("no_cover_owner_approved.xlsx");
+    expect(BM06_CANONICAL_TEMPLATE_PATH).toContain("BM.06. Nhật kí hoạt động TTB.xlsx");
   });
 
-  it("contains exactly 25 horizontal device columns across source pages", () => {
-    expect(BM06_TEMPLATE_DEVICE_COUNT).toBe(25);
-    expect(BM06_TEMPLATE_PAGES.map((page) => page.devices.length)).toEqual([8, 9, 8]);
-    expect(BM06_TEMPLATE_PAGES.flatMap((page) => page.devices.map((device) => device.order))).toEqual(Array.from({ length: 25 }, (_, index) => index + 1));
+  it("contains exactly 20 horizontal device columns across source pages", () => {
+    expect(BM06_TEMPLATE_DEVICE_COUNT).toBe(20);
+    expect(BM06_TEMPLATE_PAGES.map((page) => page.devices.length)).toEqual([10, 10]);
+    expect(BM06_TEMPLATE_PAGES.flatMap((page) => page.devices.map((device) => device.order))).toEqual(Array.from({ length: 20 }, (_, index) => index + 1));
   });
 
   it("uses the current final 4 shift windows from the canonical workbook", () => {

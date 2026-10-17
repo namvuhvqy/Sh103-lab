@@ -89,7 +89,7 @@ async function runE2E() {
       await workbook.xlsx.load(buffer);
       const sheets = workbook.worksheets.map((sheet) => sheet.name);
       const badStatus = workbook.worksheets.some((sheet) => sheet.getSheetValues().flat().some((value) => String(value ?? "").includes("CHÍNH THỨC") || String(value ?? "").includes("ĐÃ PHÊ DUYỆT ĐIỆN TỬ")));
-      const bm06Template = form.includes("BM.06") ? sheets.slice(0, 3).join(",") === "Trang 1,Trang 2,Trang 3" : true;
+      const bm06Template = form.includes("BM.06") ? sheets.slice(0, 2).join(",") === "Trang 1,Trang 2" : true;
       results.push(resultLine(isZip && !badStatus && bm06Template, `${form} XLSX download parse/fidelity`, sheets.join(",")));
     }
 
