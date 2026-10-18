@@ -865,38 +865,35 @@ export function ReportsUnifiedView({
                         const formattedDate = dateStr ? dateStr.split("-").reverse().join("/") : "";
                         const shiftLabel = String(row.cells[1] ?? "");
                         const performer = row.cells[2] ? String(row.cells[2]) : "";
-                        const isMorning = shiftLabel.includes("Ca 1") || shiftLabel.includes("7h");
-                        const note = row.cells[23] ? String(row.cells[23]) : "";
+                          const isMorning = shiftLabel.includes("Ca 1") || shiftLabel.includes("7h");
+                          const note = row.cells[23] ? String(row.cells[23]) : "";
+                          const shiftTime = shiftLabel.includes("(") ? shiftLabel.split("(")[1].replace(")", "") : shiftLabel;
+                          const shiftName = shiftLabel.includes("(") ? shiftLabel.split("(")[0].trim() : "";
 
-                        return (
-                          <tr key={row.key ?? rIdx} className="hover:bg-slate-50 transition">
-                            {/* Cột Ngày: gộp 4 hàng cho mỗi ngày */}
-                            {isDayStart && (
-                              <td
-                                rowSpan={4}
-                                className="border border-slate-900 px-2 py-2 text-center font-black bg-slate-50 text-slate-900 align-middle whitespace-nowrap"
-                              >
-                                {formattedDate}
+                          return (
+                            <tr key={row.key ?? rIdx} className={`hover:bg-slate-50 transition ${isMorning ? "min-h-[55px]" : ""}`}>
+                              {/* Cột Ngày: gộp 4 hàng cho mỗi ngày */}
+                              {isDayStart && (
+                                <td
+                                  rowSpan={4}
+                                  className="border border-slate-900 px-2 py-3 text-center font-black bg-slate-50 text-slate-900 align-middle whitespace-nowrap"
+                                >
+                                  {formattedDate}
+                                </td>
+                              )}
+
+                              {/* Cột Lượng sử dụng / Ca trực */}
+                              <td className={`border border-slate-900 px-2 text-center align-middle whitespace-nowrap ${isMorning ? "py-3 bg-amber-50/30" : "py-1.5"}`}>
+                                <span className="block text-xs font-bold text-slate-900">{shiftTime}</span>
+                                {shiftName && <span className="block text-[10px] font-medium text-slate-500">{shiftName}</span>}
                               </td>
-                            )}
 
-                            {/* Cột Ca trực */}
-                            <td className="border border-slate-900 px-2 py-1.5 text-center font-bold text-slate-700 whitespace-nowrap">
-                              {shiftLabel}
-                            </td>
-
-                            {/* Cột Người sử dụng: Ca 1 5 kíp 5 dòng */}
-                            <td className="border border-slate-900 px-2 py-1.5 align-middle">
-                              {isMorning ? (
-                                <div className="whitespace-pre-line text-[11px] leading-snug font-medium text-slate-900 py-0.5">
+                              {/* Cột Người sử dụng */}
+                              <td className={`border border-slate-900 px-3 align-middle ${isMorning ? "py-3" : "py-1.5"}`}>
+                                <div className="text-xs font-semibold text-slate-900 whitespace-pre-line leading-relaxed">
                                   {performer}
                                 </div>
-                              ) : (
-                                <span className="text-xs font-semibold text-slate-800">
-                                  {performer}
-                                </span>
-                              )}
-                            </td>
+                              </td>
 
                             {/* Máy Trang 1 (1..10) */}
                             {(bm06SubView === "t1" || bm06SubView === "both") &&

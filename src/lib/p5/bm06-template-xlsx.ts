@@ -32,11 +32,11 @@ export async function buildBm06WorkbookFromTemplate(model: ReportExportModel, cy
     throw new Error("Không tìm thấy Trang 1 hoặc Trang 2 trong mẫu BM.06");
   }
 
-  // Set column widths to prevent text clipping
-  ws1.column("A").width(10.5);
-  ws1.column("B").width(24.0);
-  ws1.column("C").width(14.0);
-  for (let c = 4; c <= 13; c++) ws1.column(c).width(8.5);
+  // Set column widths to match canonical template specifications
+  ws1.column("A").width(11.0);
+  ws1.column("B").width(22.0);
+  ws1.column("C").width(16.0);
+  for (let c = 4; c <= 13; c++) ws1.column(c).width(9.2);
   for (let c = 1; c <= 10; c++) ws2.column(c).width(11.2);
   ws2.column("K").width(18.0);
 
@@ -76,9 +76,9 @@ export async function buildBm06WorkbookFromTemplate(model: ReportExportModel, cy
       });
     }
 
-    // Row heights: Ca 1 = 38pt (comfortable for crew), Ca 2..4 = 24pt
-    ws1.row(dayStart).height(38);
-    ws2.row(dayStart).height(38);
+    // Row heights matching hospital template: Ca 1 (7h-12h) = 55pt, Ca 2..4 = 24pt
+    ws1.row(dayStart).height(55);
+    ws2.row(dayStart).height(55);
     for (let s = 1; s <= 3; s++) {
       ws1.row(dayStart + s).height(24);
       ws2.row(dayStart + s).height(24);
