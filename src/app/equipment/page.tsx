@@ -96,11 +96,10 @@ export default async function EquipmentPage({
               Tiêu chuẩn Quản lý Trang thiết bị y tế BM.06/QL.TRTB.01
             </span>
             <h1 className="text-2xl sm:text-3xl font-black">
-              Hệ thống 25 Thiết bị Xét nghiệm
+              Hệ thống 20 Thiết bị Xét nghiệm
             </h1>
             <p className="text-xs sm:text-sm text-slate-300">
-              Theo dõi vận hành 4 ca trực liên tục: Sinh hóa (9 máy), Miễn dịch (8 máy),
-              Nước tiểu (4 máy), Ly tâm (4 máy). Báo cáo sự cố và bảo dưỡng máy định kỳ.
+              Theo dõi vận hành 4 ca trực liên tục: 20 thiết bị xét nghiệm theo biểu mẫu chuẩn ISO 15189 (BM.06/QL.TRTB.01).
             </p>
           </div>
         </div>
@@ -156,9 +155,9 @@ export default async function EquipmentPage({
           />
           <KpiCard
             label="Đã ghi ca"
-            value={`${recorded}/25`}
-            status={recorded === 25 ? "Hoàn tất" : "Chưa hoàn tất"}
-            tone={recorded === 25 ? "success" : "warning"}
+            value={`${recorded}/${assets.length}`}
+            status={recorded >= assets.length ? "Hoàn tất" : "Chưa hoàn tất"}
+            tone={recorded >= assets.length ? "success" : "warning"}
             href={`/equipment?date=${selectedDate}&shift=${data.shift.code}#bm06-entry`}
             icon={<Activity className="size-5" />}
           />
@@ -190,7 +189,7 @@ export default async function EquipmentPage({
 
         {/* Biểu đồ phân bố */}
         <StatusDistribution
-          title={`Trạng thái 25 thiết bị (${data.shift.label})`}
+          title={`Trạng thái ${assets.length} thiết bị (${data.shift.label})`}
           items={[
             { label: "BT", value: active, tone: "green" },
             { label: "KSD", value: unavailable, tone: "slate" },
@@ -199,7 +198,7 @@ export default async function EquipmentPage({
           ]}
         />
 
-        {/* Danh sách 25 thiết bị kèm hình ảnh chuyên nghiệp */}
+        {/* Danh sách thiết bị kèm hình ảnh chuyên nghiệp */}
         <section className="overflow-hidden rounded-3xl border border-cyan-100 bg-white shadow-sm">
           <div className="border-b border-cyan-100 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
             <div>
@@ -210,7 +209,7 @@ export default async function EquipmentPage({
                 </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Nhật ký 4 ca vận hành BM.06 theo thứ tự quy định 1–25
+                Nhật ký 4 ca vận hành BM.06 theo thứ tự quy định 1–{assets.length}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-teal-800">
@@ -317,7 +316,7 @@ export default async function EquipmentPage({
         <section id="bm06-entry" className="overflow-hidden rounded-3xl border border-teal-200 bg-white shadow-sm">
           <div className="border-b border-teal-100 bg-teal-50/60 p-5">
             <p className="text-xs font-black uppercase tracking-wider text-teal-800">BM.06/QL.TRTB.01 · nhập ngay trong Thiết bị</p>
-            <h2 className="mt-1 text-xl font-black text-slate-900">Nhập trạng thái 25 thiết bị — {data.shift.label}</h2>
+            <h2 className="mt-1 text-xl font-black text-slate-900">Nhập trạng thái {assets.length} thiết bị — {data.shift.label}</h2>
             <p className="mt-1 text-xs font-semibold text-slate-500">Chọn ca ở bộ lọc phía trên; SHIFT_1, SHIFT_2, SHIFT_3, SHIFT_4 đều nhập và lưu ngay tại màn hình này.</p>
           </div>
           <div className="p-4 sm:p-5">

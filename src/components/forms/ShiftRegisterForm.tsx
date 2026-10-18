@@ -73,7 +73,7 @@ export function ShiftRegisterForm({
           <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">Draft · Bản nháp</span>
           <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-800">{isSubmitting ? "Saving · Đang lưu" : "Saved · Đã lưu sau khi server xác nhận"}</span>
           <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-800">Error · Lỗi sẽ hiển thị ở đầu trang sau khi redirect</span>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800">Completed · Hoàn tất khi đủ 25/25</span>
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800">Completed · Hoàn tất khi đủ 20/20</span>
         </div>
       </div>
 

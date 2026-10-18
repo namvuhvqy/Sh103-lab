@@ -32,7 +32,7 @@ export async function getBm06Occurrence(occurrenceId: string, areaCode?: string)
   type OccurrenceRow = { id:string; business_date:string|null; slot_code:string|null; status:string; fulfilled_by_record_id:string|null; register_periods:{form_version_id:string} };
   const typed = occurrence as unknown as OccurrenceRow | null;
   if (!typed) return null;
-  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,location_id,locations!inner(code))").eq("form_version_id", typed.register_periods.form_version_id).eq("active", true).order("display_order");
+  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))").eq("form_version_id", typed.register_periods.form_version_id).eq("active", true).eq("assets.active", true).order("display_order");
   let initialStatuses: Record<string,string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null;
   if (typed.fulfilled_by_record_id) {
     const [{data:record},{data:statuses}] = await Promise.all([
@@ -70,7 +70,7 @@ export async function getBm06ByDateShift(businessDate?: string, shiftCode?: stri
   const periodId = period.id;
   const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id").eq("period_id", periodId).eq("business_date", selectedBusinessDate).eq("slot_code", selectedShift).single();
   if (!occurrence) return null;
-  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,location_id,locations!inner(code))").eq("form_version_id", version.id).eq("active", true).order("display_order");
+  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))").eq("form_version_id", version.id).eq("active", true).eq("assets.active", true).order("display_order");
   let initialStatuses: Record<string, string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null;
   if (occurrence.fulfilled_by_record_id) {
     const [{ data: record }, { data: statuses }] = await Promise.all([

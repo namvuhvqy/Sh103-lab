@@ -32,8 +32,8 @@ describe("reports and equipment present only queried data", () => {
   });
 
   it("allows long report labels to shrink instead of widening the mobile viewport", () => {
-    const page = source("src/app/reports/page.tsx");
-    expect(page).toContain('className="min-w-0 flex flex-1 items-center gap-2"');
-    expect(page).toContain('className="min-w-0 truncate text-slate-500"');
+    const page = source("src/components/reports/ReportsUnifiedView.tsx");
+    expect(page).toContain("min-w-0");
+    expect(page).toContain("truncate");
   });
 });

@@ -25,7 +25,7 @@ const redirectError = (request: Request, area: string, message: string) =>
 function translateBm06Error(message?: string): string {
   if (!message) return "Không thể lưu ca. Vui lòng kiểm tra lại.";
   if (message.includes("All applicable assets require status")) {
-    return "Cần ghi nhận đủ 25/25 máy để hoàn tất ca.";
+    return "Cần ghi nhận đủ 20/20 máy để hoàn tất ca.";
   }
   if (message.includes("Entry scope denied")) {
     return "Tài khoản của bạn chưa có quyền ghi nhận ca này.";
@@ -71,9 +71,10 @@ export async function POST(request: Request) {
 
   const { data: expected, error: assetError } = await supabase
     .from("form_version_assets")
-    .select("asset_id")
+    .select("asset_id, assets!inner(active)")
     .eq("form_version_id", period.form_version_id)
-    .eq("active", true);
+    .eq("active", true)
+    .eq("assets.active", true);
 
   if (assetError) {
     return redirectError(request, areaCode, "Không tải được danh sách thiết bị");

@@ -11,15 +11,24 @@ import { currentShift } from "@/lib/forms/domain";
 import { getCurrentAccess } from "@/lib/forms/workflow";
 import { getOperationalDashboard } from "@/lib/p5/operational-queries";
 import { getNotifications } from "@/lib/p5/queries";
+import { getTodayRealtimeOverview } from "@/lib/p5/today-overview";
+import { TodayRealtimeStatus } from "@/components/p5/TodayRealtimeStatus";
 import { Activity, Bell, ClipboardCheck, ShieldAlert, Sparkles, TestTube2, Thermometer } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [areas, shiftData, summary, access, homeNotifications] = await Promise.all([getAreaSummaries(), getCurrentBm06(), getOperationalDashboard(), getCurrentAccess(), getNotifications()]);
+  const [todayOverview, areas, shiftData, summary, access, homeNotifications] = await Promise.all([
+    getTodayRealtimeOverview(),
+    getAreaSummaries(),
+    getCurrentBm06(),
+    getOperationalDashboard(),
+    getCurrentAccess(),
+    getNotifications(),
+  ]);
   const activeShift = shiftData?.shift ?? currentShift();
   const shiftCompleted = Object.keys(shiftData?.initialStatuses ?? {}).length;
-  const shiftTotal = shiftData?.assets.length ?? 25;
+  const shiftTotal = shiftData?.assets.length ?? 20;
   const banner = summary.broken > 0
     ? { title: `${summary.broken} máy đang ở trạng thái H`, description: "Kiểm tra nhật ký BM.06 và xử lý theo quy trình của khoa.", href: "/equipment", cta: "Xem thiết bị", tone: "danger" as const }
     : summary.pending > 0
@@ -30,6 +39,7 @@ export default async function Home() {
     <div className="space-y-5 md:space-y-7">
       <CurrentShiftCard shift={activeShift} />
       <OperationalBanner {...banner} />
+      <TodayRealtimeStatus data={todayOverview} />
       <section aria-labelledby="kpi-title">
         <div className="flex items-center gap-2"><Activity className="size-5 text-teal-700" /><h1 id="kpi-title" className="clinical-section-title">Tổng quan vận hành</h1></div>
         <div className="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
@@ -39,7 +49,7 @@ export default async function Home() {
           <KpiCard label="Bảo dưỡng" value={summary.maintenancePending} status="Trong phiên làm việc" tone={summary.maintenancePending ? "warning" : "success"} href="/quick-duty" icon={<ClipboardCheck className="size-5" />} />
         </div>
       </section>
-      <section aria-labelledby="areas-title"><div className="flex items-end justify-between gap-4"><h2 id="areas-title" className="clinical-section-title">5 khu vực làm việc</h2><Link href="/areas" className="min-h-11 py-3 text-xs font-bold text-teal-800">Xem tất cả →</Link></div><div className="mt-2.5 flex snap-x gap-2.5 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-5">{areas.map((area) => <div key={area.code} className="w-[8.75rem] shrink-0 snap-start sm:w-auto"><AreaCard {...area} /></div>)}</div></section>
+      <section aria-labelledby="areas-title"><div className="flex items-end justify-between gap-4"><h2 id="areas-title" className="clinical-section-title">5 khu vực làm việc</h2><Link href="/areas" className="min-h-11 py-3 text-xs font-bold text-teal-800">Xem tất cả →</Link></div><div className="mt-2.5 flex snap-x gap-2.5 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 lg:grid-cols-5">{areas.map((area: any) => <div key={area.code} className="w-[8.75rem] shrink-0 snap-start sm:w-auto"><AreaCard {...area} /></div>)}</div></section>
       <HomeNotifications items={homeNotifications} />
       {access?.canApprove || access?.isAdmin ? <section className="grid gap-3 sm:grid-cols-2">{access.canApprove ? <Link href="/approvals" className="rounded-3xl border border-amber-100 bg-amber-50 p-5"><ShieldAlert className="size-6 text-amber-700" /><b className="mt-3 block text-amber-950">{summary.readyPeriods} kỳ chờ duyệt</b><span className="text-sm text-amber-800">{summary.returnedPeriods} kỳ đã trả lại</span></Link> : null}{access.isAdmin ? <Link href="/admin/announcements" className="rounded-3xl border border-sky-100 bg-sky-50 p-5"><Bell className="size-6 text-sky-700" /><b className="mt-3 block text-sky-950">Quản trị thông báo</b><span className="text-sm text-sky-800">Soạn và phát hành theo audience</span></Link> : null}</section> : null}
     </div>
