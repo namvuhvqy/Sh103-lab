@@ -29,6 +29,9 @@ function getEquipmentImage(locCode?: string, name?: string) {
   return "/images/equipment/biochemistry-analyzer.jpg";
 }
 
+import { redirect } from "next/navigation";
+import { getCurrentAccess } from "@/lib/forms/workflow";
+
 export default async function EquipmentPage({
   searchParams,
 }: {
@@ -39,12 +42,29 @@ export default async function EquipmentPage({
   const selectedDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
   const selectedShift = query.shift && /^SHIFT_[1-4]$/.test(query.shift) ? query.shift : undefined;
 
-  const [data, unread, bm06Data, staffCandidates] = await Promise.all([
-    getEquipmentOverview(selectedDate, selectedShift),
-    getUnreadNotificationCount(),
-    getBm06ByDateShift(selectedDate, selectedShift),
-    fetchRosterStaffCandidates().catch(() => []),
-  ]);
+  let data;
+  let unread = 0;
+  let bm06Data = null;
+  let staffCandidates: any[] = [];
+  let access = null;
+
+  try {
+    const [overviewData, unreadCount, bm06, candidates, currentAccess] = await Promise.all([
+      getEquipmentOverview(selectedDate, selectedShift),
+      getUnreadNotificationCount().catch(() => 0),
+      getBm06ByDateShift(selectedDate, selectedShift),
+      fetchRosterStaffCandidates().catch(() => []),
+      getCurrentAccess().catch(() => null),
+    ]);
+    data = overviewData;
+    unread = unreadCount;
+    bm06Data = bm06;
+    staffCandidates = candidates;
+    access = currentAccess;
+  } catch (err) {
+    console.error("EquipmentPage fetch error:", err);
+    redirect("/login?next=%2Fequipment");
+  }
 
   type Asset = {
     id: string;
@@ -65,6 +85,7 @@ export default async function EquipmentPage({
       headerTitle="Thiết bị / Nhật ký 4 ca"
       headerSubtitle={`BM.06 · ${data.shift.label}`}
       unreadCount={unread}
+      isAdmin={access?.isAdmin}
     >
       <div className="space-y-6">
         {/* Header & Feature banner */}

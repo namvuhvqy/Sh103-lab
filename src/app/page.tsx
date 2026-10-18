@@ -34,7 +34,7 @@ export default async function Home() {
         <div className="flex items-center gap-2"><Activity className="size-5 text-teal-700" /><h1 id="kpi-title" className="clinical-section-title">Tổng quan vận hành</h1></div>
         <div className="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
           <KpiCard label="Nhiệt độ & độ ẩm" value={`${summary.abnormal}`} status={summary.abnormal ? "Bất thường" : "Không bất thường"} tone={summary.abnormal ? "danger" : "success"} href="/temperature" icon={<Thermometer className="size-5" />} />
-          <KpiCard label="Nhật ký trang thiết bị" value={`${shiftCompleted}/${shiftTotal}`} status={shiftCompleted === 25 ? "Đủ 25 máy" : `Còn ${Math.max(shiftTotal - shiftCompleted, 0)} máy`} tone={shiftCompleted === 25 ? "success" : "warning"} href="/equipment" icon={<TestTube2 className="size-5" />} />
+          <KpiCard label="Nhật ký trang thiết bị" value={`${shiftCompleted}/${shiftTotal}`} status={shiftCompleted >= shiftTotal ? `Đủ ${shiftTotal} máy` : `Còn ${Math.max(shiftTotal - shiftCompleted, 0)} máy`} tone={shiftCompleted >= shiftTotal ? "success" : "warning"} href="/equipment" icon={<TestTube2 className="size-5" />} />
           <KpiCard label="Khử nhiễm" value={summary.decontaminationPending} status="Chưa hoàn thành" tone={summary.decontaminationPending ? "warning" : "success"} href="/decontamination" icon={<Sparkles className="size-5" />} />
           <KpiCard label="Bảo dưỡng" value={summary.maintenancePending} status="Trong phiên làm việc" tone={summary.maintenancePending ? "warning" : "success"} href="/quick-duty" icon={<ClipboardCheck className="size-5" />} />
         </div>

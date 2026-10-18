@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
+import { cn } from "@/lib/utils";
 import { toggleInternalConfirmationAction } from "@/app/reports/actions";
 import type { ReportExportModel } from "@/lib/p5/report-export-model";
 import { BM06_TEMPLATE_PAGES } from "@/lib/p5/bm06-template";
@@ -28,6 +29,7 @@ import {
   Layers,
   Lock,
   Printer,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Thermometer,
@@ -109,6 +111,7 @@ export function ReportsUnifiedView({
     workspace.selectedPeriod?.status === "APPROVED"
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sync confirm status with selectedPeriod
   useEffect(() => {
@@ -531,8 +534,22 @@ export function ReportsUnifiedView({
                 </p>
               </div>
 
-              {/* Nút hành động Xuất & In */}
+              {/* Nút hành động Xuất, In & Đồng bộ */}
               <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRefreshing(true);
+                    router.refresh();
+                    setTimeout(() => setIsRefreshing(false), 800);
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs active:scale-95 cursor-pointer"
+                  title="Làm mới và đồng bộ số liệu mới nhất"
+                >
+                  <RefreshCw className={cn("size-3.5 text-teal-700", isRefreshing && "animate-spin")} />
+                  <span>{isRefreshing ? "Đang đồng bộ..." : "Đồng bộ"}</span>
+                </button>
+
                 {selectedPeriod ? (
                   <a
                     href={exportUrl}

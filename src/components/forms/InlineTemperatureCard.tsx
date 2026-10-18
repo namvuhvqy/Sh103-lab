@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Thermometer, Droplets, ShieldCheck, Check, Loader2, AlertTriangle, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,28 +40,37 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     ? "-30°C đến -10°C"
     : "2°C – 8°C";
 
-  const recovery = (() => {
-    if (typeof window === "undefined") return null;
-    try {
-      const pending = localStorage.getItem(`lab103_temp_${occurrence.id}`);
-      return pending ? JSON.parse(pending) as { temp?: number | null; hum?: number | null } : null;
-    } catch {
-      return null;
-    }
-  })();
   const [tempVal, setTempVal] = useState<string>(
-    occurrence.initialTemperature != null ? String(occurrence.initialTemperature) : recovery?.temp != null ? String(recovery.temp) : ""
+    occurrence.initialTemperature != null ? String(occurrence.initialTemperature) : ""
   );
   const [humVal, setHumVal] = useState<string>(
-    occurrence.initialHumidity != null ? String(occurrence.initialHumidity) : recovery?.hum != null ? String(recovery.hum) : ""
+    occurrence.initialHumidity != null ? String(occurrence.initialHumidity) : ""
   );
 
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedTemp, setLastSavedTemp] = useState<number | null>(occurrence.initialTemperature ?? null);
   const [lastSavedHum, setLastSavedHum] = useState<number | null>(occurrence.initialHumidity ?? null);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [pendingSync, setPendingSync] = useState(Boolean(recovery));
+  const [pendingSync, setPendingSync] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem(`lab103_temp_${occurrence.id}`);
+      if (pending) {
+        const parsed = JSON.parse(pending) as { temp?: number | null; hum?: number | null };
+        if (occurrence.initialTemperature == null && parsed.temp != null) {
+          setTempVal(String(parsed.temp));
+        }
+        if (occurrence.initialHumidity == null && parsed.hum != null) {
+          setHumVal(String(parsed.hum));
+        }
+        setPendingSync(true);
+      }
+    } catch {
+      // Safe fallback
+    }
+  }, [occurrence.id, occurrence.initialTemperature, occurrence.initialHumidity]);
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const tempInputRef = useRef<HTMLInputElement>(null);

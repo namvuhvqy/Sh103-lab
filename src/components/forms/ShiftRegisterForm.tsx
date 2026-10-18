@@ -300,12 +300,12 @@ export function ShiftRegisterForm({
             }`}
             title={
               progress.canFinalize
-                ? "Đủ 25/25 máy — Hoàn tất và khóa ca trực"
-                : `Cần ghi nhận đủ 25/25 máy để hoàn tất ca (Hiện có: ${progress.completed}/25)`
+                ? `Đủ ${progress.total}/${progress.total} máy — Hoàn tất và khóa ca trực`
+                : `Cần ghi nhận đủ ${progress.total}/${progress.total} máy để hoàn tất ca (Hiện có: ${progress.completed}/${progress.total})`
             }
           >
             {progress.canFinalize
-              ? "Hoàn tất ca (25/25 máy)"
+              ? `Hoàn tất ca (${progress.total}/${progress.total} máy)`
               : `Hoàn tất ca (Thiếu ${Math.max(progress.total - progress.completed, 0)} máy)`}
           </button>
         ) : null}

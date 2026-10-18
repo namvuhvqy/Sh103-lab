@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronLeft } from "lucide-react";
+import { Bell, ChevronLeft, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
 
@@ -14,9 +14,10 @@ interface MobileHeaderProps {
   rightAction?: React.ReactNode;
   className?: string;
   unreadCount?: number;
+  isAdmin?: boolean;
 }
 
-export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAction, rightAction, className, unreadCount = 0 }: MobileHeaderProps) {
+export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAction, rightAction, className, unreadCount = 0, isAdmin }: MobileHeaderProps) {
   const pathname = usePathname();
   const isSubpage = Boolean(pathname && pathname !== "/");
   const displaySubtitle = subtitle ?? "Hệ thống quản lý biểu mẫu ISO 15189";
@@ -61,17 +62,28 @@ export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAct
         <div className="flex shrink-0 items-center gap-2">
           {rightAction ?? (
             <>
+              {isAdmin ? (
+                <Link
+                  href="/admin/audit"
+                  className="grid size-9 place-items-center rounded-xl bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 transition shadow-2xs"
+                  title="Khu vực Quản trị & Giám sát y tế"
+                  aria-label="Quản trị"
+                >
+                  <ShieldCheck className="size-4.5" />
+                </Link>
+              ) : null}
+
               <Link
                 href="/notifications"
-                className="relative grid size-10 place-items-center rounded-full text-slate-600 transition-colors hover:bg-teal-50 focus-visible:ring-2 focus-visible:ring-teal-600"
+                className="relative grid size-9 place-items-center rounded-xl text-slate-600 transition-colors hover:bg-teal-50 focus-visible:ring-2 focus-visible:ring-teal-600 border border-slate-200/80"
                 aria-label="Thông báo"
               >
-                <Bell className="size-5" />
+                <Bell className="size-4.5" />
                 {unreadCount > 0 ? (
-                  <span className="absolute right-1 top-1 flex size-4 items-center justify-center">
+                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center">
                     <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />
                     <span
-                      className="relative grid min-h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white ring-2 ring-white shadow-xs"
+                      className="relative grid min-h-3.5 min-w-3.5 place-items-center rounded-full bg-red-600 px-0.5 text-[8px] font-black text-white ring-1 ring-white shadow-xs"
                       aria-label={`${unreadCount} thông báo chưa đọc`}
                     >
                       {Math.min(unreadCount, 99)}
@@ -82,7 +94,7 @@ export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAct
               <Link
                 href="/account"
                 aria-label="Tài khoản"
-                className="grid size-9 place-items-center rounded-full bg-gradient-to-br from-teal-700 to-sky-800 text-xs font-black text-white shadow-xs ring-2 ring-teal-600/30"
+                className="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-teal-700 to-sky-800 text-xs font-black text-white shadow-xs ring-1 ring-teal-600/30"
               >
                 DH
               </Link>

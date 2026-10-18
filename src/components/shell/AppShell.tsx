@@ -46,6 +46,7 @@ export function AppShell({
           leftAction={headerLeftAction}
           rightAction={headerRightAction}
           unreadCount={unreadCount}
+          isAdmin={isAdmin}
         />
 
         <main className={cn("mx-auto w-full max-w-7xl flex-1 px-3.5 py-4 sm:px-5 md:p-6", className)}>

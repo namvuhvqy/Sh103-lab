@@ -310,6 +310,16 @@ export function TemperatureLabDashboard({
               </h2>
 
               <div className="flex items-center gap-2">
+                {/* Nút Chuyển sang Nhập số liệu */}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("input")}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                >
+                  <Thermometer className="size-3.5" />
+                  <span>Nhập số liệu</span>
+                </button>
+
                 {/* Thanh tìm kiếm điểm đo */}
                 <div className="relative flex-1 sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
@@ -324,11 +334,11 @@ export function TemperatureLabDashboard({
 
                 {/* Nút Xuất báo cáo */}
                 <Link
-                  href="/reports/export"
+                  href="/reports"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition shadow-2xs"
                 >
                   <Download className="size-3.5 text-slate-700" />
-                  <span>Xuất</span>
+                  <span>Báo cáo</span>
                 </Link>
               </div>
             </div>
@@ -355,15 +365,17 @@ export function TemperatureLabDashboard({
                       return (
                         <tr
                           key={pt.id}
+                          onClick={() => setActiveTab("input")}
                           className={cn(
-                            "hover:bg-teal-50/30 transition-colors",
+                            "hover:bg-teal-50/50 transition-colors cursor-pointer group",
                             isAbnormal && "bg-rose-50/20"
                           )}
+                          title="Bấm vào dòng này để nhập số liệu điểm đo"
                         >
                           <td className="py-3 px-3 text-center font-bold text-slate-400">
                             {pt.stt}
                           </td>
-                          <td className="py-3 px-3 font-bold text-slate-900">
+                          <td className="py-3 px-3 font-bold text-slate-900 group-hover:text-teal-900 transition-colors">
                             {pt.name}
                           </td>
                           <td className="py-3 px-3 text-slate-600">
@@ -374,16 +386,16 @@ export function TemperatureLabDashboard({
                           <td className="py-2.5 px-3 text-center">
                             <span
                               className={cn(
-                                "inline-flex min-w-16 justify-center rounded-lg border px-2 py-1 text-xs font-black",
+                                "inline-flex min-w-16 justify-center rounded-lg border px-2 py-1 text-xs font-black transition-all group-hover:ring-2 group-hover:ring-teal-500/30",
                                 pt.temperature != null
                                   ? isAbnormal
                                     ? "border-rose-200 bg-rose-50 text-rose-800"
                                     : "border-emerald-200 bg-emerald-50 text-emerald-900"
-                                  : "border-slate-200 bg-slate-50 text-slate-500"
+                                  : "border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-500 hover:text-teal-800"
                               )}
-                              title={`Ngưỡng chuẩn: ${pt.minTemp}°C – ${pt.maxTemp}°C`}
+                              title={`Ngưỡng chuẩn: ${pt.minTemp}°C – ${pt.maxTemp}°C · Bấm để nhập`}
                             >
-                              {pt.temperature != null ? pt.temperature : "—"}
+                              {pt.temperature != null ? pt.temperature : "+ Nhập"}
                             </span>
                           </td>
 
@@ -405,7 +417,7 @@ export function TemperatureLabDashboard({
                                 </span>
                               )
                             ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500 group-hover:bg-teal-100 group-hover:text-teal-800 transition-colors">
                                 Chưa ghi
                               </span>
                             )}
@@ -417,7 +429,7 @@ export function TemperatureLabDashboard({
                           </td>
 
                           {/* Nút mũi tên chuyển chi tiết */}
-                          <td className="py-3 px-2 text-center text-slate-400">
+                          <td className="py-3 px-2 text-center text-slate-400 group-hover:text-teal-700 transition-colors">
                             <ChevronRight className="size-4" />
                           </td>
                         </tr>

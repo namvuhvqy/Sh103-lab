@@ -36,7 +36,7 @@ export async function getOperationalDashboard() {
   const today = todayInVietnam();
   const shift = currentShift();
   const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: today });
-  if (ensureError) throw new Error(`Không khởi tạo được dữ liệu vận hành: ${ensureError.message}`);
+  if (ensureError) console.warn("ensure_operational_month warning:", ensureError.message);
   const [occurrencesResult, measurementsResult, shiftsResult, periodsResult, incidentsResult, unread] = await Promise.all([
     supabase.from("schedule_occurrences").select("status,register_periods!inner(form_template_versions!inner(form_templates!inner(code)))").eq("business_date", today),
     supabase.from("measurement_details").select("temperature_abnormal,humidity_abnormal,records!inner(business_date,is_effective)").eq("records.business_date", today).eq("records.is_effective", true),
@@ -67,7 +67,7 @@ export async function getTemperatureOverview() {
   const supabase = await createClient();
   const today = todayInVietnam();
   const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: today });
-  if (ensureError) throw new Error(ensureError.message);
+  if (ensureError) console.warn("ensure_operational_month temperature warning:", ensureError.message);
   const [{ data: occurrences, error: occurrenceError }, { data: records, error: recordError }] = await Promise.all([
     supabase.from("schedule_occurrences").select("id,status,business_date,slot_code,window_start,window_end,fulfilled_by_record_id,register_periods!inner(id,locations(code,name),assets(id,source_name,source_code,storage_purpose),form_template_versions!inner(form_templates!inner(code,name)))").eq("business_date", today).in("register_periods.form_template_versions.form_templates.code", ["BM.01/QL.HTAT.01", "BM.02/QL.HTAT.01", "BM.03/QL.HTAT.01"]).order("window_start"),
     supabase.from("records").select("id,business_date,slot_code,performed_at,entered_at,entered_by,location_id,asset_id,form_template_versions!inner(form_templates!inner(code)),profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_min_snapshot,temperature_max_snapshot,humidity_min_snapshot,humidity_max_snapshot,temperature_abnormal,humidity_abnormal)").eq("business_date", today).eq("is_effective", true),
@@ -97,7 +97,7 @@ export async function getDecontaminationWorkspace(date?: string) {
   const supabase = await createClient();
   const today = isValidIsoDate(date) ? date! : todayInVietnam();
   const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: today });
-  if (ensureError) throw new Error(`Không khởi tạo được dữ liệu khử nhiễm: ${ensureError.message}`);
+  if (ensureError) console.warn("ensure_operational_month decontamination warning:", ensureError.message);
 
   const [{ data: locations, error: locationError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
     supabase.from("locations").select("id,code,name,sort_order").in("code", [...BM01_KNBM_AREA_CODES]).order("sort_order"),
@@ -277,8 +277,9 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const year = reqYear;
   let month = reqMonth;
   if (!month) {
-    const hasMonth09 = allMatching.some((p) => p.period_start.startsWith(`${year}-09`) && (p.record_count ?? 0) > 0);
-    month = hasMonth09 ? "09" : "10";
+    const today = todayInVietnam();
+    const curM = today.split("-")[1] ?? "10";
+    month = curM;
   }
 
   const day = /^(0?[1-9]|[12]\d|3[01])$/.test(filters.day ?? "") ? String(Number(filters.day)).padStart(2, "0") : "";

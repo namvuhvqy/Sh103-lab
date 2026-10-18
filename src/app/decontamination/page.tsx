@@ -7,6 +7,9 @@ import { currentShift } from "@/lib/forms/domain";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkSessionData, resolveWorkSessionParams } from "@/lib/work-session/server-context";
 
+import { redirect } from "next/navigation";
+import { getCurrentAccess } from "@/lib/forms/workflow";
+
 export const dynamic = "force-dynamic";
 
 interface PageProps {
@@ -20,15 +23,30 @@ export default async function DecontaminationPage(props: PageProps) {
   const shift = currentShift();
   const businessDate = resolved.businessDate ?? shift.businessDate;
 
-  const supabase = await createClient();
-  const [workspace, unread, sessionData] = await Promise.all([
-    getDecontaminationWorkspace(businessDate),
-    getUnreadNotificationCount(),
-    getWorkSessionData(businessDate, selectedShift, supabase),
-  ]);
+  let workspace;
+  let unread = 0;
+  let sessionData;
+  let access = null;
+
+  try {
+    const supabase = await createClient();
+    const [workspaceData, unreadCount, sData, currentAccess] = await Promise.all([
+      getDecontaminationWorkspace(businessDate),
+      getUnreadNotificationCount().catch(() => 0),
+      getWorkSessionData(businessDate, selectedShift, supabase),
+      getCurrentAccess().catch(() => null),
+    ]);
+    workspace = workspaceData;
+    unread = unreadCount;
+    sessionData = sData;
+    access = currentAccess;
+  } catch (err) {
+    console.error("DecontaminationPage fetch error:", err);
+    redirect("/login?next=%2Fdecontamination");
+  }
 
   return (
-    <AppShell headerTitle="Khử nhiễm bề mặt" headerSubtitle="BM.01_KNBM" unreadCount={unread}>
+    <AppShell headerTitle="Khử nhiễm bề mặt" headerSubtitle="BM.01_KNBM" unreadCount={unread} isAdmin={access?.isAdmin}>
       <main className="mx-auto max-w-5xl space-y-5">
         <WorkSessionRosterCard
           roster={sessionData.roster}

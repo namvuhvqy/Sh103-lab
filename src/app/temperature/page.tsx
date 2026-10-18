@@ -42,8 +42,27 @@ const firstDetail = (record?: MeasurementRecord): Detail | null => {
 
 const documentedRange = (code: string) => code.includes("BM.01/") ? { min: 21, max: 26 } : code.includes("BM.03/") ? { min: -30, max: -10 } : { min: 2, max: 8 };
 
+import { redirect } from "next/navigation";
+import { getCurrentAccess } from "@/lib/forms/workflow";
+
 export default async function TemperaturePage() {
-  const [data, unread] = await Promise.all([getTemperatureOverview(), getUnreadNotificationCount()]);
+  let data;
+  let unread = 0;
+  let access = null;
+  try {
+    const [overviewData, unreadCount, currentAccess] = await Promise.all([
+      getTemperatureOverview(),
+      getUnreadNotificationCount().catch(() => 0),
+      getCurrentAccess().catch(() => null),
+    ]);
+    data = overviewData;
+    unread = unreadCount;
+    access = currentAccess;
+  } catch (err) {
+    console.error("TemperaturePage fetch error:", err);
+    redirect("/login?next=%2Ftemperature");
+  }
+
   const rows = (data.occurrences ?? []) as unknown as Occurrence[];
   const records = (data.records ?? []) as unknown as MeasurementRecord[];
   const recordMap = new Map(records.map((record) => [record.id, record]));
@@ -93,7 +112,7 @@ export default async function TemperaturePage() {
   const today = vietnamParts(new Date()).date.split("-").reverse().join("/");
 
   return (
-    <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Nhiệt độ & Độ ẩm (BM.01 - BM.02 - BM.03)" unreadCount={unread}>
+    <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Nhiệt độ & Độ ẩm (BM.01 - BM.02 - BM.03)" unreadCount={unread} isAdmin={access?.isAdmin}>
       <TemperatureLabDashboard initialPoints={initialPoints} occurrences={mappedOccurrences} chartPoints={chartPoints} activeDate={`${today} · ${nowShift.name}`} />
     </AppShell>
   );

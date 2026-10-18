@@ -25,6 +25,15 @@ export async function updateSession(request: NextRequest) {
     if (user && request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
     return response;
   }
+
+  // API endpoints should never be redirected to HTML /login page (avoids HTTP 405 on POST)
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    return response;
+  }
+
   if (!user) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url));
 
   const { data: profile } = await supabase.from("profiles").select("active,is_admin").eq("user_id", user.id).maybeSingle();
