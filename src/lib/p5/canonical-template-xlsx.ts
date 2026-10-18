@@ -1,6 +1,6 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
-import * as XLSX from "xlsx";
+import XlsxPopulate from "xlsx-populate";
 import { buildBm06WorkbookFromTemplate } from "@/lib/p5/bm06-template-xlsx";
 import type { ReportExportModel } from "@/lib/p5/report-export-model";
 
@@ -20,12 +20,12 @@ function resolveTemplatePath(filename: string): string {
   return p1;
 }
 
-export async function buildCanonicalReportWorkbook(model: ReportExportModel): Promise<Buffer> {
+export async function buildCanonicalReportWorkbook(model: ReportExportModel, cycle = 1): Promise<Buffer> {
   const code = model.templateCode;
 
-  // 1. BM.06: Delegate to dedicated 3-day cycle SheetJS builder
+  // 1. BM.06: Nhật ký hoạt động TTB (3 ngày/đợt)
   if (code.includes("BM.06")) {
-    return buildBm06WorkbookFromTemplate(model);
+    return buildBm06WorkbookFromTemplate(model, cycle);
   }
 
   const { year, month } = parseMonthYear(model.period.period_start);
@@ -33,12 +33,11 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
   // 2. BM.01/QL.HTAT: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm
   if (code.includes("BM.01/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.01_QL.HTAT_TD nhiệt độ PXN.xlsx");
-    const raw = readFileSync(templatePath);
-    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    const wb = await XlsxPopulate.fromFileAsync(templatePath);
+    const ws = wb.sheet(0);
 
     const locName = model.period.locations?.name || "Khu vực Xét nghiệm";
-    ws["A4"] = { t: "s", v: `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}` };
+    ws.cell("A4").value(`Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`);
 
     // Populate day rows (Day 1 starts at Row 9)
     for (const rowModel of model.rows) {
@@ -47,120 +46,104 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       if (!day || day < 1 || day > 31) continue;
       const r = 8 + day;
 
-      if (timeM) ws[`B${r}`] = { t: "s", v: String(timeM) }; else delete ws[`B${r}`];
-      if (timeA) ws[`C${r}`] = { t: "s", v: String(timeA) }; else delete ws[`C${r}`];
-      if (tempM !== null && tempM !== undefined) ws[`D${r}`] = { t: "n", v: Number(tempM) }; else delete ws[`D${r}`];
-      if (tempA !== null && tempA !== undefined) ws[`E${r}`] = { t: "n", v: Number(tempA) }; else delete ws[`E${r}`];
-      if (humM !== null && humM !== undefined) ws[`F${r}`] = { t: "n", v: Number(humM) }; else delete ws[`F${r}`];
-      if (humA !== null && humA !== undefined) ws[`G${r}`] = { t: "n", v: Number(humA) }; else delete ws[`G${r}`];
-      if (noteVal) ws[`H${r}`] = { t: "s", v: String(noteVal) }; else delete ws[`H${r}`];
-      if (performerName) ws[`I${r}`] = { t: "s", v: String(performerName) }; else delete ws[`I${r}`];
+      ws.cell(`B${r}`).value(timeM ? String(timeM) : "");
+      ws.cell(`C${r}`).value(timeA ? String(timeA) : "");
+      ws.cell(`D${r}`).value(tempM !== null && tempM !== undefined ? Number(tempM) : "");
+      ws.cell(`E${r}`).value(tempA !== null && tempA !== undefined ? Number(tempA) : "");
+      ws.cell(`F${r}`).value(humM !== null && humM !== undefined ? Number(humM) : "");
+      ws.cell(`G${r}`).value(humA !== null && humA !== undefined ? Number(humA) : "");
+      ws.cell(`H${r}`).value(noteVal ? String(noteVal) : "");
+      ws.cell(`I${r}`).value(performerName ? String(performerName) : "");
     }
 
-    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-    return Buffer.from(bytes);
+    // Ensure full crisp borders and fonts on the entire data range
+    ws.range("A9:I39").style({
+      border: true,
+      fontFamily: "Times New Roman",
+      fontSize: 10,
+      verticalAlignment: "center",
+      horizontalAlignment: "center",
+    });
+
+    const buffer = await wb.outputAsync();
+    return Buffer.from(buffer);
   }
 
-  // 3. BM.02/QL.HTAT.01: Theo dõi tủ lạnh mát
+  // 3. BM.02/QL.HTAT.01: Theo dõi tủ lạnh mát (2-8°C)
   if (code.includes("BM.02/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.02.QL.HTAT.01_TD tủ lạnh mát.xlsx");
-    const raw = readFileSync(templatePath);
-    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["Mat"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = await XlsxPopulate.fromFileAsync(templatePath);
+    const ws = wb.sheet("Mat") || wb.sheet(0);
 
     const assetName = model.period.assets?.source_name || "Tủ lạnh mát 2-8°C";
-    ws["A5"] = { t: "s", v: `Tên thiết bị: ${assetName} - Tháng ${month} Năm ${year}` };
+    ws.cell("A5").value(`Tên thiết bị: ${assetName} - Tháng ${month} Năm ${year}`);
     if (model.period.assets?.source_code) {
-      ws["A7"] = { t: "s", v: `Mã thiết bị theo dõi: ${model.period.assets.source_code}` };
+      ws.cell("A7").value(`Mã thiết bị theo dõi: ${model.period.assets.source_code}`);
     }
 
-    // Fill daily temperatures (Day 1: S=Col B, C=Col C)
+    // Fill daily temperatures (Day 1: S=Col B (2), C=Col C (3))
     for (const rowModel of model.rows) {
-      const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
+      const [dayVal, tempM, tempA, , , performerName] = rowModel.cells;
       const day = Number(dayVal);
       if (!day || day < 1 || day > 31) continue;
 
-      const colSIdx = 1 + (day - 1) * 2; // B=1 (0-indexed)
-      const colCIdx = 1 + (day - 1) * 2 + 1; // C=2
-      const colS = XLSX.utils.encode_col(colSIdx);
-      const colC = XLSX.utils.encode_col(colCIdx);
+      const colS = 2 * day;     // Day 1 => col 2 (B)
+      const colC = 2 * day + 1; // Day 1 => col 3 (C)
 
-      if (tempM !== null && tempM !== undefined) {
-        ws[`${colS}9`] = { t: "n", v: Number(tempM) };
-      } else {
-        delete ws[`${colS}9`];
-      }
-
-      if (tempA !== null && tempA !== undefined) {
-        ws[`${colC}9`] = { t: "n", v: Number(tempA) };
-      } else {
-        delete ws[`${colC}9`];
-      }
+      ws.cell(9, colS).value(tempM !== null && tempM !== undefined ? Number(tempM) : "");
+      ws.cell(9, colC).value(tempA !== null && tempA !== undefined ? Number(tempA) : "");
 
       if (performerName) {
-        ws[`${colS}26`] = { t: "s", v: String(performerName) };
+        ws.cell(26, colS).value(String(performerName));
       } else {
-        delete ws[`${colS}26`];
+        ws.cell(26, colS).value("");
       }
     }
 
-    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-    return Buffer.from(bytes);
+    const buffer = await wb.outputAsync();
+    return Buffer.from(buffer);
   }
 
   // 4. BM.03/QL.HTAT.01: Theo dõi tủ lạnh đá (-20°C)
   if (code.includes("BM.03/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.03.QL.HTAT.01_TD tủ lạnh đá.xlsx");
-    const raw = readFileSync(templatePath);
-    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets["NganDa"] || wb.Sheets[wb.SheetNames[0]];
+    const wb = await XlsxPopulate.fromFileAsync(templatePath);
+    const ws = wb.sheet("NganDa") || wb.sheet(0);
 
     const assetName = model.period.assets?.source_name || "Tủ lạnh đá -20°C";
     const assetCodePart = model.period.assets?.source_code ? ` (Mã: ${model.period.assets.source_code})` : "";
-    ws["A4"] = { t: "s", v: `Tên thiết bị: ${assetName}${assetCodePart} - Tháng ${month} Năm ${year}` };
+    ws.cell("A4").value(`Tên thiết bị: ${assetName}${assetCodePart} - Tháng ${month} Năm ${year}`);
 
     for (const rowModel of model.rows) {
-      const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
+      const [dayVal, tempM, tempA, , , performerName] = rowModel.cells;
       const day = Number(dayVal);
       if (!day || day < 1 || day > 31) continue;
 
-      const colSIdx = 1 + (day - 1) * 2;
-      const colCIdx = 1 + (day - 1) * 2 + 1;
-      const colS = XLSX.utils.encode_col(colSIdx);
-      const colC = XLSX.utils.encode_col(colCIdx);
+      const colS = 2 * day;     // Day 1 => col 2 (B)
+      const colC = 2 * day + 1; // Day 1 => col 3 (C)
 
-      if (tempM !== null && tempM !== undefined) {
-        ws[`${colS}8`] = { t: "n", v: Number(tempM) };
-      } else {
-        delete ws[`${colS}8`];
-      }
-
-      if (tempA !== null && tempA !== undefined) {
-        ws[`${colC}8`] = { t: "n", v: Number(tempA) };
-      } else {
-        delete ws[`${colC}8`];
-      }
+      ws.cell(8, colS).value(tempM !== null && tempM !== undefined ? Number(tempM) : "");
+      ws.cell(8, colC).value(tempA !== null && tempA !== undefined ? Number(tempA) : "");
 
       if (performerName) {
-        ws[`${colS}30`] = { t: "s", v: String(performerName) };
+        ws.cell(30, colS).value(String(performerName));
       } else {
-        delete ws[`${colS}30`];
+        ws.cell(30, colS).value("");
       }
     }
 
-    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-    return Buffer.from(bytes);
+    const buffer = await wb.outputAsync();
+    return Buffer.from(buffer);
   }
 
   // 5. BM.01_KNBM: Theo dõi khử nhiễm bề mặt
   if (code.includes("BM.01_KNBM") || code.includes("KNBM")) {
     const templatePath = resolveTemplatePath("BM.01_KNBM.xlsx");
-    const raw = readFileSync(templatePath);
-    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    const wb = await XlsxPopulate.fromFileAsync(templatePath);
+    const ws = wb.sheet(0);
 
     const locName = model.period.locations?.name || "Khu vực xét nghiệm";
-    ws["A4"] = { t: "s", v: `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}` };
+    ws.cell("A4").value(`Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`);
 
     for (const rowModel of model.rows) {
       const [dayVal, dailyVal, weeklyVal, spillVal, noteVal, performerName] = rowModel.cells;
@@ -168,44 +151,50 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       if (!day || day < 1 || day > 31) continue;
       const r = 7 + day; // Day 1 = Row 8
 
-      if (dailyVal) ws[`B${r}`] = { t: "s", v: "X" }; else delete ws[`B${r}`];
-      if (weeklyVal) ws[`C${r}`] = { t: "s", v: "X" }; else delete ws[`C${r}`];
-      if (spillVal) ws[`D${r}`] = { t: "s", v: "X" }; else delete ws[`D${r}`];
-      if (noteVal) ws[`E${r}`] = { t: "s", v: String(noteVal) }; else delete ws[`E${r}`];
-      if (performerName) ws[`F${r}`] = { t: "s", v: String(performerName) }; else delete ws[`F${r}`];
+      ws.cell(`B${r}`).value(dailyVal ? "X" : "");
+      ws.cell(`C${r}`).value(weeklyVal ? "X" : "");
+      ws.cell(`D${r}`).value(spillVal ? "X" : "");
+      ws.cell(`E${r}`).value(noteVal ? String(noteVal) : "");
+      ws.cell(`F${r}`).value(performerName ? String(performerName) : "");
     }
 
-    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-    return Buffer.from(bytes);
+    ws.range("A8:F38").style({
+      border: true,
+      fontFamily: "Times New Roman",
+      fontSize: 10,
+      verticalAlignment: "center",
+      horizontalAlignment: "center",
+    });
+
+    const buffer = await wb.outputAsync();
+    return Buffer.from(buffer);
   }
 
   // 6. BM.02/QL.TRTB: Bảng theo dõi - bảo dưỡng TTB
   const templatePath = resolveTemplatePath("BM.02.Bảng theo dõi - bảo dưỡng TTB.xlsx");
-  const raw = readFileSync(templatePath);
-  const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
-  const ws = wb.Sheets[wb.SheetNames[0]];
+  const wb = await XlsxPopulate.fromFileAsync(templatePath);
+  const ws = wb.sheet(0);
 
   const assetName = model.period.assets?.source_name || "Thiết bị xét nghiệm";
-  ws["A5"] = { t: "s", v: `Tháng ${month}                             Năm ${year}` };
-  ws["H4"] = { t: "s", v: `MÁY: ${assetName}` };
+  ws.cell("A5").value(`Tháng ${month}                             Năm ${year}`);
+  ws.cell("H4").value(`MÁY: ${assetName}`);
 
   for (const rowModel of model.rows) {
-    const [dayVal, cadenceVal, resultVal, performerName] = rowModel.cells;
+    const [dayVal, , resultVal, performerName] = rowModel.cells;
     const day = Number(dayVal);
     if (!day || day < 1 || day > 31) continue;
 
-    // Col C is Day 1 (index 2)
-    const colIdx = 1 + day;
-    const colLetter = XLSX.utils.encode_col(colIdx);
+    // Col C is Day 1 (col index 3)
+    const colIdx = 2 + day;
 
-    if (resultVal) {
-      ws[`${colLetter}9`] = { t: "s", v: String(resultVal) };
-    }
+    ws.cell(9, colIdx).value(resultVal ? String(resultVal) : "");
     if (performerName) {
-      ws[`${colLetter}22`] = { t: "s", v: String(performerName) };
+      ws.cell(22, colIdx).value(String(performerName));
+    } else {
+      ws.cell(22, colIdx).value("");
     }
   }
 
-  const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-  return Buffer.from(bytes);
+  const buffer = await wb.outputAsync();
+  return Buffer.from(buffer);
 }

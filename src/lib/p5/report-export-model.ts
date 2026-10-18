@@ -150,14 +150,10 @@ function mkRow(
   return { key, cells, sourceRecordIds, pageNumber, pageBreakAfter, templatePageName, templateDeviceOrders };
 }
 
-// Format name into abbreviated initials + Last name: "Nguyễn Văn Cường" -> "N.V.Cường"
+// Clean and format performer name (keep full Vietnamese name from profile)
 function formatShortName(fullName?: string | null): string {
   if (!fullName) return "";
-  const parts = fullName.trim().split(/\s+/);
-  if (parts.length <= 1) return fullName;
-  const lastName = parts.at(-1);
-  const initials = parts.slice(0, -1).map((p) => p[0]?.toUpperCase() + ".").join("");
-  return `${initials}${lastName}`;
+  return fullName.trim();
 }
 
 export function buildReportExportModel(input: {

@@ -192,7 +192,7 @@ export function ReportsUnifiedView({
     : (model?.rows ?? []);
 
   const exportUrl = selectedPeriod
-    ? `/api/reports/${selectedPeriod.id}/xlsx`
+    ? `/api/reports/${selectedPeriod.id}/xlsx${isBm06 ? `?cycle=${bm06Page}` : ""}`
     : "#";
 
   // Devices for BM06
@@ -1022,15 +1022,13 @@ export function ReportsUnifiedView({
               <div>
                 <p className="font-black uppercase">Người ghi sổ / thực hiện</p>
                 <p className="text-[10px] text-slate-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
-                <div className="h-16" />
-                <p className="font-bold text-slate-700">Cán bộ trực ca</p>
+                <div className="h-20" />
               </div>
 
               <div>
                 <p className="font-black uppercase">Cán bộ kiểm tra</p>
                 <p className="text-[10px] text-slate-500 italic mt-0.5">(Ký và ghi rõ họ tên)</p>
-                <div className="h-16" />
-                <p className="font-bold text-slate-700">Phụ trách phòng</p>
+                <div className="h-20" />
               </div>
 
               <div>

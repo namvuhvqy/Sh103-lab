@@ -21,12 +21,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
     official: true, // Always export clean, authentic report independent of approval status
   });
 
+  const cycle = search.get("cycle") ? Math.max(1, Number(search.get("cycle"))) : 1;
+
   try {
-    const canonicalBuffer = await buildCanonicalReportWorkbook(model);
+    const canonicalBuffer = await buildCanonicalReportWorkbook(model, cycle);
     const safeCode = model.templateCode.replace(/[\/\\?%*:|"<>]/g, "_");
     const periodSlug = (model.period.period_label ?? `${model.period.period_start}_${model.period.period_end}`).replace(/[\/\\?%*:|"<> ]/g, "_");
-    // Clean filename without any [DANG_THEO_DOI] or draft prefix
-    const filename = `${safeCode}_${periodSlug}.xlsx`;
+    const filename = model.templateCode.includes("BM.06")
+      ? `${safeCode}_Dot_${cycle}_${periodSlug}.xlsx`
+      : `${safeCode}_${periodSlug}.xlsx`;
 
     return new Response(Buffer.from(canonicalBuffer), {
       headers: {
