@@ -31,7 +31,7 @@ export async function getCurrentAccess() {
   if (!user) return null;
   const { data, error } = await supabase.from("profiles").select("business_role,is_admin,active").eq("user_id", user.id).single();
   if (error || !data?.active) return null;
-  return { userId: user.id, role: data.business_role as string, isAdmin: data.is_admin as boolean, canApprove: data.business_role === "DEPARTMENT_HEAD" };
+  return { userId: user.id, role: data.business_role as string, isAdmin: Boolean(data.is_admin), canApprove: Boolean(data.is_admin || data.business_role === "DEPARTMENT_HEAD") };
 }
 
 export interface PendingCorrection {

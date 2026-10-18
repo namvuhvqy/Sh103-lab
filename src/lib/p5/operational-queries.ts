@@ -177,14 +177,39 @@ export async function getReportPeriods() {
 
 export async function getOfficialPeriodReport(periodId: string, filters?: { start?: string; end?: string; shift?: string }) {
   const supabase = await createClient();
-  const periodQuery = supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name))").eq("id", periodId).maybeSingle();
-  let recordsQuery = supabase.from("records").select("id,record_type,business_date,slot_code,performed_at,entered_at,entered_by,is_na,na_reason,note,revision_no,is_effective,profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))").eq("period_id", periodId).eq("is_effective", true);
-  if (isValidIsoDate(filters?.start)) recordsQuery = recordsQuery.gte("business_date", filters!.start!);
-  if (isValidIsoDate(filters?.end)) recordsQuery = recordsQuery.lte("business_date", filters!.end!);
-  if (filters?.shift && /^SHIFT_[1-4]$/.test(filters.shift)) recordsQuery = recordsQuery.eq("slot_code", filters.shift);
-  const [{ data: period, error: periodError }, { data: records, error: recordsError }] = await Promise.all([periodQuery, recordsQuery.order("business_date").order("performed_at")]);
-  if (periodError || recordsError) throw new Error("Không tải được dữ liệu xuất báo cáo");
-  if (!period) return null;
+  const { data: period, error: periodError } = await supabase
+    .from("register_periods")
+    .select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name))")
+    .eq("id", periodId)
+    .maybeSingle();
+
+  if (periodError || !period) throw new Error("Không tải được thông tin sổ kỳ");
+
+  // Determine actual effective date range: clamp within period bounds!
+  let effectiveStart = period.period_start;
+  let effectiveEnd = period.period_end;
+  if (isValidIsoDate(filters?.start) && filters!.start! >= period.period_start && filters!.start! <= period.period_end) {
+    effectiveStart = filters!.start!;
+  }
+  if (isValidIsoDate(filters?.end) && filters!.end! >= period.period_start && filters!.end! <= period.period_end) {
+    effectiveEnd = filters!.end!;
+  }
+
+  let recordsQuery = supabase
+    .from("records")
+    .select("id,record_type,business_date,slot_code,performed_at,entered_at,entered_by,is_na,na_reason,note,revision_no,is_effective,profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_abnormal,humidity_abnormal),decontamination_details(daily_done,weekly_done,spill_event_done),maintenance_details(cadence,result),equipment_shift_details(usage_value,usage_unit,equipment_shift_statuses(asset_display_order_snapshot,status_code,asset_label_snapshot))")
+    .eq("period_id", periodId)
+    .eq("is_effective", true)
+    .gte("business_date", effectiveStart)
+    .lte("business_date", effectiveEnd);
+
+  if (filters?.shift && /^SHIFT_[1-4]$/.test(filters.shift)) {
+    recordsQuery = recordsQuery.eq("slot_code", filters.shift);
+  }
+
+  const { data: records, error: recordsError } = await recordsQuery.order("business_date").order("performed_at");
+  if (recordsError) throw new Error("Không tải được dữ liệu xuất báo cáo: " + recordsError.message);
+
   const isOfficial = period.status === "APPROVED";
   return { period, records: records ?? [], official: isOfficial, isDraft: !isOfficial };
 }
@@ -241,12 +266,12 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const templateCode = filters.templateCode ?? CANONICAL_ORDER[0];
   const allMatching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
 
-  // If a specific periodId is requested, look it up first and align month if not explicitly given
+  // If a specific periodId is requested, look it up first and ALIGN year and month directly from that period!
   const explicitTarget = filters.periodId ? allMatching.find((p) => p.id === filters.periodId) : null;
   if (explicitTarget) {
     const parts = explicitTarget.period_start.split("-");
-    if (!filters.year && parts[0]) reqYear = parts[0];
-    if (!filters.month && parts[1]) reqMonth = parts[1];
+    if (parts[0]) reqYear = parts[0];
+    if (parts[1]) reqMonth = parts[1];
   }
 
   const year = reqYear;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
@@ -110,6 +110,11 @@ export function ReportsUnifiedView({
   );
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  // Sync confirm status with selectedPeriod
+  useEffect(() => {
+    setConfirmStatus(workspace.selectedPeriod?.status === "APPROVED");
+  }, [workspace.selectedPeriod?.id, workspace.selectedPeriod?.status]);
+
   // BM.06 cycle & sub-page view
   const isBm06 = workspace.templateCode.includes("BM.06");
   const pageCount = isBm06 && model ? Math.max(...model.rows.map((row) => row.pageNumber), 1) : 1;
@@ -187,7 +192,7 @@ export function ReportsUnifiedView({
     : (model?.rows ?? []);
 
   const exportUrl = selectedPeriod
-    ? `/api/reports/${selectedPeriod.id}/xlsx?start=${workspace.year}-${workspace.month}-01&end=${workspace.year}-${workspace.month}-31`
+    ? `/api/reports/${selectedPeriod.id}/xlsx`
     : "#";
 
   // Devices for BM06
@@ -548,9 +553,19 @@ export function ReportsUnifiedView({
                       Đã rà soát &amp; Xác nhận nội bộ
                     </span>
                     <p className="text-[11px] text-slate-500">
-                      {canConfirm
-                        ? "Chỉ huy BMK / Bác sĩ Admin tick xác nhận sau khi kiểm tra kỳ."
-                        : "Chỉ Chỉ huy BMK / Quản trị viên mới có quyền thay đổi xác nhận này."}
+                      {!access?.userId ? (
+                        <span>
+                          Chưa đăng nhập. Vui lòng{" "}
+                          <Link href="/login" className="font-bold text-teal-700 underline hover:text-teal-900">
+                            đăng nhập
+                          </Link>{" "}
+                          tài khoản Chỉ huy BMK / Quản trị viên để xác nhận nội bộ.
+                        </span>
+                      ) : canConfirm ? (
+                        "Chỉ huy BMK / Bác sĩ Admin tick xác nhận sau khi kiểm tra kỳ."
+                      ) : (
+                        "Tài khoản hiện tại không có quyền Chỉ huy BMK hoặc Quản trị viên."
+                      )}
                     </p>
                   </div>
                 </label>

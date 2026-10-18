@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ peri
   const model = buildReportExportModel({
     period: report.period as unknown as ReportPeriod,
     records: report.records as unknown as ReportRecord[],
-    start: search.get("start") ?? undefined,
+    start: report.period.period_start,
     official: true, // Always export clean, authentic report independent of approval status
   });
 
