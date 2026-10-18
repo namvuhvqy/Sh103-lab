@@ -1,1 +1,15 @@
-import Link from'next/link';import{AppShell}from'@/components/shell/AppShell';import{getPeriods}from'@/lib/forms/queries';export const dynamic='force-dynamic';export default async function Page(){const periods=await getPeriods();return <AppShell headerTitle="Sổ / Kỳ theo dõi"><h1 className="text-3xl font-bold">Sổ và kỳ theo dõi</h1><div className="mt-6 grid gap-3 md:grid-cols-2">{periods.map((p)=>{const t=p.form_template_versions.form_templates;return <Link href={`/periods/${p.id}`} key={p.id} className="rounded-2xl border bg-white p-4 hover:border-blue-400"><p className="text-xs font-bold text-blue-800">{t.code} · {p.status}</p><h2 className="font-bold">{t.name}</h2><p className="mt-1 text-sm text-slate-600">{p.locations?.name??p.assets?.source_name??'Toàn khoa'} · {p.period_label}</p></Link>})}</div></AppShell>}
+import { redirect } from "next/navigation";
+
+export default async function PeriodsRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const query = await searchParams;
+  const params = new URLSearchParams();
+  params.set("tab", "forms");
+  for (const [k, v] of Object.entries(query)) {
+    if (v) params.set(k, v);
+  }
+  redirect(`/reports?${params.toString()}`);
+}

@@ -129,10 +129,10 @@ export function buildReportExportModel(input: { period: ReportPeriod; records: R
   const records = input.records;
   const templateCode = period.form_template_versions.form_templates.code;
   const templateName = period.form_template_versions.form_templates.name;
-  const isApproved = Boolean(input.official && period.status === "APPROVED");
-  const approvalStatusLabel = isApproved ? "ĐÃ PHÊ DUYỆT (LỊCH SỬ)" : "ĐANG THEO DÕI";
-  const approvalTimestampLabel = isApproved && period.approved_at ? period.approved_at : "";
-  const filenamePrefix = isApproved ? "" : "[DANG_THEO_DOI]_";
+  const isApproved = true;
+  const approvalStatusLabel = "CHÍNH THỨC";
+  const approvalTimestampLabel = period.approved_at ?? "";
+  const filenamePrefix = "";
   const objectLabel = period.locations?.name ?? period.assets?.source_name ?? "";
   const dates = daysFor(input.start ?? period.period_start);
 
