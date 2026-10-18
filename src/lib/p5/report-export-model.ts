@@ -118,8 +118,9 @@ function firstItem<T>(val: T[] | T | null | undefined): T | null {
   return Array.isArray(val) ? val[0] ?? null : val;
 }
 
-function timeLabel(value: string | null | undefined, fallback: string) {
-  return value ? new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : fallback;
+function timeLabel(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return new Date(value).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
 }
 
 function daysFor(startDateStr: string) {
@@ -217,8 +218,8 @@ export function buildReportExportModel(input: {
           d.dateStr,
           [
             d.day,
-            rMorning ? timeLabel(rMorning.performed_at, "08:30") : (mM?.temperature_c !== null && mM?.temperature_c !== undefined ? "08:30" : null),
-            rAfternoon ? timeLabel(rAfternoon.performed_at, "14:30") : (mA?.temperature_c !== null && mA?.temperature_c !== undefined ? "14:30" : null),
+            rMorning?.performed_at ? timeLabel(rMorning.performed_at) : null,
+            rAfternoon?.performed_at ? timeLabel(rAfternoon.performed_at) : null,
             mM?.temperature_c ?? null,
             mA?.temperature_c ?? null,
             mM?.humidity_pct ?? null,
@@ -377,22 +378,9 @@ export function buildReportExportModel(input: {
           // Performer formatting: Primary + Coworker
           const primaryName = formatShortName(r?.profiles?.full_name);
           const coWorkerName = formatShortName(detail?.co_worker_name);
-          let userName: string | null = primaryName && coWorkerName
+          const userName: string | null = primaryName && coWorkerName
             ? `${primaryName} - ${coWorkerName}`
             : (primaryName || coWorkerName || null);
-
-          // Ca 1 (7h-12h): 5 chuyên môn groups on active operational days
-          if (shift.slot === "SHIFT_1") {
-            const dayNum = Number(d.dateStr.split("-")[2]);
-            const MORNING_5_CREWS: Record<number, string> = {
-              1: "NV Cường - NTB Hạnh\nNT Thuỷ - PTP Thảo\nNX Hùng - NT Sinh\nLT Thảo - VV Nam\nNV Nhân - NM Thư",
-              2: "NV Cường - NTB Hạnh\nNT Thuỷ - TT Thuỷ\nNX Hùng - NTM Ngọc\nLT Thảo - MTP Thảo\nNV Nhân - CT Anh",
-              3: "NV Cường - NTB Hạnh\nPTP Thảo - TT Thuỷ\nNX Hùng - NT Sinh\nVV Nam - LT Thảo\nNV Nhân - LT Hằng",
-            };
-            if (MORNING_5_CREWS[dayNum]) {
-              userName = MORNING_5_CREWS[dayNum];
-            }
-          }
 
           // 20 machine status values mapped by exact sourceAssetOrder: if missing in DB, leave null/empty!
           const statusCells = all20Devices.map((dev) => byOrder.get(dev.sourceAssetOrder) ?? null);

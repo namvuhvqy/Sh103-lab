@@ -1,27 +1,8 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import { buildBm06WorkbookFromTemplate } from "@/lib/p5/bm06-template-xlsx";
 import type { ReportExportModel } from "@/lib/p5/report-export-model";
-
-const thinBorder: Partial<ExcelJS.Borders> = {
-  top: { style: "thin", color: { argb: "FF000000" } },
-  left: { style: "thin", color: { argb: "FF000000" } },
-  bottom: { style: "thin", color: { argb: "FF000000" } },
-  right: { style: "thin", color: { argb: "FF000000" } },
-};
-
-const centerAlign: Partial<ExcelJS.Alignment> = {
-  vertical: "middle",
-  horizontal: "center",
-  wrapText: true,
-};
-
-const leftAlign: Partial<ExcelJS.Alignment> = {
-  vertical: "middle",
-  horizontal: "left",
-  wrapText: true,
-};
 
 function parseMonthYear(startDateStr: string) {
   const parts = startDateStr.split("-");
@@ -29,22 +10,6 @@ function parseMonthYear(startDateStr: string) {
     year: parts[0] || "2026",
     month: parts[1] || "10",
   };
-}
-
-function getDayFromDate(dateStr: string) {
-  const parts = dateStr.split("-");
-  return Number.parseInt(parts[2] || "1", 10);
-}
-
-function applyCellFormat(cell: ExcelJS.Cell, value: unknown, align = centerAlign) {
-  if (value !== undefined && value !== null) {
-    cell.value = value as ExcelJS.CellValue;
-  }
-  cell.border = thinBorder;
-  cell.alignment = align;
-  if (!cell.font) {
-    cell.font = { name: "Times New Roman", size: 10 };
-  }
 }
 
 function resolveTemplatePath(filename: string): string {
@@ -58,11 +23,9 @@ function resolveTemplatePath(filename: string): string {
 export async function buildCanonicalReportWorkbook(model: ReportExportModel): Promise<Buffer> {
   const code = model.templateCode;
 
-  // 1. BM.06: Delegate to dedicated 3-day cycle canonical builder
+  // 1. BM.06: Delegate to dedicated 3-day cycle SheetJS builder
   if (code.includes("BM.06")) {
-    const wb = await buildBm06WorkbookFromTemplate(model);
-    const bytes = await wb.xlsx.writeBuffer();
-    return Buffer.from(bytes);
+    return buildBm06WorkbookFromTemplate(model);
   }
 
   const { year, month } = parseMonthYear(model.period.period_start);
@@ -70,22 +33,12 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
   // 2. BM.01/QL.HTAT: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm
   if (code.includes("BM.01/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.01_QL.HTAT_TD nhiệt độ PXN.xlsx");
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(templatePath);
-    const ws = wb.worksheets[0];
+    const raw = readFileSync(templatePath);
+    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
 
-    ws.pageSetup = {
-      paperSize: 9, // A4
-      orientation: "portrait",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-    };
-
-    const locName = model.period.locations?.name || "Khu Vực Xét Nghiệm";
-    ws.getCell("A4").value = `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`;
-    ws.getCell("A5").value = `Mã thiết bị theo dõi: BM103-NK    (Số hiệu nhiệt ẩm kế: NAK-01)`;
+    const locName = model.period.locations?.name || "Khu vực Xét nghiệm";
+    ws["A4"] = { t: "s", v: `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}` };
 
     // Populate day rows (Day 1 starts at Row 9)
     for (const rowModel of model.rows) {
@@ -94,150 +47,120 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       if (!day || day < 1 || day > 31) continue;
       const r = 8 + day;
 
-      applyCellFormat(ws.getCell(`B${r}`), timeM ?? null);
-      applyCellFormat(ws.getCell(`C${r}`), timeA ?? null);
-      applyCellFormat(ws.getCell(`D${r}`), tempM !== null && tempM !== undefined ? Number(tempM) : null);
-      applyCellFormat(ws.getCell(`E${r}`), tempA !== null && tempA !== undefined ? Number(tempA) : null);
-      applyCellFormat(ws.getCell(`F${r}`), humM !== null && humM !== undefined ? Number(humM) : null);
-      applyCellFormat(ws.getCell(`G${r}`), humA !== null && humA !== undefined ? Number(humA) : null);
-      if (noteVal) applyCellFormat(ws.getCell(`H${r}`), String(noteVal), leftAlign);
-      if (performerName) applyCellFormat(ws.getCell(`I${r}`), String(performerName), leftAlign);
+      if (timeM) ws[`B${r}`] = { t: "s", v: String(timeM) }; else delete ws[`B${r}`];
+      if (timeA) ws[`C${r}`] = { t: "s", v: String(timeA) }; else delete ws[`C${r}`];
+      if (tempM !== null && tempM !== undefined) ws[`D${r}`] = { t: "n", v: Number(tempM) }; else delete ws[`D${r}`];
+      if (tempA !== null && tempA !== undefined) ws[`E${r}`] = { t: "n", v: Number(tempA) }; else delete ws[`E${r}`];
+      if (humM !== null && humM !== undefined) ws[`F${r}`] = { t: "n", v: Number(humM) }; else delete ws[`F${r}`];
+      if (humA !== null && humA !== undefined) ws[`G${r}`] = { t: "n", v: Number(humA) }; else delete ws[`G${r}`];
+      if (noteVal) ws[`H${r}`] = { t: "s", v: String(noteVal) }; else delete ws[`H${r}`];
+      if (performerName) ws[`I${r}`] = { t: "s", v: String(performerName) }; else delete ws[`I${r}`];
     }
 
-    // Ensure all 31 rows are fully bordered
-    for (let d = 1; d <= 31; d++) {
-      const r = 8 + d;
-      for (const col of ["A", "B", "C", "D", "E", "F", "G", "H", "I"]) {
-        const c = ws.getCell(`${col}${r}`);
-        c.border = thinBorder;
-        if (!c.alignment) c.alignment = centerAlign;
-      }
-    }
-
-    const bytes = await wb.xlsx.writeBuffer();
+    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     return Buffer.from(bytes);
   }
 
   // 3. BM.02/QL.HTAT.01: Theo dõi tủ lạnh mát
   if (code.includes("BM.02/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.02.QL.HTAT.01_TD tủ lạnh mát.xlsx");
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(templatePath);
-    const ws = wb.getWorksheet("Mat") || wb.worksheets[0];
-
-    ws.pageSetup = {
-      paperSize: 9, // A4
-      orientation: "landscape",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-    };
+    const raw = readFileSync(templatePath);
+    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
+    const ws = wb.Sheets["Mat"] || wb.Sheets[wb.SheetNames[0]];
 
     const assetName = model.period.assets?.source_name || "Tủ lạnh mát 2-8°C";
-    const assetCode = model.period.assets?.source_code || "TLM-103";
-    ws.getCell("A5").value = `Tên thiết bị: ${assetName} - Tháng ${month} Năm ${year}`;
-    ws.getCell("A6").value = `Người quản lý : Cán bộ trực Lab`;
-    ws.getCell("A7").value = `Mã thiết bị theo dõi: ${assetCode}`;
+    ws["A5"] = { t: "s", v: `Tên thiết bị: ${assetName} - Tháng ${month} Năm ${year}` };
+    if (model.period.assets?.source_code) {
+      ws["A7"] = { t: "s", v: `Mã thiết bị theo dõi: ${model.period.assets.source_code}` };
+    }
 
-    // Fill daily temperatures
+    // Fill daily temperatures (Day 1: S=Col B, C=Col C)
     for (const rowModel of model.rows) {
       const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
       const day = Number(dayVal);
       if (!day || day < 1 || day > 31) continue;
 
-      const colS = 1 + (day - 1) * 2 + 1; // Day 1: S=Col B (2)
-      const colC = 1 + (day - 1) * 2 + 2; // Day 1: C=Col C (3)
+      const colSIdx = 1 + (day - 1) * 2; // B=1 (0-indexed)
+      const colCIdx = 1 + (day - 1) * 2 + 1; // C=2
+      const colS = XLSX.utils.encode_col(colSIdx);
+      const colC = XLSX.utils.encode_col(colCIdx);
 
       if (tempM !== null && tempM !== undefined) {
-        const val = Number(tempM);
-        ws.getRow(9).getCell(colS).value = val;
-        const tempRow = Math.max(10, Math.min(25, 25 - Math.round(val)));
-        ws.getRow(tempRow).getCell(colS).value = val;
+        ws[`${colS}9`] = { t: "n", v: Number(tempM) };
+      } else {
+        delete ws[`${colS}9`];
       }
+
       if (tempA !== null && tempA !== undefined) {
-        const val = Number(tempA);
-        ws.getRow(9).getCell(colC).value = val;
-        const tempRow = Math.max(10, Math.min(25, 25 - Math.round(val)));
-        ws.getRow(tempRow).getCell(colC).value = val;
+        ws[`${colC}9`] = { t: "n", v: Number(tempA) };
+      } else {
+        delete ws[`${colC}9`];
       }
+
       if (performerName) {
-        ws.getRow(26).getCell(colS).value = String(performerName);
+        ws[`${colS}26`] = { t: "s", v: String(performerName) };
+      } else {
+        delete ws[`${colS}26`];
       }
     }
 
-    const bytes = await wb.xlsx.writeBuffer();
+    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     return Buffer.from(bytes);
   }
 
   // 4. BM.03/QL.HTAT.01: Theo dõi tủ lạnh đá (-20°C)
   if (code.includes("BM.03/QL.HTAT")) {
     const templatePath = resolveTemplatePath("BM.03.QL.HTAT.01_TD tủ lạnh đá.xlsx");
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(templatePath);
-    const ws = wb.getWorksheet("NganDa") || wb.worksheets[0];
-
-    ws.pageSetup = {
-      paperSize: 9, // A4
-      orientation: "landscape",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-    };
+    const raw = readFileSync(templatePath);
+    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
+    const ws = wb.Sheets["NganDa"] || wb.Sheets[wb.SheetNames[0]];
 
     const assetName = model.period.assets?.source_name || "Tủ lạnh đá -20°C";
-    const assetCode = model.period.assets?.source_code || "TLD-103";
-    ws.getCell("A4").value = `Tên thiết bị: ${assetName} (Mã: ${assetCode}) - Tháng ${month} Năm ${year}`;
-    ws.getCell("A5").value = `Người quản lý : Cán bộ trực Lab`;
+    const assetCodePart = model.period.assets?.source_code ? ` (Mã: ${model.period.assets.source_code})` : "";
+    ws["A4"] = { t: "s", v: `Tên thiết bị: ${assetName}${assetCodePart} - Tháng ${month} Năm ${year}` };
 
     for (const rowModel of model.rows) {
       const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
       const day = Number(dayVal);
       if (!day || day < 1 || day > 31) continue;
 
-      const colS = 1 + (day - 1) * 2 + 1;
-      const colC = 1 + (day - 1) * 2 + 2;
+      const colSIdx = 1 + (day - 1) * 2;
+      const colCIdx = 1 + (day - 1) * 2 + 1;
+      const colS = XLSX.utils.encode_col(colSIdx);
+      const colC = XLSX.utils.encode_col(colCIdx);
 
       if (tempM !== null && tempM !== undefined) {
-        const val = Number(tempM);
-        ws.getRow(8).getCell(colS).value = val;
-        const tempRow = Math.max(9, Math.min(29, 9 + (-10 - Math.round(val))));
-        ws.getRow(tempRow).getCell(colS).value = val;
+        ws[`${colS}8`] = { t: "n", v: Number(tempM) };
+      } else {
+        delete ws[`${colS}8`];
       }
+
       if (tempA !== null && tempA !== undefined) {
-        const val = Number(tempA);
-        ws.getRow(8).getCell(colC).value = val;
-        const tempRow = Math.max(9, Math.min(29, 9 + (-10 - Math.round(val))));
-        ws.getRow(tempRow).getCell(colC).value = val;
+        ws[`${colC}8`] = { t: "n", v: Number(tempA) };
+      } else {
+        delete ws[`${colC}8`];
       }
+
       if (performerName) {
-        ws.getRow(30).getCell(colS).value = String(performerName);
+        ws[`${colS}30`] = { t: "s", v: String(performerName) };
+      } else {
+        delete ws[`${colS}30`];
       }
     }
 
-    const bytes = await wb.xlsx.writeBuffer();
+    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     return Buffer.from(bytes);
   }
 
   // 5. BM.01_KNBM: Theo dõi khử nhiễm bề mặt
   if (code.includes("BM.01_KNBM") || code.includes("KNBM")) {
     const templatePath = resolveTemplatePath("BM.01_KNBM.xlsx");
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(templatePath);
-    const ws = wb.worksheets[0];
-
-    ws.pageSetup = {
-      paperSize: 9, // A4
-      orientation: "portrait",
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
-    };
+    const raw = readFileSync(templatePath);
+    const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
 
     const locName = model.period.locations?.name || "Khu vực xét nghiệm";
-    ws.getCell("A4").value = `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`;
+    ws["A4"] = { t: "s", v: `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}` };
 
     for (const rowModel of model.rows) {
       const [dayVal, dailyVal, weeklyVal, spillVal, noteVal, performerName] = rowModel.cells;
@@ -245,67 +168,44 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
       if (!day || day < 1 || day > 31) continue;
       const r = 7 + day; // Day 1 = Row 8
 
-      applyCellFormat(ws.getCell(`B${r}`), dailyVal ? "X" : null);
-      applyCellFormat(ws.getCell(`C${r}`), weeklyVal ? "X" : null);
-      applyCellFormat(ws.getCell(`D${r}`), spillVal ? "X" : null);
-      applyCellFormat(ws.getCell(`E${r}`), noteVal || null, leftAlign);
-      applyCellFormat(ws.getCell(`F${r}`), performerName || null, leftAlign);
+      if (dailyVal) ws[`B${r}`] = { t: "s", v: "X" }; else delete ws[`B${r}`];
+      if (weeklyVal) ws[`C${r}`] = { t: "s", v: "X" }; else delete ws[`C${r}`];
+      if (spillVal) ws[`D${r}`] = { t: "s", v: "X" }; else delete ws[`D${r}`];
+      if (noteVal) ws[`E${r}`] = { t: "s", v: String(noteVal) }; else delete ws[`E${r}`];
+      if (performerName) ws[`F${r}`] = { t: "s", v: String(performerName) }; else delete ws[`F${r}`];
     }
 
-    for (let r = 8; r <= 38; r++) {
-      for (const col of ["A", "B", "C", "D", "E", "F"]) {
-        const c = ws.getCell(`${col}${r}`);
-        c.border = thinBorder;
-        if (!c.alignment) c.alignment = centerAlign;
-      }
-    }
-
-    const bytes = await wb.xlsx.writeBuffer();
+    const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     return Buffer.from(bytes);
   }
 
   // 6. BM.02/QL.TRTB: Bảng theo dõi - bảo dưỡng TTB
   const templatePath = resolveTemplatePath("BM.02.Bảng theo dõi - bảo dưỡng TTB.xlsx");
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile(templatePath);
-  const ws = wb.worksheets[0];
+  const raw = readFileSync(templatePath);
+  const wb = XLSX.read(raw, { type: "buffer", cellStyles: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
 
-  ws.pageSetup = {
-    paperSize: 9, // A4
-    orientation: "landscape",
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0,
-    margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-  };
-
-  const assetName = model.period.assets?.source_name || "Máy xét nghiệm";
-  ws.getCell("H4").value = `MÁY: ${assetName}`;
-  ws.getCell("A5").value = `Tháng ${month} Năm ${year}`;
+  const assetName = model.period.assets?.source_name || "Thiết bị xét nghiệm";
+  ws["A5"] = { t: "s", v: `Tháng ${month}                             Năm ${year}` };
+  ws["H4"] = { t: "s", v: `MÁY: ${assetName}` };
 
   for (const rowModel of model.rows) {
-    const [dayVal, cadenceVal, resultVal, performerName, noteVal] = rowModel.cells;
+    const [dayVal, cadenceVal, resultVal, performerName] = rowModel.cells;
     const day = Number(dayVal);
     if (!day || day < 1 || day > 31) continue;
-    const colIdx = 2 + day; // Day 1 = Col C (3)
 
-    const cadence = String(cadenceVal || "DAILY").toUpperCase();
-    const isFail = resultVal === "Không đạt" || resultVal === "FAIL";
-    const mark = isFail ? "KĐ" : "✓";
+    // Col C is Day 1 (index 2)
+    const colIdx = 1 + day;
+    const colLetter = XLSX.utils.encode_col(colIdx);
 
-    if (cadence.includes("MONTH") || cadence.includes("THÁNG")) {
-      applyCellFormat(ws.getRow(15).getCell(colIdx), mark);
-    } else if (cadence.includes("WEEK") || cadence.includes("TUẦN")) {
-      applyCellFormat(ws.getRow(11).getCell(colIdx), mark);
-    } else {
-      applyCellFormat(ws.getRow(8).getCell(colIdx), mark);
+    if (resultVal) {
+      ws[`${colLetter}9`] = { t: "s", v: String(resultVal) };
     }
-
     if (performerName) {
-      applyCellFormat(ws.getRow(25).getCell(colIdx), String(performerName), centerAlign);
+      ws[`${colLetter}22`] = { t: "s", v: String(performerName) };
     }
   }
 
-  const bytes = await wb.xlsx.writeBuffer();
+  const bytes = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
   return Buffer.from(bytes);
 }
