@@ -56,7 +56,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
     return Buffer.from(bytes);
   }
 
-  const templateDir = join(process.cwd(), "docs", "danh mục biểu mẫu");
+  const templateDir = join(/*turbopackIgnore: true*/ process.cwd(), "docs", "danh mục biểu mẫu");
   const { year, month } = parseMonthYear(model.period.period_start);
 
   // 2. BM.01/QL.HTAT: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm
@@ -81,23 +81,17 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
     // Populate day rows (Day 1 starts at Row 9)
     for (const rowModel of model.rows) {
-      const [, dateStr, slotLabel, timeStr, tempVal, humVal, , performerName, noteVal] = rowModel.cells;
-      if (!dateStr) continue;
-      const day = getDayFromDate(String(dateStr));
-      if (day < 1 || day > 31) continue;
+      const [dayVal, timeM, timeA, tempM, tempA, humM, humA, noteVal, performerName] = rowModel.cells;
+      const day = Number(dayVal);
+      if (!day || day < 1 || day > 31) continue;
       const r = 8 + day;
 
-      const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
-      if (isMorning) {
-        applyCellFormat(ws.getCell(`B${r}`), timeStr || "08:30");
-        applyCellFormat(ws.getCell(`D${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
-        applyCellFormat(ws.getCell(`F${r}`), humVal !== null && humVal !== undefined ? Number(humVal) : null);
-      } else {
-        applyCellFormat(ws.getCell(`C${r}`), timeStr || "14:30");
-        applyCellFormat(ws.getCell(`E${r}`), tempVal !== null && tempVal !== undefined ? Number(tempVal) : null);
-        applyCellFormat(ws.getCell(`G${r}`), humVal !== null && humVal !== undefined ? Number(humVal) : null);
-      }
-
+      applyCellFormat(ws.getCell(`B${r}`), timeM ?? null);
+      applyCellFormat(ws.getCell(`C${r}`), timeA ?? null);
+      applyCellFormat(ws.getCell(`D${r}`), tempM !== null && tempM !== undefined ? Number(tempM) : null);
+      applyCellFormat(ws.getCell(`E${r}`), tempA !== null && tempA !== undefined ? Number(tempA) : null);
+      applyCellFormat(ws.getCell(`F${r}`), humM !== null && humM !== undefined ? Number(humM) : null);
+      applyCellFormat(ws.getCell(`G${r}`), humA !== null && humA !== undefined ? Number(humA) : null);
       if (noteVal) applyCellFormat(ws.getCell(`H${r}`), String(noteVal), leftAlign);
       if (performerName) applyCellFormat(ws.getCell(`I${r}`), String(performerName), leftAlign);
     }
@@ -140,24 +134,27 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
     // Fill daily temperatures
     for (const rowModel of model.rows) {
-      const [, dateStr, slotLabel, , tempVal, , performerName] = rowModel.cells;
-      if (!dateStr) continue;
-      const day = getDayFromDate(String(dateStr));
-      if (day < 1 || day > 31) continue;
+      const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
+      const day = Number(dayVal);
+      if (!day || day < 1 || day > 31) continue;
 
-      const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
-      const colIdx = 1 + (day - 1) * 2 + (isMorning ? 1 : 2); // Day 1: S=Col B (2), C=Col C (3)
+      const colS = 1 + (day - 1) * 2 + 1; // Day 1: S=Col B (2)
+      const colC = 1 + (day - 1) * 2 + 2; // Day 1: C=Col C (3)
 
-      if (tempVal !== null && tempVal !== undefined) {
-        // Place value in Row 9 or closest temp row
-        const cell = ws.getRow(9).getCell(colIdx);
-        cell.value = Number(tempVal);
-        cell.alignment = centerAlign;
+      if (tempM !== null && tempM !== undefined) {
+        const val = Number(tempM);
+        ws.getRow(9).getCell(colS).value = val;
+        const tempRow = Math.max(10, Math.min(25, 25 - Math.round(val)));
+        ws.getRow(tempRow).getCell(colS).value = val;
+      }
+      if (tempA !== null && tempA !== undefined) {
+        const val = Number(tempA);
+        ws.getRow(9).getCell(colC).value = val;
+        const tempRow = Math.max(10, Math.min(25, 25 - Math.round(val)));
+        ws.getRow(tempRow).getCell(colC).value = val;
       }
       if (performerName) {
-        const signCell = ws.getRow(27).getCell(colIdx);
-        signCell.value = String(performerName);
-        signCell.alignment = centerAlign;
+        ws.getRow(26).getCell(colS).value = String(performerName);
       }
     }
 
@@ -187,23 +184,27 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
     ws.getCell("A5").value = `Người quản lý : Cán bộ trực Lab`;
 
     for (const rowModel of model.rows) {
-      const [, dateStr, slotLabel, , tempVal, , performerName] = rowModel.cells;
-      if (!dateStr) continue;
-      const day = getDayFromDate(String(dateStr));
-      if (day < 1 || day > 31) continue;
+      const [dayVal, tempM, tempA, , noteVal, performerName] = rowModel.cells;
+      const day = Number(dayVal);
+      if (!day || day < 1 || day > 31) continue;
 
-      const isMorning = String(slotLabel).toLowerCase().includes("sáng") || String(slotLabel).includes("MORNING");
-      const colIdx = 1 + (day - 1) * 2 + (isMorning ? 1 : 2);
+      const colS = 1 + (day - 1) * 2 + 1;
+      const colC = 1 + (day - 1) * 2 + 2;
 
-      if (tempVal !== null && tempVal !== undefined) {
-        const cell = ws.getRow(8).getCell(colIdx);
-        cell.value = Number(tempVal);
-        cell.alignment = centerAlign;
+      if (tempM !== null && tempM !== undefined) {
+        const val = Number(tempM);
+        ws.getRow(8).getCell(colS).value = val;
+        const tempRow = Math.max(9, Math.min(29, 9 + (-10 - Math.round(val))));
+        ws.getRow(tempRow).getCell(colS).value = val;
+      }
+      if (tempA !== null && tempA !== undefined) {
+        const val = Number(tempA);
+        ws.getRow(8).getCell(colC).value = val;
+        const tempRow = Math.max(9, Math.min(29, 9 + (-10 - Math.round(val))));
+        ws.getRow(tempRow).getCell(colC).value = val;
       }
       if (performerName) {
-        const signCell = ws.getRow(27).getCell(colIdx);
-        signCell.value = String(performerName);
-        signCell.alignment = centerAlign;
+        ws.getRow(30).getCell(colS).value = String(performerName);
       }
     }
 
@@ -231,10 +232,9 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
     ws.getCell("A4").value = `Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`;
 
     for (const rowModel of model.rows) {
-      const [, dateStr, , dailyVal, weeklyVal, spillVal, performerName, noteVal] = rowModel.cells;
-      if (!dateStr) continue;
-      const day = getDayFromDate(String(dateStr));
-      if (day < 1 || day > 31) continue;
+      const [dayVal, dailyVal, weeklyVal, spillVal, noteVal, performerName] = rowModel.cells;
+      const day = Number(dayVal);
+      if (!day || day < 1 || day > 31) continue;
       const r = 7 + day; // Day 1 = Row 8
 
       applyCellFormat(ws.getCell(`B${r}`), dailyVal ? "X" : null);
@@ -276,26 +276,25 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
   ws.getCell("A5").value = `Tháng ${month} Năm ${year}`;
 
   for (const rowModel of model.rows) {
-    const [, dateStr, , cadenceVal, resultVal, performerName] = rowModel.cells;
-    if (!dateStr) continue;
-    const day = getDayFromDate(String(dateStr));
-    if (day < 1 || day > 31) continue;
+    const [dayVal, cadenceVal, resultVal, performerName, noteVal] = rowModel.cells;
+    const day = Number(dayVal);
+    if (!day || day < 1 || day > 31) continue;
     const colIdx = 2 + day; // Day 1 = Col C (3)
 
     const cadence = String(cadenceVal || "DAILY").toUpperCase();
-    const isFail = resultVal === "FAIL";
+    const isFail = resultVal === "Không đạt" || resultVal === "FAIL";
     const mark = isFail ? "KĐ" : "✓";
 
     if (cadence.includes("MONTH") || cadence.includes("THÁNG")) {
-      applyCellFormat(ws.getRow(10).getCell(colIdx), mark);
+      applyCellFormat(ws.getRow(15).getCell(colIdx), mark);
     } else if (cadence.includes("WEEK") || cadence.includes("TUẦN")) {
-      applyCellFormat(ws.getRow(9).getCell(colIdx), mark);
+      applyCellFormat(ws.getRow(11).getCell(colIdx), mark);
     } else {
       applyCellFormat(ws.getRow(8).getCell(colIdx), mark);
     }
 
     if (performerName) {
-      applyCellFormat(ws.getRow(11).getCell(colIdx), String(performerName), centerAlign);
+      applyCellFormat(ws.getRow(25).getCell(colIdx), String(performerName), centerAlign);
     }
   }
 

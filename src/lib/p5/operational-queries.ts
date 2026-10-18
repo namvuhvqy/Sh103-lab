@@ -163,9 +163,16 @@ export async function getDecontaminationOverview() {
 
 export async function getReportPeriods() {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name))").order("period_start", { ascending: false }).limit(100);
+  const { data, error } = await supabase
+    .from("register_periods")
+    .select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name)),records(count)")
+    .order("period_start", { ascending: false })
+    .limit(100);
   if (error) throw new Error(`Không tải được báo cáo: ${error.message}`);
-  return data ?? [];
+  return (data ?? []).map((p: any) => ({
+    ...p,
+    record_count: p.records?.[0]?.count ?? 0,
+  }));
 }
 
 export async function getOfficialPeriodReport(periodId: string, filters?: { start?: string; end?: string; shift?: string }) {
@@ -184,41 +191,105 @@ export async function getOfficialPeriodReport(periodId: string, filters?: { star
 
 export async function getExportWorkspace(filters: { templateCode?: string; year?: string; month?: string; day?: string; shift?: string; periodId?: string }) {
   const supabase = await createClient();
-  const now = new Date();
-  const year = /^\d{4}$/.test(filters.year ?? "") ? filters.year! : String(now.getFullYear());
-  const month = /^(0?[1-9]|1[0-2])$/.test(filters.month ?? "") ? String(Number(filters.month)).padStart(2, "0") : String(now.getMonth() + 1).padStart(2, "0");
+  let reqYear = /^\d{4}$/.test(filters.year ?? "") ? filters.year! : "2026";
+  let reqMonth = filters.month && /^(0?[1-9]|1[0-2])$/.test(filters.month) ? String(Number(filters.month)).padStart(2, "0") : undefined;
+
+  const [{ data: templates, error: templateError }, { data: periods, error: periodError }] = await Promise.all([
+    supabase.from("form_template_versions").select("id,version_label,form_templates!inner(code,name,form_kind)").eq("status", "PUBLISHED").order("created_at"),
+    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind)),records(count)").order("period_start", { ascending: false }),
+  ]);
+  if (templateError || periodError) throw new Error("Không tải được không gian xuất biểu mẫu");
+
+  type Period = {
+    id: string;
+    period_label: string | null;
+    period_start: string;
+    period_end: string;
+    status: string;
+    approved_at: string | null;
+    locations: { name: string } | null;
+    assets: { source_name: string } | null;
+    form_template_versions: {
+      id: string;
+      version_label: string;
+      form_templates: { code: string; name: string; form_kind: string };
+    };
+    records?: Array<{ count: number }>;
+    record_count: number;
+  };
+
+  const typedPeriods = ((periods ?? []) as unknown as Period[]).map((p) => ({
+    ...p,
+    record_count: p.records?.[0]?.count ?? 0,
+  }));
+
+  const typedTemplates = (templates ?? []) as unknown as Array<{ id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } }>;
+  const CANONICAL_ORDER = [
+    "BM.01/QL.HTAT.01",
+    "BM.01_KNBM",
+    "BM.02/QL.HTAT.01",
+    "BM.03/QL.HTAT.01",
+    "BM.02/QL.TRTB.01",
+    "BM.06/QL.TRTB.01",
+  ];
+  typedTemplates.sort((a, b) => {
+    const idxA = CANONICAL_ORDER.indexOf(a.form_templates.code);
+    const idxB = CANONICAL_ORDER.indexOf(b.form_templates.code);
+    return (idxA >= 0 ? idxA : 99) - (idxB >= 0 ? idxB : 99);
+  });
+
+  const templateCode = filters.templateCode ?? CANONICAL_ORDER[0];
+  const allMatching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
+
+  // If a specific periodId is requested, look it up first and align month if not explicitly given
+  const explicitTarget = filters.periodId ? allMatching.find((p) => p.id === filters.periodId) : null;
+  if (explicitTarget) {
+    const parts = explicitTarget.period_start.split("-");
+    if (!filters.year && parts[0]) reqYear = parts[0];
+    if (!filters.month && parts[1]) reqMonth = parts[1];
+  }
+
+  const year = reqYear;
+  let month = reqMonth;
+  if (!month) {
+    const hasMonth09 = allMatching.some((p) => p.period_start.startsWith(`${year}-09`) && (p.record_count ?? 0) > 0);
+    month = hasMonth09 ? "09" : "10";
+  }
+
   const day = /^(0?[1-9]|[12]\d|3[01])$/.test(filters.day ?? "") ? String(Number(filters.day)).padStart(2, "0") : "";
   const candidateStart = `${year}-${month}-${day || "01"}`;
   const start = isValidIsoDate(candidateStart) ? candidateStart : `${year}-${month}-01`;
   const end = day && start === candidateStart ? start : new Date(Date.UTC(Number(year), Number(month), 0)).toISOString().slice(0, 10);
-  const [{ data: templates, error: templateError }, { data: periods, error: periodError }] = await Promise.all([
-    supabase.from("form_template_versions").select("id,version_label,form_templates!inner(code,name,form_kind)").eq("status", "PUBLISHED").order("created_at"),
-    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind))").order("period_start", { ascending: false }),
-  ]);
-  if (templateError || periodError) throw new Error("Không tải được không gian xuất biểu mẫu");
-  type Period = { id: string; period_label: string | null; period_start: string; period_end: string; status: string; approved_at: string | null; locations: { name: string } | null; assets: { source_name: string } | null; form_template_versions: { id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } } };
-  const typedPeriods = (periods ?? []) as unknown as Period[];
-  const typedTemplates = (templates ?? []) as unknown as Array<{ id: string; version_label: string; form_templates: { code: string; name: string; form_kind: string } }>;
-  const templateCode = filters.templateCode ?? typedTemplates[0]?.form_templates?.code ?? "BM.01/QL.HTAT.01";
-  
-  // Lọc các kỳ thuộc đúng biểu mẫu đang chọn; export độc lập trạng thái approval
-  let matching = typedPeriods.filter((period) => period.form_template_versions.form_templates.code === templateCode);
 
-  // Gán nhãn thân thiện cho các kỳ không gắn location/asset cụ thể (như BM.06)
+  let matchingInMonth = allMatching.filter((p) => p.period_start.startsWith(`${year}-${month}`));
+  let matching = matchingInMonth.length > 0 ? matchingInMonth : allMatching;
+
+  // Deduplicate by location/asset name: if multiple periods exist, keep the one with higher record_count
+  const dedupMap = new Map<string, Period>();
+  for (const p of matching) {
+    const key = p.locations?.name ?? p.assets?.source_name ?? "GLOBAL";
+    const existing = dedupMap.get(key);
+    if (!existing || (p.record_count ?? 0) > (existing.record_count ?? 0)) {
+      dedupMap.set(key, p);
+    }
+  }
+  matching = Array.from(dedupMap.values());
+
   matching = matching.map((p) => {
     if (!p.locations?.name && !p.assets?.source_name) {
       return {
         ...p,
-        locations: { name: "Toàn khoa (Gộp 25 máy xét nghiệm)" },
+        locations: { name: "Toàn khoa (20 máy xét nghiệm)" },
       };
     }
     return p;
   });
 
-  // Chọn kỳ: ưu tiên kỳ người dùng bấm chọn -> kỳ đầu tiên theo biểu mẫu/thời gian; không phụ thuộc APPROVED.
-  const selectedPeriod = matching.find((period) => period.id === filters.periodId) 
-    ?? matching[0] 
-    ?? null;
+  // Sort matching: higher record_count first
+  matching.sort((a, b) => (b.record_count ?? 0) - (a.record_count ?? 0));
+
+  const selectedPeriod = (filters.periodId ? matching.find((p) => p.id === filters.periodId) : null)
+    ?? (explicitTarget ?? matching[0] ?? null);
 
   let records: unknown[] = [];
   if (selectedPeriod) {

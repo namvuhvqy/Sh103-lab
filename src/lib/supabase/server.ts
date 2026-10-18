@@ -9,14 +9,20 @@ function publicSupabaseConfig() {
 }
 
 export async function createClient() {
-  const cookieStore = await cookies();
+  let cookieStore: Awaited<ReturnType<typeof cookies>> | null = null;
+  try {
+    cookieStore = await cookies();
+  } catch {
+    // Outside request scope (scripts, tests)
+  }
   const { url, anonKey } = publicSupabaseConfig();
-  return createServerClient(url, anonKey, {
+  const key = !cookieStore && process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY : anonKey;
+  return createServerClient(url, key, {
     cookies: {
-      getAll: () => cookieStore.getAll(),
+      getAll: () => cookieStore?.getAll() ?? [],
       setAll: (cookiesToSet) => {
         try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore?.set(name, value, options));
         } catch {
           // Server Components cannot mutate cookies. proxy.ts refreshes sessions.
         }
