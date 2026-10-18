@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentShift, vietnamParts } from "./domain";
+import { ensureOperationalMonthSafe } from "./ensure-month";
 
 function monthBounds(date = new Date()) {
   const { date: iso } = vietnamParts(date);
@@ -16,8 +17,7 @@ export async function ensurePeriod(templateCode: string, locationId: string | nu
   const { data: version } = await supabase.from("form_template_versions").select("id").eq("form_template_id", template.id).eq("status", "PUBLISHED").single();
   if (!version) throw new Error("Biểu mẫu chưa có phiên bản phát hành");
   const bounds = monthBounds();
-  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: bounds.today });
-  if (ensureError) throw new Error(ensureError.message);
+  await ensureOperationalMonthSafe(supabase, bounds.today);
   let query = supabase.from("register_periods").select("id").eq("form_version_id", version.id).eq("period_start", bounds.start).eq("period_end", bounds.end);
   query = locationId ? query.eq("location_id", locationId) : query.is("location_id", null);
   query = assetId ? query.eq("asset_id", assetId) : query.is("asset_id", null);
@@ -63,8 +63,7 @@ export async function getBm06ByDateShift(businessDate?: string, shiftCode?: stri
   const { data: version } = await supabase.from("form_template_versions").select("id,form_templates!inner(code)").eq("status", "PUBLISHED").eq("form_templates.code", "BM.06/QL.TRTB.01").single();
   if (!version) return null;
   const bounds = monthBounds(new Date(`${selectedBusinessDate}T12:00:00+07:00`));
-  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: selectedBusinessDate });
-  if (ensureError) throw new Error(ensureError.message);
+  await ensureOperationalMonthSafe(supabase, selectedBusinessDate);
   const { data: period, error } = await supabase.from("register_periods").select("id").eq("form_version_id", version.id).eq("period_start", bounds.start).eq("period_end", bounds.end).is("location_id", null).is("asset_id", null).single();
   if (error || !period) throw new Error(error?.message ?? "Không tìm thấy kỳ BM.06");
   const periodId = period.id;

@@ -33,7 +33,7 @@ export default async function Home() {
     ? { title: `${summary.broken} máy đang ở trạng thái H`, description: "Kiểm tra nhật ký BM.06 và xử lý theo quy trình của khoa.", href: "/equipment", cta: "Xem thiết bị", tone: "danger" as const }
     : summary.pending > 0
       ? { title: `Còn ${summary.pending} mục trong phiên chưa hoàn thành`, description: "Xử lý ngay trong Phiên làm việc, không cần mở màn hình việc riêng.", href: "/quick-duty", cta: "Mở phiên làm việc", tone: "warning" as const }
-      : { title: "Vận hành ổn định", description: "Các nghĩa vụ hiện tại đã được xử lý, không ghi nhận máy H.", href: "/dashboard", cta: "Xem Dashboard", tone: "success" as const };
+      : { title: "Vận hành ổn định", description: "Các nghĩa vụ hiện tại đã được xử lý, không ghi nhận máy H.", href: "/equipment", cta: "Xem thiết bị", tone: "success" as const };
 
   return <AppShell headerTitle="Khoa Sinh hóa" headerSubtitle={`BV Quân y 103 · ${activeShift.label}`} unreadCount={summary.unreadNotifications} isAdmin={access?.isAdmin}>
     <div className="space-y-5 md:space-y-7">

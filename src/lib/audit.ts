@@ -1,0 +1,35 @@
+import { createClient } from "@/lib/supabase/server";
+
+export interface LogAuditEventParams {
+  action: string;
+  entityType: string;
+  entityId: string;
+  actorUserId?: string | null;
+  beforeData?: Record<string, unknown> | null;
+  afterData?: Record<string, unknown> | null;
+  requestId?: string | null;
+}
+
+/**
+ * Appends an immutable audit event according to ISO 15189 compliance.
+ * Handles errors gracefully to avoid disrupting the primary clinical workflow.
+ */
+export async function logAuditEvent(params: LogAuditEventParams): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("audit_events").insert({
+      action: params.action,
+      entity_type: params.entityType,
+      entity_id: params.entityId,
+      actor_user_id: params.actorUserId ?? null,
+      before_data: params.beforeData ?? null,
+      after_data: params.afterData ?? null,
+      request_id: params.requestId ?? null,
+    });
+    if (error) {
+      console.warn("[logAuditEvent] Supabase warning:", error.message);
+    }
+  } catch (err) {
+    console.warn("[logAuditEvent] Execution error:", err);
+  }
+}

@@ -2,44 +2,9 @@ import { redirect } from "next/navigation";
 import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccess } from "@/lib/forms/workflow";
-import { ShieldCheck, User, Calendar, Activity, CheckCircle2, AlertTriangle, FileText, Lock } from "lucide-react";
+import { AuditLogClientView, type FormattedAuditEvent } from "@/components/admin/AuditLogClientView";
 
 export const dynamic = "force-dynamic";
-
-const ACTION_CONFIGS: Record<string, { label: string; badge: string; color: string }> = {
-  INTERNAL_CONFIRMATION_CHECK: { label: "Xác nhận nội bộ sổ kỳ", badge: "Xác nhận BMK", color: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-  INTERNAL_CONFIRMATION_UNCHECK: { label: "Hủy xác nhận nội bộ", badge: "Hủy xác nhận", color: "bg-amber-50 text-amber-800 border-amber-200" },
-  APPROVE_PERIOD: { label: "Phê duyệt chính thức sổ kỳ", badge: "Phê duyệt", color: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-  APPROVE_INCOMPLETE: { label: "Xác nhận sổ kỳ theo dõi", badge: "Phê duyệt kỳ", color: "bg-teal-50 text-teal-800 border-teal-200" },
-  RETURN_PERIOD: { label: "Yêu cầu chỉnh sửa sổ kỳ", badge: "Trả về", color: "bg-rose-50 text-rose-800 border-rose-200" },
-  SAVE_MEASUREMENT_RECORD: { label: "Ghi nhận nhiệt độ & độ ẩm phòng", badge: "Nhiệt ẩm kế", color: "bg-blue-50 text-blue-800 border-blue-200" },
-  SAVE_EQUIPMENT_SHIFT_DRAFT: { label: "Ghi nhận nhật ký thiết bị (BM.06)", badge: "20 máy XN", color: "bg-indigo-50 text-indigo-800 border-indigo-200" },
-  SAVE_EQUIPMENT_SHIFT_RECORD: { label: "Lưu nhật ký ca thiết bị (BM.06)", badge: "20 máy XN", color: "bg-indigo-50 text-indigo-800 border-indigo-200" },
-  SAVE_DECONTAMINATION_RECORD: { label: "Ghi nhận khử nhiễm bề mặt (BM.01_KNBM)", badge: "Khử nhiễm", color: "bg-purple-50 text-purple-800 border-purple-200" },
-  SAVE_MAINTENANCE_RECORD: { label: "Ghi nhận bảo dưỡng trang thiết bị", badge: "Bảo dưỡng", color: "bg-amber-50 text-amber-800 border-amber-200" },
-  SAVE_DUTY_ROSTER: { label: "Phân công kíp trực chuyên môn", badge: "Kíp trực", color: "bg-teal-50 text-teal-800 border-teal-200" },
-  CREATE_CORRECTION_REQUEST: { label: "Yêu cầu đính chính bản ghi", badge: "Đính chính", color: "bg-amber-50 text-amber-800 border-amber-200" },
-  AUTHORIZE_CORRECTION: { label: "Phê duyệt đính chính bản ghi", badge: "Duyệt đính chính", color: "bg-emerald-50 text-emerald-800 border-emerald-200" },
-  LOGIN: { label: "Đăng nhập hệ thống", badge: "Truy cập", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  CREATE_STAFF_USER: { label: "Tạo tài khoản nhân viên mới", badge: "Nhân sự", color: "bg-teal-50 text-teal-800 border-teal-200" },
-  UPDATE_STAFF_USER: { label: "Cập nhật thông tin nhân viên", badge: "Nhân sự", color: "bg-slate-100 text-slate-700 border-slate-200" },
-  DEACTIVATE_STAFF_USER: { label: "Khóa / Vô hiệu hóa tài khoản", badge: "Bảo mật", color: "bg-rose-50 text-rose-800 border-rose-200" },
-  CREATE_ANNOUNCEMENT: { label: "Đăng thông báo nội bộ khoa", badge: "Thông báo", color: "bg-blue-50 text-blue-800 border-blue-200" },
-  LOG_INCIDENT: { label: "Báo cáo sự cố phòng xét nghiệm", badge: "Sự cố", color: "bg-rose-50 text-rose-800 border-rose-200" },
-};
-
-const ENTITY_LABELS: Record<string, string> = {
-  records: "Bản ghi xét nghiệm",
-  register_periods: "Sổ kỳ theo dõi",
-  register_period: "Sổ kỳ theo dõi",
-  schedule_occurrences: "Phiên làm việc / Ca trực",
-  duty_rosters: "Kíp trực lâm sàng",
-  profiles: "Hồ sơ nhân viên",
-  measurement_details: "Số đo nhiệt độ / độ ẩm",
-  equipment_shift_statuses: "Trạng thái máy xét nghiệm",
-  incidents: "Báo cáo sự cố",
-  announcements: "Thông báo nội bộ",
-};
 
 const ROLE_LABELS: Record<string, string> = {
   DEPARTMENT_HEAD: "Chỉ huy Bộ môn - Khoa",
@@ -48,61 +13,30 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Quản trị viên",
 };
 
-function formatClinicalSummary(action: string, after: Record<string, unknown> | null, before: Record<string, unknown> | null): string {
-  if (action === "INTERNAL_CONFIRMATION_CHECK") {
-    const actor = String(after?.confirmed_by ?? "Chỉ huy BMK");
-    return `Đã xác nhận nội bộ sổ kỳ bởi: ${actor}`;
-  }
-  if (action === "INTERNAL_CONFIRMATION_UNCHECK") {
-    return "Đã hủy bỏ trạng thái xác nhận nội bộ sổ kỳ";
-  }
-  if (action === "APPROVE_INCOMPLETE" || action === "APPROVE_PERIOD") {
-    const label = String(after?.period_label ?? "kỳ chuyên môn");
-    return `Phê duyệt chính thức sổ kỳ theo dõi (${label})`;
-  }
-  if (action === "LOGIN") {
-    return "Đăng nhập thành công vào hệ thống phòng xét nghiệm";
-  }
+const SLOT_LABELS: Record<string, string> = {
+  SHIFT_1: "Ca 1 - Sáng (07:00–11:30)",
+  SHIFT_2: "Ca 2 - Trực trưa (11:30–13:30)",
+  SHIFT_3: "Ca 3 - Chiều (13:30–16:40)",
+  SHIFT_4: "Ca 4 - Trực đêm (16:40–07:00 hôm sau)",
+  MORNING: "Ca Sáng (08:00)",
+  AFTERNOON: "Ca Chiều (14:00)",
+};
 
-  const data = after ?? before ?? {};
-
-  if (data.temperature_c !== undefined || data.target_temperature !== undefined || data.temperature !== undefined) {
-    const temp = data.temperature_c ?? data.target_temperature ?? data.temperature;
-    const hum = data.humidity_pct ?? data.target_humidity ?? data.humidity;
-    return `Ghi nhận Nhiệt độ: ${temp}°C${hum !== null && hum !== undefined ? ` · Độ ẩm: ${hum}%` : ""} (Đạt tiêu chuẩn bảo quản)`;
-  }
-
-  if (Array.isArray(data.target_statuses) || data.equipment_shift_statuses) {
-    return "Ghi nhận trạng thái hoạt động 20 máy xét nghiệm trong ca trực";
-  }
-
-  if (data.daily_done !== undefined || data.target_daily !== undefined || data.daily !== undefined) {
-    const d = Boolean(data.daily_done ?? data.target_daily ?? data.daily);
-    const w = Boolean(data.weekly_done ?? data.target_weekly ?? data.weekly);
-    const s = Boolean(data.spill_event_done ?? data.target_spill ?? data.spill);
-    const parts: string[] = [];
-    if (d) parts.push("Bàn XN hằng ngày");
-    if (w) parts.push("Sàn / Tường định kỳ");
-    if (s) parts.push("Sự cố tràn đổ");
-    return parts.length ? `Khử nhiễm: ${parts.join(" · ")}` : "Ghi nhận khử nhiễm bề mặt theo quy trình";
-  }
-
-  if (data.target_duty_kind || data.duty_kind) {
-    const kind = String(data.target_duty_kind || data.duty_kind);
-    const kindLabel = kind === "LUNCH" ? "Trực trưa (12h-13h30)" : kind === "NIGHT" ? "Trực đêm (16h-7h)" : "Trực 24/7 (Nghỉ/Lễ)";
-    return `Cập nhật kíp trực chuyên môn: ${kindLabel}`;
-  }
-
-  if (data.full_name) {
-    return `Hồ sơ nhân viên: ${data.full_name} (${ROLE_LABELS[String(data.business_role)] ?? data.business_role})`;
-  }
-
-  if (data.title) {
-    return `Tiêu đề thông báo: "${data.title}"`;
-  }
-
-  return "Thao tác đã được ghi nhận và bảo vệ bất biến theo chuẩn ISO 15189";
-}
+const ENTITY_LABELS: Record<string, string> = {
+  record: "Bản ghi xét nghiệm",
+  records: "Bản ghi xét nghiệm",
+  register_period: "Sổ kỳ theo dõi ISO",
+  register_periods: "Sổ kỳ theo dõi ISO",
+  schedule_occurrences: "Phiên làm việc / Ca trực",
+  duty_rosters: "Kíp trực lâm sàng",
+  profiles: "Hồ sơ nhân viên",
+  assets: "Trang thiết bị & Tủ",
+  locations: "Khu vực phòng xét nghiệm",
+  measurement_details: "Số đo nhiệt độ / độ ẩm",
+  equipment_shift_statuses: "Trạng thái máy xét nghiệm",
+  incidents: "Báo cáo sự cố y tế",
+  announcements: "Thông báo nội bộ",
+};
 
 export default async function AuditPage() {
   const access = await getCurrentAccess();
@@ -111,15 +45,25 @@ export default async function AuditPage() {
   }
 
   const supabase = await createClient();
-  const [{ data: events, error }, { data: profiles }] = await Promise.all([
+
+  const [
+    { data: events, error },
+    { data: profiles },
+    { data: locations },
+    { data: assets },
+    { data: periods },
+    { data: templates },
+  ] = await Promise.all([
     supabase
       .from("audit_events")
       .select("id,created_at,actor_user_id,action,entity_type,entity_id,before_data,after_data,request_id")
       .order("created_at", { ascending: false })
-      .limit(100),
-    supabase
-      .from("profiles")
-      .select("user_id,full_name,business_role"),
+      .limit(150),
+    supabase.from("profiles").select("user_id,full_name,business_role"),
+    supabase.from("locations").select("id,name,code"),
+    supabase.from("assets").select("id,display_name,source_name,source_order"),
+    supabase.from("register_periods").select("id,period_label"),
+    supabase.from("form_templates").select("id,code,name"),
   ]);
 
   if (error) {
@@ -127,107 +71,187 @@ export default async function AuditPage() {
   }
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+  const locMap = new Map((locations ?? []).map((l) => [l.id, l.name]));
+  const assetMap = new Map((assets ?? []).map((a) => [a.id, a.display_name || a.source_name]));
+  const periodMap = new Map((periods ?? []).map((p) => [p.id, p.period_label || "Sổ kỳ"]));
+
+  const formattedEvents: FormattedAuditEvent[] = (events ?? []).map((item) => {
+    const after = (item.after_data as Record<string, unknown> | null) ?? {};
+    const before = (item.before_data as Record<string, unknown> | null) ?? {};
+
+    // 1. Xác định Người thực hiện
+    const effectiveActorId =
+      item.actor_user_id ||
+      (typeof after.entered_by === "string" ? after.entered_by : null) ||
+      (typeof after.created_by === "string" ? after.created_by : null) ||
+      (typeof after.approved_by === "string" ? after.approved_by : null) ||
+      (typeof before.entered_by === "string" ? before.entered_by : null);
+
+    const profile = effectiveActorId ? profileMap.get(effectiveActorId) : null;
+    const actorName = profile?.full_name || (effectiveActorId ? "Cán bộ chuyên môn" : "Hệ thống tự động");
+    const actorRole = profile?.business_role ? ROLE_LABELS[profile.business_role] ?? profile.business_role : "";
+
+    // 2. Tra cứu thực thể liên quan
+    const locationName = after.location_id ? locMap.get(String(after.location_id)) : before.location_id ? locMap.get(String(before.location_id)) : undefined;
+    const assetName = after.asset_id ? assetMap.get(String(after.asset_id)) : before.asset_id ? assetMap.get(String(before.asset_id)) : (item.entity_type === "assets" ? assetMap.get(item.entity_id) : undefined);
+    const periodLabel = after.period_id ? periodMap.get(String(after.period_id)) : item.entity_type === "register_period" || item.entity_type === "register_periods" ? periodMap.get(item.entity_id) : undefined;
+    const slotCode = (after.slot_code as string) || (before.slot_code as string) || undefined;
+    const slotName = slotCode ? (SLOT_LABELS[slotCode] ?? slotCode) : "";
+    const targetDate = (after.business_date as string) || (before.business_date as string) || undefined;
+    const lockVersion = typeof after.lock_version === "number" ? after.lock_version : undefined;
+
+    // 3. Phân loại tác vụ và xây dựng tóm tắt hành động người dùng
+    let actionTitle = item.action;
+    let badgeLabel = "Hệ thống";
+    let badgeColor = "bg-slate-100 text-slate-800 border-slate-200";
+    let category: FormattedAuditEvent["category"] = "OTHER";
+    let summary = "Thao tác đã được ghi nhận và bảo vệ bất biến theo chuẩn ISO 15189.";
+
+    const action = item.action;
+    const recordType = (after.record_type as string) || (before.record_type as string) || "";
+
+    if (action === "CREATE_RECORD" || action === "EDIT_RECORD") {
+      const isEdit = action === "EDIT_RECORD";
+      if (recordType === "EQUIPMENT_SHIFT") {
+        category = "BM06";
+        actionTitle = isEdit ? "Cập nhật nhật ký ca thiết bị (BM.06)" : "Ghi nhận nhật ký ca thiết bị (BM.06)";
+        badgeLabel = "BM.06 - 20 Thiết bị";
+        badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-200";
+        const state = (after.record_state as string) || "COMPLETED";
+        summary = `${isEdit ? "Cập nhật" : "Lưu"} nhật ký 20 thiết bị xét nghiệm ${slotName ? `[${slotName}]` : ""} ngày ${targetDate ?? ""}. Trạng thái: ${state === "COMPLETED" ? "Đã chốt hoàn tất" : "Lưu nháp"}.`;
+      } else if (recordType === "MEASUREMENT") {
+        category = "TEMPERATURE";
+        actionTitle = isEdit ? "Cập nhật số đo nhiệt độ / độ ẩm" : "Ghi nhận số đo nhiệt độ / độ ẩm";
+        badgeLabel = "BM.01/02/03 - Nhiệt ẩm";
+        badgeColor = "bg-blue-50 text-blue-800 border-blue-200";
+        const target = assetName || locationName || "phòng xét nghiệm";
+        summary = `${isEdit ? "Hiệu chỉnh" : "Ghi nhận"} số đo nhiệt độ/độ ẩm tại ${target} ${slotName ? `[${slotName}]` : ""} ngày ${targetDate ?? ""}.`;
+      } else if (recordType === "DECONTAMINATION") {
+        category = "DECONTAMINATION";
+        actionTitle = isEdit ? "Cập nhật khử nhiễm bề mặt" : "Ghi nhận khử nhiễm bề mặt (BM.01_KNBM)";
+        badgeLabel = "BM.01_KNBM - Khử nhiễm";
+        badgeColor = "bg-purple-50 text-purple-800 border-purple-200";
+        const target = locationName || "khu vực làm việc";
+        summary = `${isEdit ? "Cập nhật" : "Thực hiện"} khử nhiễm bề mặt tại ${target} ngày ${targetDate ?? ""} theo quy trình khử trùng chuẩn ISO.`;
+      } else if (recordType === "MAINTENANCE") {
+        category = "BM06";
+        actionTitle = isEdit ? "Cập nhật bảo dưỡng thiết bị (BM.02)" : "Ghi nhận bảo dưỡng thiết bị (BM.02)";
+        badgeLabel = "BM.02 - Bảo dưỡng";
+        badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+        const target = assetName || "thiết bị y tế";
+        summary = `${isEdit ? "Cập nhật" : "Hoàn thành"} bảo dưỡng định kỳ thiết bị ${target} ngày ${targetDate ?? ""}.`;
+      } else {
+        actionTitle = isEdit ? "Chỉnh sửa bản ghi xét nghiệm" : "Tạo bản ghi xét nghiệm mới";
+        badgeLabel = "Bản ghi ISO";
+        badgeColor = "bg-teal-50 text-teal-800 border-teal-200";
+        summary = `Ghi nhận bản ghi loại ${recordType || item.entity_type} ngày ${targetDate ?? ""}.`;
+      }
+    } else if (action === "MARK_READY") {
+      category = "APPROVAL";
+      actionTitle = "Khóa sổ kỳ & Gửi duyệt chuyên môn";
+      badgeLabel = "Chờ duyệt";
+      badgeColor = "bg-teal-50 text-teal-800 border-teal-200";
+      summary = `Đã hoàn thành số liệu và gửi sổ kỳ "${periodLabel || "sổ theo dõi"}" lên Ban chỉ huy khoa xem xét ký duyệt.`;
+    } else if (action === "APPROVE" || action === "APPROVE_PERIOD" || action === "APPROVE_INCOMPLETE") {
+      category = "APPROVAL";
+      actionTitle = "Phê duyệt chính thức sổ kỳ theo dõi";
+      badgeLabel = "Phê duyệt ISO";
+      badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+      summary = `Chỉ huy BMK / Bác sĩ đã kiểm tra toàn bộ hồ sơ và ký số phê duyệt chính thức sổ kỳ "${periodLabel || "sổ theo dõi"}".`;
+    } else if (action === "RETURN" || action === "RETURN_PERIOD") {
+      category = "APPROVAL";
+      actionTitle = "Yêu cầu chỉnh sửa sổ kỳ (Trả về)";
+      badgeLabel = "Trả về";
+      badgeColor = "bg-rose-50 text-rose-800 border-rose-200";
+      const reason = (after.returned_reason as string) || (before.returned_reason as string) || "Cần bổ sung số liệu";
+      summary = `Lãnh đạo BMK đã từ chối phê duyệt và trả lại sổ kỳ "${periodLabel || "sổ theo dõi"}". Lý do: "${reason}".`;
+    } else if (action === "INTERNAL_CONFIRMATION_CHECK") {
+      category = "APPROVAL";
+      actionTitle = "Xác nhận nội bộ sổ kỳ theo dõi";
+      badgeLabel = "Xác nhận BMK";
+      badgeColor = "bg-emerald-50 text-emerald-800 border-emerald-200";
+      summary = `Chỉ huy BMK đã rà soát và xác nhận nội bộ đạt chuẩn đối với sổ kỳ "${periodLabel || "sổ theo dõi"}".`;
+    } else if (action === "INTERNAL_CONFIRMATION_UNCHECK") {
+      category = "APPROVAL";
+      actionTitle = "Hủy xác nhận nội bộ sổ kỳ";
+      badgeLabel = "Hủy xác nhận";
+      badgeColor = "bg-amber-50 text-amber-800 border-amber-200";
+      summary = `Chỉ huy BMK đã hủy trạng thái xác nhận nội bộ để tiếp tục kiểm tra rà soát.`;
+    } else if (action === "MASTER_DATA_CHANGE") {
+      category = "MASTER";
+      actionTitle = "Cập nhật dữ liệu danh mục gốc";
+      badgeLabel = "Cấu hình hệ thống";
+      badgeColor = "bg-slate-100 text-slate-800 border-slate-300";
+      const target = assetName || locationName || item.entity_type;
+      summary = `Quản trị viên đã thay đổi cấu hình danh mục gốc đối với [${target}]. Trạng thái thiết bị / vị trí đã được đồng bộ.`;
+    } else if (action === "DUTY_ROSTER_SAVE") {
+      category = "BM06";
+      actionTitle = "Phân công kíp trực chuyên môn";
+      badgeLabel = "Kíp trực";
+      badgeColor = "bg-teal-50 text-teal-800 border-teal-200";
+      summary = `Cập nhật danh sách kíp trực chuyên môn ngày ${targetDate ?? ""}.`;
+    } else if (action === "ANNOUNCEMENT_PUBLISH" || action === "CREATE_ANNOUNCEMENT") {
+      category = "OTHER";
+      actionTitle = "Phát hành thông báo nội bộ khoa";
+      badgeLabel = "Thông báo";
+      badgeColor = "bg-blue-50 text-blue-800 border-blue-200";
+      const title = (after.title as string) || "Thông báo nội bộ";
+      summary = `Đã phát hành thông báo: "${title}".`;
+    } else if (action === "LOGIN") {
+      category = "OTHER";
+      actionTitle = "Đăng nhập hệ thống phòng xét nghiệm";
+      badgeLabel = "Truy cập";
+      badgeColor = "bg-slate-100 text-slate-700 border-slate-200";
+      summary = `Đăng nhập thành công vào hệ thống quản lý ISO 15189 Khoa Sinh Hóa.`;
+    } else if (action === "EXPORT_REPORT") {
+      category = "OTHER";
+      actionTitle = "Xuất biểu mẫu báo cáo chuẩn ISO (Excel/PDF)";
+      badgeLabel = "Xuất file";
+      badgeColor = "bg-teal-50 text-teal-800 border-teal-200";
+      summary = `Đã tải về file biểu mẫu chuẩn ISO đối với ${periodLabel || "kỳ báo cáo"}.`;
+    }
+
+    const timeStr = new Date(item.created_at).toLocaleString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+
+    return {
+      id: item.id,
+      createdAt: item.created_at,
+      timeStr,
+      actorName,
+      actorRole,
+      actionTitle,
+      badgeLabel,
+      badgeColor,
+      category,
+      summary,
+      entityType: ENTITY_LABELS[item.entity_type] ?? item.entity_type,
+      entityId: item.entity_id,
+      technicalDetails: {
+        actionCode: item.action,
+        targetDate,
+        slotCode,
+        locationName,
+        assetName,
+        periodLabel,
+        lockVersion,
+      },
+    };
+  });
 
   return (
     <AdminPageShell
       title="Nhật ký kiểm toán y tế (Audit Log)"
-      description="Ghi nhận toàn bộ thao tác nhập liệu, điều chỉnh và xác nhận nội bộ theo tiêu chuẩn ISO 15189 (Bảo vệ bất biến, minh bạch và chống chối bỏ)."
+      description="Ghi nhận toàn bộ thao tác nhập liệu, điều chỉnh, phê duyệt và thay đổi cấu hình theo chuẩn quốc tế ISO 15189:2022 (Bảo vệ bất biến, minh bạch và chống chối bỏ)."
     >
-      <div className="space-y-3.5">
-        {(events ?? []).map((item) => {
-          const profile = item.actor_user_id ? profileMap.get(item.actor_user_id) : null;
-          const roleLabel = profile?.business_role ? ROLE_LABELS[profile.business_role] ?? profile.business_role : "";
-          const actorName = profile
-            ? `${roleLabel ? `${roleLabel}: ` : ""}${profile.full_name}`
-            : item.actor_user_id
-            ? "Cán bộ chuyên môn"
-            : "Hệ thống tự động";
-
-          const actionConfig = ACTION_CONFIGS[item.action] ?? {
-            label: item.action,
-            badge: "Hệ thống",
-            color: "bg-slate-100 text-slate-700 border-slate-200",
-          };
-          const entityLabel = ENTITY_LABELS[item.entity_type] ?? item.entity_type;
-          const summary = formatClinicalSummary(
-            item.action,
-            item.after_data as Record<string, unknown> | null,
-            item.before_data as Record<string, unknown> | null
-          );
-          const timeStr = new Date(item.created_at).toLocaleString("vi-VN", {
-            timeZone: "Asia/Ho_Chi_Minh",
-            hour: "2-digit",
-            minute: "2-digit",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          });
-
-          return (
-            <div
-              key={item.id}
-              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-teal-300 hover:shadow-sm"
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-800 border border-teal-100">
-                    <ShieldCheck className="size-4.5" />
-                  </span>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] font-black uppercase ${actionConfig.color}`}>
-                        {actionConfig.badge}
-                      </span>
-                      <span className="text-[11px] font-bold text-slate-500">
-                        Đối tượng: {entityLabel}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-black text-slate-900 mt-0.5">
-                      {actionConfig.label}
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 shrink-0">
-                  <Calendar className="size-3.5 text-slate-400" />
-                  <span>{timeStr}</span>
-                </div>
-              </div>
-
-              {/* Tóm tắt hành động chi tiết */}
-              <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <User className="size-4 text-teal-700 shrink-0" />
-                  <span className="font-bold text-slate-900">{actorName}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-teal-900 font-semibold bg-teal-50/80 px-2.5 py-1 rounded-lg border border-teal-100/60">
-                  <Activity className="size-3.5 text-teal-700 shrink-0" />
-                  <span>{summary}</span>
-                </div>
-              </div>
-
-              {/* Chi tiết kỹ thuật mở rộng */}
-              <details className="mt-3 text-xs text-slate-500">
-                <summary className="cursor-pointer font-bold hover:text-teal-700 select-none">
-                  Xem thông số kỹ thuật &amp; Mã truy vết
-                </summary>
-                <div className="mt-2 rounded-xl bg-slate-50 p-3 font-mono text-[11px] text-slate-700 border border-slate-200 space-y-1">
-                  <p><b>Mã bản ghi (ID):</b> {item.entity_id}</p>
-                  <p><b>Mã tác vụ (Action ID):</b> {item.action}</p>
-                  <p><b>Thời gian ISO:</b> {item.created_at}</p>
-                </div>
-              </details>
-            </div>
-          );
-        })}
-
-        {!events?.length ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center text-slate-500">
-            <ShieldCheck className="mx-auto size-10 text-slate-300" />
-            <p className="mt-2 text-sm font-semibold">Chưa có sự kiện kiểm toán nào được ghi nhận.</p>
-          </div>
-        ) : null}
-      </div>
+      <AuditLogClientView events={formattedEvents} />
     </AdminPageShell>
   );
 }

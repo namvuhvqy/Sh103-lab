@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentShift } from "./domain";
 import { summarizeAreaProgress } from "./area-progress";
+import { ensureOperationalMonthSafe } from "./ensure-month";
 import type { TaskView } from "@/components/forms/TaskList";
 
 export interface OccurrenceView {
@@ -18,8 +19,7 @@ export interface AssetView { id: string; source_name: string; source_code: strin
 export async function getAreaSummaries() {
   const supabase = await createClient();
   const shift = currentShift();
-  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: shift.businessDate });
-  if (ensureError) throw new Error(`Không khởi tạo được kỳ vận hành: ${ensureError.message}`);
+  await ensureOperationalMonthSafe(supabase, shift.businessDate);
   const [{ data: locations, error: locationError }, { data: assets, error: assetError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
     supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order"),
     supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true),
@@ -60,15 +60,14 @@ export async function getOccurrence(id: string): Promise<OccurrenceView | null> 
 export async function getTodayTasks(date?: string): Promise<TaskView[]> {
   const supabase = await createClient();
   const today = date ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
-  const { error: ensureError } = await supabase.rpc("ensure_operational_month", { target_date: today });
-  if (ensureError) throw new Error(ensureError.message);
+  await ensureOperationalMonthSafe(supabase, today);
   const { data, error } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,window_start,window_end,register_periods(id,locations(code,name),assets(source_name,location_id,locations(code,name)),form_template_versions(form_templates(code,name)))").eq("business_date", today).order("window_start");
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as TaskView[];
 }
 export async function getPeriods(): Promise<PeriodView[]> {
   const supabase = await createClient(); const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
-  const { error } = await supabase.rpc("ensure_operational_month", { target_date: today }); if (error) throw new Error(error.message);
+  await ensureOperationalMonthSafe(supabase, today);
   const { data } = await supabase.from("register_periods").select("id,period_label,status,period_start,period_end,lock_version,approved_by,approved_at,returned_reason,locations(code,name),assets(source_name),form_template_versions(form_templates(code,name)),schedule_occurrences(id,status,fulfilled_by_record_id)").order("period_start", { ascending: false });
   return (data ?? []) as unknown as PeriodView[];
 }
