@@ -12,6 +12,12 @@ export async function loginAction(_previous: { ok: boolean; message?: string }, 
 
   if (email === "adminsinhhoa" || email === "admin") {
     email = "adminsinhhoa@sh103.hospital";
+  } else if (email === "nam" || email === "namvu" || email === "namvuhvqy") {
+    email = "namvuhvqy@gmail.com";
+  } else if (email === "thuan" || email === "hqthuan") {
+    email = "hqthuan@sh103.hospital";
+  } else if (email === "hop" || email === "vqhop") {
+    email = "vqhop@sh103.hospital";
   } else if (!email.includes("@")) {
     email = `${email}@sh103.hospital`;
   }

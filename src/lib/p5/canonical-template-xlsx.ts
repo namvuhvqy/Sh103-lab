@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import ExcelJS from "exceljs";
 import { buildBm06WorkbookFromTemplate } from "@/lib/p5/bm06-template-xlsx";
@@ -46,6 +47,14 @@ function applyCellFormat(cell: ExcelJS.Cell, value: unknown, align = centerAlign
   }
 }
 
+function resolveTemplatePath(filename: string): string {
+  const p1 = join(process.cwd(), "docs", "danh mục biểu mẫu", filename);
+  if (existsSync(p1)) return p1;
+  const p2 = join(process.cwd(), "public", "templates", filename);
+  if (existsSync(p2)) return p2;
+  return p1;
+}
+
 export async function buildCanonicalReportWorkbook(model: ReportExportModel): Promise<Buffer> {
   const code = model.templateCode;
 
@@ -56,12 +65,11 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
     return Buffer.from(bytes);
   }
 
-  const templateDir = join(/*turbopackIgnore: true*/ process.cwd(), "docs", "danh mục biểu mẫu");
   const { year, month } = parseMonthYear(model.period.period_start);
 
   // 2. BM.01/QL.HTAT: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm
   if (code.includes("BM.01/QL.HTAT")) {
-    const templatePath = join(templateDir, "BM.01_QL.HTAT_TD nhiệt độ PXN.xlsx");
+    const templatePath = resolveTemplatePath("BM.01_QL.HTAT_TD nhiệt độ PXN.xlsx");
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(templatePath);
     const ws = wb.worksheets[0];
@@ -112,7 +120,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
   // 3. BM.02/QL.HTAT.01: Theo dõi tủ lạnh mát
   if (code.includes("BM.02/QL.HTAT")) {
-    const templatePath = join(templateDir, "BM.02.QL.HTAT.01_TD tủ lạnh mát.xlsx");
+    const templatePath = resolveTemplatePath("BM.02.QL.HTAT.01_TD tủ lạnh mát.xlsx");
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(templatePath);
     const ws = wb.getWorksheet("Mat") || wb.worksheets[0];
@@ -164,7 +172,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
   // 4. BM.03/QL.HTAT.01: Theo dõi tủ lạnh đá (-20°C)
   if (code.includes("BM.03/QL.HTAT")) {
-    const templatePath = join(templateDir, "BM.03.QL.HTAT.01_TD tủ lạnh đá.xlsx");
+    const templatePath = resolveTemplatePath("BM.03.QL.HTAT.01_TD tủ lạnh đá.xlsx");
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(templatePath);
     const ws = wb.getWorksheet("NganDa") || wb.worksheets[0];
@@ -214,7 +222,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
 
   // 5. BM.01_KNBM: Theo dõi khử nhiễm bề mặt
   if (code.includes("BM.01_KNBM") || code.includes("KNBM")) {
-    const templatePath = join(templateDir, "BM.01_KNBM.xlsx");
+    const templatePath = resolveTemplatePath("BM.01_KNBM.xlsx");
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(templatePath);
     const ws = wb.worksheets[0];
@@ -257,7 +265,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel): Pr
   }
 
   // 6. BM.02/QL.TRTB: Bảng theo dõi - bảo dưỡng TTB
-  const templatePath = join(templateDir, "BM.02.Bảng theo dõi - bảo dưỡng TTB.xlsx");
+  const templatePath = resolveTemplatePath("BM.02.Bảng theo dõi - bảo dưỡng TTB.xlsx");
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(templatePath);
   const ws = wb.worksheets[0];

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import * as XLSX from "xlsx";
 import ExcelJS from "exceljs";
@@ -18,8 +19,17 @@ const centerAlign: Partial<ExcelJS.Alignment> = {
   wrapText: true,
 };
 
+function resolveTemplatePath(filename: string): string {
+  const p1 = join(process.cwd(), "docs", "danh mục biểu mẫu", filename);
+  if (existsSync(p1)) return p1;
+  const p2 = join(process.cwd(), "public", "templates", filename);
+  if (existsSync(p2)) return p2;
+  return p1;
+}
+
 export async function buildBm06WorkbookFromTemplate(model: ReportExportModel): Promise<ExcelJS.Workbook> {
-  const raw = await readFile(join(/*turbopackIgnore: true*/ process.cwd(), "docs", "danh mục biểu mẫu", "BM.06. Nhật kí hoạt động TTB.xlsx"));
+  const templatePath = resolveTemplatePath("BM.06. Nhật kí hoạt động TTB.xlsx");
+  const raw = await readFile(templatePath);
   const xlsxWb = XLSX.read(raw, { type: "buffer" });
   const sanitized = XLSX.write(xlsxWb, { type: "buffer", bookType: "xlsx" });
 

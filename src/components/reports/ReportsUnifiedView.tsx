@@ -154,9 +154,9 @@ export function ReportsUnifiedView({
   };
 
   // Switch Month
-  const handleSelectMonth = (month: string) => {
+  const handleSelectMonth = (month: string, year: string = workspace.year) => {
     router.push(
-      `/reports?tab=forms&template=${encodeURIComponent(currentTemplateCode)}&year=${workspace.year}&month=${month}`
+      `/reports?tab=forms&template=${encodeURIComponent(currentTemplateCode)}&year=${year}&month=${month}`
     );
   };
 
@@ -448,39 +448,62 @@ export function ReportsUnifiedView({
               })}
             </div>
 
-            {/* BỘ CHỌN THÁNG (THÁNG 9 MẪU CHUẨN VS THÁNG 10 HIỆN HÀNH) */}
-            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-teal-700" />
-                <span className="font-bold text-slate-700">Chọn tháng theo dõi:</span>
-                <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectMonth("09")}
-                    className={`px-3 py-1.5 rounded-lg font-black transition ${
-                      workspace.month === "09"
-                        ? "bg-teal-800 text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
+            {/* BỘ CHỌN THÁNG LINH HOẠT TỪ THÁNG 9/2026 TRỞ ĐI */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <Calendar className="size-4 text-teal-700 shrink-0" />
+                <span className="font-bold text-slate-700 shrink-0">Chọn tháng theo dõi:</span>
+
+                {/* Các nút bấm chọn nhanh */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { value: "09", year: "2026", label: "Tháng 09/2026", tag: "Mẫu ISO chuẩn" },
+                    { value: "10", year: "2026", label: "Tháng 10/2026", tag: "Hiện hành" },
+                    { value: "11", year: "2026", label: "Tháng 11/2026", tag: "" },
+                    { value: "12", year: "2026", label: "Tháng 12/2026", tag: "" },
+                  ].map((m) => {
+                    const active = workspace.month === m.value && workspace.year === m.year;
+                    return (
+                      <button
+                        key={`${m.year}-${m.value}`}
+                        type="button"
+                        onClick={() => handleSelectMonth(m.value, m.year)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black transition ${
+                          active
+                            ? "bg-teal-800 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        }`}
+                      >
+                        {m.label} {m.tag ? `(${m.tag})` : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Menu chọn tất cả các tháng bắt đầu từ Tháng 09/2026 */}
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                  <span className="text-slate-500 font-medium">Tất cả tháng:</span>
+                  <select
+                    value={`${workspace.year}-${workspace.month}`}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split("-");
+                      if (m && y) handleSelectMonth(m, y);
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 focus:border-teal-700 focus:outline-none"
                   >
-                    Tháng 09/2026 (Mẫu ISO chuẩn · Đầy đủ dữ liệu)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectMonth("10")}
-                    className={`px-3 py-1.5 rounded-lg font-black transition ${
-                      workspace.month === "10"
-                        ? "bg-teal-800 text-white shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    Tháng 10/2026 (Tháng hiện hành)
-                  </button>
+                    <option value="2026-09">Tháng 09/2026 (Mẫu ISO chuẩn · 100% dữ liệu)</option>
+                    <option value="2026-10">Tháng 10/2026 (Tháng hiện hành)</option>
+                    <option value="2026-11">Tháng 11/2026</option>
+                    <option value="2026-12">Tháng 12/2026</option>
+                    <option value="2027-01">Tháng 01/2027</option>
+                    <option value="2027-02">Tháng 02/2027</option>
+                    <option value="2027-03">Tháng 03/2027</option>
+                  </select>
                 </div>
               </div>
 
-              <span className="text-[11px] text-slate-500">
-                Tháng {workspace.month} / {workspace.year}
+              <span className="rounded-md bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-800">
+                Đang hiển thị: Tháng {workspace.month} / {workspace.year}
               </span>
             </div>
           </section>

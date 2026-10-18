@@ -36,24 +36,23 @@ export function DesktopSidebar({
     { label: "Trang chủ", href: "/", icon: Home },
     { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
     { label: "Nhiệt độ & Độ ẩm", href: "/temperature", icon: Layers },
-    { label: "Thiết bị / BM.06", href: "/equipment", icon: Layers },
-    { label: "Sổ / Kỳ theo dõi", href: "/periods", icon: BookOpen },
-    { label: "Thông báo", href: "/notifications", icon: Bell, count: unreadCount },
+    { label: "Nhật ký thiết bị (BM.06)", href: "/equipment", icon: Layers },
+    { label: "Khử nhiễm bề mặt", href: "/decontamination", icon: ShieldCheck },
+    { label: "Thông báo khoa", href: "/notifications", icon: Bell, count: unreadCount },
     { label: "Báo cáo sự cố", href: "/incidents", icon: CircleAlert },
   ];
 
   const reviewTasks = [
-    { label: "Chờ duyệt kỳ", href: "/approvals", icon: CheckCircle2 },
-    { label: "Dashboard toàn khoa", href: "/dashboard", icon: BarChart3 },
-    { label: "Báo cáo & Xuất file", href: "/reports", icon: FileText },
-    { label: "Sổ / Kỳ đã lưu", href: "/periods", icon: History },
+    { label: "Báo cáo & Xuất biểu mẫu ISO", href: "/reports", icon: FileText },
   ];
 
   const adminTasks = [
-    { label: "Quản trị dữ liệu nền", href: "/admin/master", icon: Settings },
+    { label: "Nhật ký kiểm toán y tế", href: "/admin/audit", icon: ShieldCheck },
+    { label: "Quản lý nhân sự", href: "/admin/users", icon: Settings },
     { label: "Quản trị thiết bị & Tủ", href: "/admin/assets", icon: Settings },
-    { label: "Quản lý khu vực & Điểm đo", href: "/admin/locations", icon: Settings },
-    { label: "Admin Announcement", href: "/admin/announcements", icon: Megaphone },
+    { label: "Khu vực & Điểm đo", href: "/admin/locations", icon: Settings },
+    { label: "Dữ liệu danh mục gốc", href: "/admin/master", icon: Settings },
+    { label: "Thông báo nội bộ khoa", href: "/admin/announcements", icon: Megaphone },
   ];
 
   return (

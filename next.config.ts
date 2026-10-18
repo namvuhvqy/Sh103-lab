@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./docs/danh mục biểu mẫu/**/*", "./public/templates/**/*"],
+  },
 };
 
 export default nextConfig;

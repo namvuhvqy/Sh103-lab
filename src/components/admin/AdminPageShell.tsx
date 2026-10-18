@@ -2,12 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const adminLinks = [
-  ["Khu vực", "/admin/locations"],
-  ["Thiết bị & tủ", "/admin/assets"],
-  ["Nhân sự", "/admin/users"],
-  ["Master Data", "/admin/master"],
-  ["Seed / Import", "/admin/import"],
-  ["Audit log", "/admin/audit"],
+  ["Khu vực & Điểm đo", "/admin/locations"],
+  ["Thiết bị & Tủ", "/admin/assets"],
+  ["Quản lý nhân sự", "/admin/users"],
+  ["Dữ liệu danh mục gốc", "/admin/master"],
+  ["Khởi tạo dữ liệu", "/admin/import"],
+  ["Nhật ký kiểm toán y tế", "/admin/audit"],
 ] as const;
 
 export function AdminPageShell({ title, description, children }: { title: string; description: string; children: ReactNode }) {
