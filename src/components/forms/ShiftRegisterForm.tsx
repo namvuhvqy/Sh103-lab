@@ -21,6 +21,7 @@ export function ShiftRegisterForm({
   areaCode,
   staffCandidates = [],
   initialCoWorkerId = null,
+  initialNote = "",
 }: {
   occurrenceId: string;
   assets: ShiftAsset[];
@@ -29,9 +30,11 @@ export function ShiftRegisterForm({
   areaCode?: string;
   staffCandidates?: StaffCandidate[];
   initialCoWorkerId?: string | null;
+  initialNote?: string;
 }) {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [coWorkerId, setCoWorkerId] = useState<string>(initialCoWorkerId ?? "");
+  const [note, setNote] = useState<string>(initialNote);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -267,6 +270,8 @@ export function ShiftRegisterForm({
           Ghi chú bàn giao &amp; Sự cố thiết bị
           <textarea
             name="note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             rows={2}
             className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
             placeholder="Ghi nhận các lưu ý đặc biệt, lỗi máy hoặc cảnh báo hóa chất nếu có..."

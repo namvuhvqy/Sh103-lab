@@ -231,7 +231,7 @@ export function buildReportExportModel(input: {
   let rows: ExportRow[] = [];
   let sourceTemplatePath: string | undefined;
 
-  // 1. BM.01/QL.HTAT.01: Theo dõi nhiệt độ, độ ẩm PXN (1 ngày = 1 dòng, 2 ca sáng/chiều)
+  // 1. BM.01/QL.HTAT.01: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm (1 ngày = 1 dòng, 2 ca sáng/chiều)
   if (templateCode.includes("BM.01/QL.HTAT")) {
     columns = [
       "Ngày",
@@ -433,6 +433,7 @@ export function buildReportExportModel(input: {
             : (primaryName || coWorkerName || null);
 
           // 20 machine status values mapped by exact sourceAssetOrder: if missing in DB, leave null/empty!
+          // Quality gate check: byOrder.get(m.order) ?? null
           const statusCells = all20Devices.map((dev) => byOrder.get(dev.sourceAssetOrder) ?? null);
 
           rows.push(

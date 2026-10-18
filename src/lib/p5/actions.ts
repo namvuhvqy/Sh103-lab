@@ -187,3 +187,81 @@ export async function transitionIncidentAction(
     return { success: false, error: errorMessage(err, "Không thể cập nhật trạng thái sự cố") };
   }
 }
+
+export async function toggleNotificationLikeAction(targetId: string): Promise<ActionResponse<{ liked: boolean }>> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Yêu cầu đăng nhập để thực hiện Like" };
+    }
+
+    // Check if already liked
+    const { data: existing } = await supabase
+      .from("notification_interactions")
+      .select("id")
+      .eq("target_id", targetId)
+      .eq("user_id", user.id)
+      .eq("interaction_type", "LIKE")
+      .maybeSingle();
+
+    if (existing) {
+      // Unlike
+      await supabase
+        .from("notification_interactions")
+        .delete()
+        .eq("id", existing.id);
+      revalidatePath("/notifications");
+      return { success: true, data: { liked: false } };
+    } else {
+      // Like
+      await supabase
+        .from("notification_interactions")
+        .insert({
+          target_id: targetId,
+          user_id: user.id,
+          interaction_type: "LIKE",
+        });
+      revalidatePath("/notifications");
+      return { success: true, data: { liked: true } };
+    }
+  } catch (err: unknown) {
+    return { success: false, error: errorMessage(err, "Không thể thực hiện Like") };
+  }
+}
+
+export async function addNotificationCommentAction(
+  targetId: string,
+  content: string
+): Promise<ActionResponse<{ id: string }>> {
+  try {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return { success: false, error: "Nội dung bình luận không được để trống" };
+    }
+
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Yêu cầu đăng nhập để bình luận" };
+    }
+
+    const { data, error } = await supabase
+      .from("notification_interactions")
+      .insert({
+        target_id: targetId,
+        user_id: user.id,
+        interaction_type: "COMMENT",
+        content: trimmed,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+    revalidatePath("/notifications");
+    return { success: true, data: { id: data.id } };
+  } catch (err: unknown) {
+    return { success: false, error: errorMessage(err, "Không thể gửi bình luận") };
+  }
+}
+

@@ -91,11 +91,12 @@ export async function POST(request: Request) {
     return redirectError(request, areaCode, validation.error);
   }
 
+  const targetNote = String(data.get("note") || "").trim() || null;
   const { error } = await supabase.rpc("save_equipment_shift_draft", {
     target_occurrence_id: occurrenceId,
     target_usage: null,
     target_unit: null,
-    target_note: String(data.get("note") || "") || null,
+    target_note: targetNote,
     target_statuses: statuses,
     target_finalize: intent === "finalize",
     target_expected_lock: Number(data.get("lockVersion") || 1),
@@ -104,6 +105,29 @@ export async function POST(request: Request) {
 
   if (error) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
+  }
+
+  // Audit logging according to ISO 15189 compliance: record note + machine statuses
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { logAuditEvent } = await import("@/lib/audit");
+    await logAuditEvent({
+      action: intent === "finalize" ? "BM06_FINALIZE_SHIFT" : "BM06_SAVE_SHIFT",
+      entityType: "schedule_occurrences",
+      entityId: occurrenceId,
+      actorUserId: user?.id,
+      afterData: {
+        action_label: intent === "finalize" ? "Hoàn tất ca BM.06" : "Lưu trạng thái BM.06",
+        note: targetNote,
+        statuses_count: Array.isArray(statuses) ? statuses.length : 0,
+        machine_statuses: statuses,
+        area_code: areaCode || "ALL",
+        co_worker_user_id: coWorkerUserId,
+        finalized: intent === "finalize",
+      },
+    });
+  } catch (auditErr) {
+    console.warn("[BM06 Audit Log Warning]:", auditErr);
   }
 
   try {
