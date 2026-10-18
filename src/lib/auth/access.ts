@@ -17,7 +17,7 @@ export function roleLabel(role: BusinessRole): string {
 export type RouteAccessLevel = "public" | "authenticated" | "admin";
 
 export function routeAccessLevel(pathname: string): RouteAccessLevel {
-  if (pathname === "/login" || pathname === "/offline" || pathname.startsWith("/auth/")) {
+  if (pathname === "/login" || pathname === "/offline" || pathname.startsWith("/auth/") || pathname.startsWith("/prototypes/")) {
     return "public";
   }
   if (pathname === "/admin" || pathname.startsWith("/admin/")) {
