@@ -78,7 +78,7 @@ export function WorkSessionView({ sessionData }: Props) {
     {
       code: "BM.06",
       title: "Nhật ký hoạt động thiết bị",
-      description: "25 máy · BT / KSD / H",
+      description: "20 máy · BT / KSD / H",
       href: `/equipment?date=${businessDate}&shift=${slotCode}#bm06-entry`,
       icon: ClipboardCheck,
       occurrences: getOccurrencesForForm("BM.06"),

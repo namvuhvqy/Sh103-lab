@@ -39,6 +39,22 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
     const locName = model.period.locations?.name || "Khu vực Xét nghiệm";
     ws.cell("A4").value(`Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`);
 
+    // Populate Sub-headers for Sáng / Chiều in Row 8 of BM.01
+    ws.cell("B8").value("Sáng");
+    ws.cell("C8").value("Chiều");
+    ws.cell("D8").value("Sáng");
+    ws.cell("E8").value("Chiều");
+    ws.cell("F8").value("Sáng");
+    ws.cell("G8").value("Chiều");
+    ws.range("B8:G8").style({
+      bold: true,
+      fontFamily: "Times New Roman",
+      fontSize: 10,
+      verticalAlignment: "center",
+      horizontalAlignment: "center",
+      border: true,
+    });
+
     // Populate day rows (Day 1 starts at Row 9)
     for (const rowModel of model.rows) {
       const [dayVal, timeM, timeA, tempM, tempA, humM, humA, noteVal, performerName] = rowModel.cells;
@@ -82,6 +98,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
     }
 
     // Fill daily temperatures (Day 1: S=Col B (2), C=Col C (3))
+    // Note: Row 9 contains official template header columns "S" and "C" - must NOT be overwritten!
     for (const rowModel of model.rows) {
       const [dayVal, tempM, tempA, , , performerName] = rowModel.cells;
       const day = Number(dayVal);
@@ -90,8 +107,21 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
       const colS = 2 * day;     // Day 1 => col 2 (B)
       const colC = 2 * day + 1; // Day 1 => col 3 (C)
 
-      ws.cell(9, colS).value(tempM !== null && tempM !== undefined ? Number(tempM) : "");
-      ws.cell(9, colC).value(tempA !== null && tempA !== undefined ? Number(tempA) : "");
+      // Ensure Row 9 sub-headers stay crisp
+      ws.cell(9, colS).value("S");
+      ws.cell(9, colC).value("C");
+
+      // Plot temperatures into the vertical grid (Rows 10 to 25: 15°C down to 0°C)
+      if (tempM !== null && tempM !== undefined && !isNaN(Number(tempM))) {
+        const valM = Number(tempM);
+        const rowM = 25 - Math.round(Math.min(15, Math.max(0, valM)));
+        ws.cell(rowM, colS).value(valM);
+      }
+      if (tempA !== null && tempA !== undefined && !isNaN(Number(tempA))) {
+        const valA = Number(tempA);
+        const rowA = 25 - Math.round(Math.min(15, Math.max(0, valA)));
+        ws.cell(rowA, colC).value(valA);
+      }
 
       if (performerName) {
         ws.cell(26, colS).value(String(performerName));
@@ -114,6 +144,7 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
     const assetCodePart = model.period.assets?.source_code ? ` (Mã: ${model.period.assets.source_code})` : "";
     ws.cell("A4").value(`Tên thiết bị: ${assetName}${assetCodePart} - Tháng ${month} Năm ${year}`);
 
+    // Note: Row 8 contains official template header columns "S" and "C" - must NOT be overwritten!
     for (const rowModel of model.rows) {
       const [dayVal, tempM, tempA, , , performerName] = rowModel.cells;
       const day = Number(dayVal);
@@ -122,8 +153,21 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
       const colS = 2 * day;     // Day 1 => col 2 (B)
       const colC = 2 * day + 1; // Day 1 => col 3 (C)
 
-      ws.cell(8, colS).value(tempM !== null && tempM !== undefined ? Number(tempM) : "");
-      ws.cell(8, colC).value(tempA !== null && tempA !== undefined ? Number(tempA) : "");
+      // Ensure Row 8 sub-headers stay crisp
+      ws.cell(8, colS).value("S");
+      ws.cell(8, colC).value("C");
+
+      // Plot temperatures into the vertical grid (Rows 9 to 29: -10°C down to -30°C)
+      if (tempM !== null && tempM !== undefined && !isNaN(Number(tempM))) {
+        const valM = Number(tempM);
+        const rowM = 9 + (-10 - Math.round(Math.min(-10, Math.max(-30, valM))));
+        ws.cell(rowM, colS).value(valM);
+      }
+      if (tempA !== null && tempA !== undefined && !isNaN(Number(tempA))) {
+        const valA = Number(tempA);
+        const rowA = 9 + (-10 - Math.round(Math.min(-10, Math.max(-30, valA))));
+        ws.cell(rowA, colC).value(valA);
+      }
 
       if (performerName) {
         ws.cell(30, colS).value(String(performerName));

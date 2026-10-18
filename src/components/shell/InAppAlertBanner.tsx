@@ -52,7 +52,7 @@ export function InAppAlertBanner() {
             <Bell className="size-3.5" />
           </span>
           <p className="truncate font-semibold">
-            <b className="text-teal-200">Nhắc việc ca trực:</b> Kiểm tra 5 khu vực nhiệt độ (BM.01) &amp; 25 máy (BM.06) theo chuẩn ISO 15189.
+            <b className="text-teal-200">Nhắc việc ca trực:</b> Kiểm tra 5 khu vực nhiệt độ (BM.01) &amp; 20 máy (BM.06) theo chuẩn ISO 15189.
           </p>
         </div>
 

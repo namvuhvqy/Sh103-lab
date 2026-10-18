@@ -134,8 +134,62 @@ function daysFor(startDateStr: string) {
   }));
 }
 
-function findSlot(records: ReportRecord[], dateStr: string, slot: string, label: string) {
-  return records.find((r) => r.business_date === dateStr && (r.slot_code === slot || r.slot_code === label));
+function findSlot(
+  records: ReportRecord[],
+  dateStr: string,
+  targetSlot: string,
+  label?: string
+): ReportRecord | undefined {
+  const dayRecords = records.filter((r) => r.business_date === dateStr);
+  if (!dayRecords.length) return undefined;
+
+  // 1. First priority: Exact match with targetSlot or label (e.g. SHIFT_1, MORNING, AFTERNOON, etc.)
+  const exact = dayRecords.filter((r) => {
+    const sc = (r.slot_code ?? "").toUpperCase().trim();
+    const target = targetSlot.toUpperCase().trim();
+    const lbl = (label ?? "").toUpperCase().trim();
+
+    if (sc === target || (lbl && sc === lbl)) return true;
+
+    if (target === "MORNING") {
+      return sc === "SÁNG" || sc === "SANG" || sc === "SHIFT_1" || sc === "SLOT_1";
+    }
+    if (target === "AFTERNOON") {
+      return sc === "CHIỀU" || sc === "CHIEU" || sc === "SHIFT_3" || sc === "SLOT_2";
+    }
+    return false;
+  });
+
+  if (exact.length > 0) {
+    // Return the latest record if multiple revisions exist
+    return exact[exact.length - 1];
+  }
+
+  // 2. Second priority for temperature: Fallback by performed_at / entered_at time in Vietnam timezone (UTC+7)
+  const targetUpper = targetSlot.toUpperCase().trim();
+  if (targetUpper === "MORNING" || targetUpper === "AFTERNOON") {
+    const sorted = [...dayRecords].sort((a, b) => {
+      const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
+      const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
+      return tA - tB;
+    });
+
+    if (sorted.length === 1) {
+      const r = sorted[0];
+      const ts = r.performed_at ?? r.entered_at;
+      if (ts) {
+        const vnHour = (new Date(ts).getUTCHours() + 7) % 24;
+        if (targetUpper === "MORNING" && vnHour < 12) return r;
+        if (targetUpper === "AFTERNOON" && vnHour >= 12) return r;
+      }
+      return undefined;
+    }
+
+    if (targetUpper === "MORNING") return sorted[0];
+    if (targetUpper === "AFTERNOON") return sorted[sorted.length - 1];
+  }
+
+  return undefined;
 }
 
 function mkRow(
@@ -192,8 +246,8 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING", "Sáng");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON", "Chiều");
+      const rMorning = findSlot(records, d.dateStr, "MORNING");
+      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 
@@ -274,8 +328,8 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING", "Sáng");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON", "Chiều");
+      const rMorning = findSlot(records, d.dateStr, "MORNING");
+      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 

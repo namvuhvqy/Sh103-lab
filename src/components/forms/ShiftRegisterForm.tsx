@@ -128,7 +128,7 @@ export function ShiftRegisterForm({
         ) : null}
       </div>
 
-      {/* Danh sách 25 máy trên 1 màn hình tập trung */}
+      {/* Danh sách 20 máy trên 1 màn hình tập trung */}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((asset) => {
           const current = statuses[asset.id];

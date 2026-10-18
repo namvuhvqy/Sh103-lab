@@ -124,7 +124,7 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
             {is24h
               ? "Ngày nghỉ / Lễ: Kíp trực thực hiện nhiệm vụ từ 07:00 hôm nay đến 07:00 hôm sau. Ghi nhận 4 biểu mẫu và bàn giao thiết bị."
               : shift.code === "SHIFT_1"
-              ? "Ca sáng (07:00 – 11:30): Ghi nhận nhiệt độ PXN BM.01, tủ lạnh BM.02-03 và trạng thái 25 thiết bị BM.06."
+              ? "Ca sáng (07:00 – 11:30): Ghi nhận nhiệt độ PXN BM.01, tủ lạnh BM.02-03 và trạng thái 20 thiết bị BM.06."
               : shift.code === "SHIFT_2"
               ? "Ca trực trưa (11:30 – 13:30): Trực nhận mẫu cấp cứu, theo dõi thiết bị liên tục và kiểm soát sự cố."
               : shift.code === "SHIFT_3"
