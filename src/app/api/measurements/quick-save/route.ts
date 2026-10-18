@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 const finiteNumberOrNull = (value: unknown): number | null | undefined => {
@@ -53,6 +54,17 @@ export async function POST(request: Request) {
         { success: false, error: denied ? "Không có quyền ghi số đo" : conflict ? "Điểm đo đã được ghi" : invalid ? "Thiếu giá trị đo bắt buộc" : "Không thể lưu số đo" },
         { status: denied ? 403 : conflict ? 409 : invalid ? 400 : 500 },
       );
+    }
+
+    try {
+      revalidatePath("/");
+      revalidatePath("/temperature");
+      revalidatePath("/quick-duty");
+      revalidatePath("/dashboard");
+      revalidatePath("/approvals");
+      revalidatePath("/reports");
+    } catch {
+      // Revalidation may be a no-op in standalone test environments
     }
 
     return NextResponse.json({

@@ -34,30 +34,27 @@ describe("P5 mobile visual fidelity and data visualization", () => {
     expect(read("src/app/reports/page.tsx")).toMatch(/StatusDistribution/);
   });
 
-  it("presents approval as a Head-only period and register center", () => {
+  it("presents form monitoring as the main completion-control center", () => {
     const approvals = read("src/app/approvals/page.tsx");
-    expect(approvals).toMatch(/if \(!access\?\.canApprove\) redirect/);
-    expect(approvals).toMatch(/Chờ phê duyệt/);
-    expect(approvals).toMatch(/Đã phê duyệt/);
-    expect(approvals).toMatch(/Bị trả lại/);
-    expect(approvals).toMatch(/toàn kỳ\/sổ/);
+    expect(approvals).toMatch(/Theo dõi biểu mẫu/);
+    expect(approvals).toMatch(/Kiểm soát hoàn thiện/);
+    expect(approvals).not.toMatch(/if \(!access\?\.canApprove\) redirect/);
+    expect(approvals).not.toMatch(/BatchApprovalSection/);
   });
 
   it("provides the export workspace flow from the attached mockup", () => {
     const route = read("src/app/reports/export/page.tsx");
-    expect(route).toMatch(/Kỳ báo cáo cần xuất/);
-    expect(route).toMatch(/Chọn 1 trong/);
-    expect(route).toMatch(/Xem trước/);
+    expect(route).toMatch(/6 biểu mẫu đầu ra/);
+    expect(route).toMatch(/Preview/);
     expect(route).toMatch(/Excel \(\.xlsx\)/);
-    expect(route).toMatch(/PrintButton/);
-    expect(read("src/components/p5/PrintButton.tsx")).toMatch(/In phiếu \/ Lưu PDF/);
+    expect(route).not.toMatch(/PrintButton|PDF|CSV/);
     expect(route).toMatch(/getExportWorkspace/);
   });
 
-  it("keeps export data official, approved and effective", () => {
+  it("keeps export data effective and independent from approval", () => {
     const queries = read("src/lib/p5/operational-queries.ts");
     expect(queries).toMatch(/getExportWorkspace/);
-    expect(queries).toContain('status", "APPROVED');
+    expect(queries).toContain("không phụ thuộc APPROVED");
     expect(queries).toMatch(/is_effective/);
     expect(read("src/app/reports/page.tsx")).toContain("/reports/export");
   });

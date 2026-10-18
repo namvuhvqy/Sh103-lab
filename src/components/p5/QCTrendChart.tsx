@@ -9,6 +9,7 @@ export interface QCTrendPoint {
   time: string;
   temperature: number | null;
   humidity: number | null;
+  category?: "ROOM" | "COOLER" | "FREEZER";
 }
 
 interface QCTrendChartProps {
@@ -25,12 +26,37 @@ export function QCTrendChart({
   points = [],
 }: QCTrendChartProps) {
   const [metric, setMetric] = useState<"temperature" | "humidity">("temperature");
+  const [category, setCategory] = useState<"ALL" | "ROOM" | "COOLER" | "FREEZER">("ALL");
+
+  const categoryFiltered = useMemo(() => {
+    if (category === "ALL") return points;
+    return points.filter((p) => (p.category ?? "ROOM") === category);
+  }, [category, points]);
+
   const usable = useMemo(
-    () => points.filter((point) => point[metric] !== null && Number.isFinite(point[metric])),
-    [metric, points],
+    () => categoryFiltered.filter((point) => point[metric] !== null && Number.isFinite(point[metric])),
+    [categoryFiltered, metric],
   );
   const values = usable.map((point) => point[metric] as number);
-  const bounds = metric === "temperature" ? { min: 10, max: 30, lower: 21, upper: 26, unit: "°C" } : { min: 20, max: 90, lower: 20, upper: 80, unit: "%" };
+
+  const bounds = useMemo(() => {
+    if (metric === "humidity") {
+      return { min: 20, max: 90, lower: 20, upper: 80, unit: "%" };
+    }
+    if (category === "COOLER") {
+      return { min: 0, max: 12, lower: 2, upper: 8, unit: "°C" };
+    }
+    if (category === "FREEZER") {
+      return { min: -35, max: -5, lower: -30, upper: -10, unit: "°C" };
+    }
+    if (category === "ROOM") {
+      return { min: 15, max: 32, lower: 21, upper: 26, unit: "°C" };
+    }
+    const valMin = values.length ? Math.min(...values) : 2;
+    const valMax = values.length ? Math.max(...values) : 26;
+    return { min: Math.min(-10, valMin - 2), max: Math.max(30, valMax + 2), lower: 21, upper: 26, unit: "°C" };
+  }, [category, metric, values]);
+
   const min = values.length ? Math.min(bounds.min, ...values) : bounds.min;
   const max = values.length ? Math.max(bounds.max, ...values) : bounds.max;
   const x = (index: number) => 48 + (index / Math.max(usable.length - 1, 1)) * 422;
@@ -43,12 +69,35 @@ export function QCTrendChart({
           <h2 className="text-base font-black tracking-tight text-slate-900 sm:text-lg">{title}</h2>
           <p className="text-xs font-medium text-slate-500">Chỉ hiển thị bản ghi đã đồng bộ từ Supabase; UCL/LCL là dải tham chiếu.</p>
         </div>
-        <div className="flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
-          {(["temperature", "humidity"] as const).map((value) => (
-            <button key={value} type="button" onClick={() => setMetric(value)} className={cn("min-h-9 rounded-xl px-3 text-xs font-black", metric === value ? "bg-teal-700 text-white" : "text-slate-600")}>
-              {value === "temperature" ? "Nhiệt độ" : "Độ ẩm"}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          {metric === "temperature" ? (
+            <div className="flex rounded-2xl border border-slate-200 bg-slate-100 p-1 text-[11px] font-bold">
+              {(
+                [
+                  ["ALL", "Tất cả"],
+                  ["ROOM", "Phòng (21-26°C)"],
+                  ["COOLER", "Tủ mát (2-8°C)"],
+                  ["FREEZER", "Tủ đông"],
+                ] as const
+              ).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setCategory(val)}
+                  className={cn("min-h-8 rounded-xl px-2.5", category === val ? "bg-teal-700 text-white font-black" : "text-slate-600")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="flex rounded-2xl border border-slate-200 bg-slate-100 p-1">
+            {(["temperature", "humidity"] as const).map((value) => (
+              <button key={value} type="button" onClick={() => setMetric(value)} className={cn("min-h-8 rounded-xl px-3 text-xs font-black", metric === value ? "bg-teal-700 text-white" : "text-slate-600")}>
+                {value === "temperature" ? "Nhiệt độ" : "Độ ẩm"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

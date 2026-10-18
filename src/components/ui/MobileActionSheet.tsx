@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { 
   FileSpreadsheet, 
-  Printer, 
   Edit3, 
   Home, 
   X, 
@@ -22,12 +21,6 @@ interface MobileActionSheetProps {
 export function MobileActionSheet({ onQuickInput, exportHref = "/reports/export", className }: MobileActionSheetProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handlePrint = () => {
-    setIsOpen(false);
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  };
 
   const handleQuickInput = () => {
     setIsOpen(false);
@@ -122,22 +115,6 @@ export function MobileActionSheet({ onQuickInput, exportHref = "/reports/export"
                 <ChevronRight className="size-4 text-slate-400" />
               </Link>
 
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="flex w-full items-center justify-between rounded-2xl bg-slate-50 p-3.5 text-left border border-slate-100 hover:bg-slate-100 active:scale-[0.98] transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid size-10 place-items-center rounded-xl bg-sky-700 text-white shadow-xs">
-                    <Printer className="size-5" />
-                  </span>
-                  <div>
-                    <p className="text-sm font-black text-slate-900">In phiếu / Xuất bản PDF</p>
-                    <p className="text-[11px] text-slate-500">Định dạng A4 chuẩn lưu trữ khoa</p>
-                  </div>
-                </div>
-                <ChevronRight className="size-4 text-slate-400" />
-              </button>
 
               <Link
                 href="/"

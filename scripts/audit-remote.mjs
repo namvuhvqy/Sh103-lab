@@ -18,7 +18,7 @@ const [locations, equipment, versions, bm06Assets, profiles, scopes, authRespons
   get("/rest/v1/locations?select=code&code=in.(SINH_HOA,MIEN_DICH,NUOC_TIEU,LY_TAM,NHAN_BENH_PHAM)"),
   get("/rest/v1/assets?select=source_order,locations(code)&asset_type=eq.LAB_EQUIPMENT&active=eq.true"),
   get("/rest/v1/form_template_versions?select=id,form_templates!inner(code)&status=eq.PUBLISHED"),
-  get("/rest/v1/form_version_assets?select=asset_id,form_template_versions!inner(form_templates!inner(code))&form_template_versions.form_templates.code=eq.BM.06%2FQL.TRTB.01"),
+  get("/rest/v1/form_version_assets?select=asset_id,display_order,active,form_version_id,form_template_versions!inner(version_label,status,form_templates!inner(code))&form_template_versions.form_templates.code=eq.BM.06%2FQL.TRTB.01"),
   get("/rest/v1/profiles?select=user_id,business_role,active"),
   get("/rest/v1/user_scope_assignments?select=user_id,can_view,can_enter,active"),
   fetch(`${base}/auth/v1/admin/users?page=1&per_page=1`, { headers }).then(async response => {
@@ -34,7 +34,13 @@ if (locations.length !== 5) failures.push(`expected 5 operational locations, got
 if (equipment.length !== 25) failures.push(`expected 25 lab equipment rows, got ${equipment.length}`);
 for (const [code, count] of Object.entries(expectedCounts)) if (areaCounts[code] !== count) failures.push(`${code}: expected ${count}, got ${areaCounts[code] ?? 0}`);
 if (versions.length !== 6) failures.push(`expected 6 published form versions, got ${versions.length}`);
-if (bm06Assets.length !== 25) failures.push(`expected 25 BM.06 snapshot assets, got ${bm06Assets.length}`);
+const bm06PublishedAssets = bm06Assets.filter(item => item.form_template_versions?.status === "PUBLISHED" && item.active);
+const bm06HistoricalAssets = bm06Assets.filter(item => item.form_template_versions?.status !== "PUBLISHED" || !item.active);
+const bm06PublishedOrders = bm06PublishedAssets.map(item => item.display_order).sort((a, b) => a - b);
+const bm06ExpectedOrders = Array.from({ length: 25 }, (_, index) => index + 1);
+if (bm06PublishedAssets.length !== 25) failures.push(`expected 25 current BM.06 snapshot assets, got ${bm06PublishedAssets.length}`);
+if (new Set(bm06PublishedAssets.map(item => item.asset_id)).size !== 25) failures.push("current BM.06 snapshot assets are not 25 unique assets");
+if (JSON.stringify(bm06PublishedOrders) !== JSON.stringify(bm06ExpectedOrders)) failures.push(`current BM.06 display_order must be 1..25, got ${bm06PublishedOrders.join(",")}`);
 if (users.length < 1) failures.push("no Supabase Auth user exists");
 const activeProfiles = profiles.filter(profile => profile.active && ["DEPARTMENT_HEAD", "DOCTOR", "TECHNICIAN"].includes(profile.business_role));
 const hasOperationalAccess = activeProfiles.some(profile => profile.business_role === "DEPARTMENT_HEAD") || scopes.some(scope => scope.active && scope.can_view && activeProfiles.some(profile => profile.user_id === scope.user_id));
@@ -45,4 +51,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log(JSON.stringify({ ok: true, locations: locations.length, equipment: equipment.length, areaCounts, publishedVersions: versions.length, bm06SnapshotAssets: bm06Assets.length, authUsers: users.length, activeProfiles: activeProfiles.length, activeBusinessScopes: scopes.filter(scope => scope.active && scope.can_view).length }));
+console.log(JSON.stringify({ ok: true, locations: locations.length, equipment: equipment.length, areaCounts, publishedVersions: versions.length, bm06SnapshotAssets: bm06PublishedAssets.length, bm06HistoricalSnapshotAssets: bm06HistoricalAssets.length, bm06TotalSnapshotAssetsAcrossVersions: bm06Assets.length, authUsers: users.length, activeProfiles: activeProfiles.length, activeBusinessScopes: scopes.filter(scope => scope.active && scope.can_view).length }));

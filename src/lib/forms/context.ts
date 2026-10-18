@@ -33,11 +33,20 @@ export async function getBm06Occurrence(occurrenceId: string, areaCode?: string)
   const typed = occurrence as unknown as OccurrenceRow | null;
   if (!typed) return null;
   const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,location_id,locations!inner(code))").eq("form_version_id", typed.register_periods.form_version_id).eq("active", true).order("display_order");
-  let initialStatuses: Record<string,string> = {}; let lockVersion = 1;
-  if (typed.fulfilled_by_record_id) { const [{data:record},{data:statuses}] = await Promise.all([supabase.from("records").select("lock_version").eq("id",typed.fulfilled_by_record_id).single(),supabase.from("equipment_shift_statuses").select("asset_id,status_code").eq("shift_record_id",typed.fulfilled_by_record_id)]); lockVersion=record?.lock_version??1;initialStatuses=Object.fromEntries((statuses??[]).map(s=>[s.asset_id,s.status_code])); }
+  let initialStatuses: Record<string,string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null;
+  if (typed.fulfilled_by_record_id) {
+    const [{data:record},{data:statuses}] = await Promise.all([
+      supabase.from("records").select("lock_version,context_snapshot").eq("id",typed.fulfilled_by_record_id).single(),
+      supabase.from("equipment_shift_statuses").select("asset_id,status_code").eq("shift_record_id",typed.fulfilled_by_record_id)
+    ]);
+    lockVersion=record?.lock_version??1;
+    initialStatuses=Object.fromEntries((statuses??[]).map(s=>[s.asset_id,s.status_code]));
+    const ctx = (record?.context_snapshot as Record<string, unknown>) || {};
+    initialCoWorkerId = (ctx.co_worker_id as string) || null;
+  }
   type AssetRow={asset_id:string;display_order:number;assets:{source_name:string;locations:{code:string}}};
   const assets=((rows??[]) as unknown as AssetRow[]).map(row=>({id:row.asset_id,sourceOrder:row.display_order,name:row.assets.source_name,locationCode:row.assets.locations.code}));
-  return { occurrence:typed, assets, initialStatuses, lockVersion, areaCode };
+  return { occurrence:typed, assets, initialStatuses, lockVersion, initialCoWorkerId, areaCode };
 }
 
 export async function getBm06ByDateShift(businessDate?: string, shiftCode?: string, areaCode?: string) {
@@ -62,14 +71,20 @@ export async function getBm06ByDateShift(businessDate?: string, shiftCode?: stri
   const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id").eq("period_id", periodId).eq("business_date", selectedBusinessDate).eq("slot_code", selectedShift).single();
   if (!occurrence) return null;
   const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,location_id,locations!inner(code))").eq("form_version_id", version.id).eq("active", true).order("display_order");
-  let initialStatuses: Record<string, string> = {}; let lockVersion = 1;
+  let initialStatuses: Record<string, string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null;
   if (occurrence.fulfilled_by_record_id) {
-    const [{ data: record }, { data: statuses }] = await Promise.all([supabase.from("records").select("lock_version").eq("id", occurrence.fulfilled_by_record_id).single(), supabase.from("equipment_shift_statuses").select("asset_id,status_code").eq("shift_record_id", occurrence.fulfilled_by_record_id)]);
-    lockVersion = record?.lock_version ?? 1; initialStatuses = Object.fromEntries((statuses ?? []).map(s => [s.asset_id,s.status_code]));
+    const [{ data: record }, { data: statuses }] = await Promise.all([
+      supabase.from("records").select("lock_version,context_snapshot").eq("id", occurrence.fulfilled_by_record_id).single(),
+      supabase.from("equipment_shift_statuses").select("asset_id,status_code").eq("shift_record_id", occurrence.fulfilled_by_record_id)
+    ]);
+    lockVersion = record?.lock_version ?? 1;
+    initialStatuses = Object.fromEntries((statuses ?? []).map(s => [s.asset_id,s.status_code]));
+    const ctx = (record?.context_snapshot as Record<string, unknown>) || {};
+    initialCoWorkerId = (ctx.co_worker_id as string) || null;
   }
   type AssetRow = { asset_id: string; display_order: number; assets: { source_name: string; locations: { code: string } } };
   const assets = ((rows ?? []) as unknown as AssetRow[]).map((row) => ({ id: row.asset_id, sourceOrder: row.display_order, name: row.assets.source_name, locationCode: row.assets.locations.code }));
-  return { occurrence, assets, initialStatuses, lockVersion, areaCode, shift, periodId };
+  return { occurrence, assets, initialStatuses, lockVersion, initialCoWorkerId, areaCode, shift, periodId };
 }
 
 export async function getCurrentBm06(areaCode?: string) {

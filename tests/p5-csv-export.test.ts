@@ -17,25 +17,10 @@ const period = {
   form_template_versions: { version_label: "v1", form_templates: { code: "BM.06/QL.TRTB.01", name: "Nhật ký hoạt động" } },
 };
 
-function parseCsvLine(line: string) {
-  const cells: string[] = [];
-  let value = "";
-  let quoted = false;
-  for (let index = 0; index < line.length; index++) {
-    const char = line[index];
-    if (char === '"' && quoted && line[index + 1] === '"') { value += '"'; index++; }
-    else if (char === '"') quoted = !quoted;
-    else if (char === "," && !quoted) { cells.push(value); value = ""; }
-    else value += char;
-  }
-  cells.push(value);
-  return cells;
-}
-
-describe("official CSV export", () => {
+describe("legacy CSV export", () => {
   beforeEach(() => getOfficialPeriodReport.mockReset());
 
-  it("maps BM.06 statuses to all 25 machine columns by display order", async () => {
+  it("remains available for legacy callers but is not an Owner quality gate", async () => {
     getOfficialPeriodReport.mockResolvedValue({
       official: true,
       period,
@@ -52,14 +37,10 @@ describe("official CSV export", () => {
     });
 
     const response = await GET(new Request("https://example.test"), context);
-    const lines = (await response.text()).replace(/^\uFEFF/, "").split("\r\n");
-    const headerIndex = lines.findIndex((line) => line.includes('"STT","Ngày vận hành"'));
-    const row = parseCsvLine(lines[headerIndex + 1]);
-
-    expect(row[5]).toBe("H");
-    expect(row[6]).toBe("KSD");
-    expect(row[7]).toBe("");
-    expect(row[29]).toBe("BT");
-    expect(parseCsvLine(lines[headerIndex + 2])[5]).toBe("");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/csv");
+    const body = await response.text();
+    expect(body).toContain("ĐÃ PHÊ DUYỆT (LỊCH SỬ)");
+    expect(body).not.toContain("Đạt chuẩn");
   });
 });

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { validateDecontamination } from "@/lib/forms/validation";
 
@@ -37,5 +38,16 @@ export async function saveDecontaminationAction(form: FormData) {
     target_note: String(form.get("note") || "") || null,
   });
   if (error) fail(form, area, "Không thể lưu khử nhiễm. Vui lòng tải lại và thử lại.");
+
+  try {
+    revalidatePath("/decontamination");
+    revalidatePath("/");
+    revalidatePath("/quick-duty");
+    revalidatePath("/dashboard");
+    revalidatePath("/approvals");
+  } catch {
+    // Revalidation may be a no-op in standalone test environments
+  }
+
   redirect(safeReturnTo(form, area, { saved: area }));
 }

@@ -2,9 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { shiftProgress } from "@/lib/forms/domain";
-import { RotateCcw, HelpCircle } from "lucide-react";
+import { RotateCcw, HelpCircle, Users, UserCheck } from "lucide-react";
 
 export type ShiftAsset = { id: string; sourceOrder: number; name: string; locationCode: string };
+
+export type StaffCandidate = {
+  user_id: string;
+  full_name: string;
+  business_role: string;
+  source_order?: number | null;
+};
 
 export function ShiftRegisterForm({
   occurrenceId,
@@ -12,14 +19,19 @@ export function ShiftRegisterForm({
   initialStatuses,
   lockVersion,
   areaCode,
+  staffCandidates = [],
+  initialCoWorkerId = null,
 }: {
   occurrenceId: string;
   assets: ShiftAsset[];
   initialStatuses: Record<string, string>;
   lockVersion: number;
   areaCode?: string;
+  staffCandidates?: StaffCandidate[];
+  initialCoWorkerId?: string | null;
 }) {
   const [statuses, setStatuses] = useState(initialStatuses);
+  const [coWorkerId, setCoWorkerId] = useState<string>(initialCoWorkerId ?? "");
   const [showTooltip, setShowTooltip] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -190,6 +202,63 @@ export function ShiftRegisterForm({
             </fieldset>
           );
         })}
+      </div>
+
+      {/* Menu chọn thêm người cùng kíp từ danh sách nhân sự (Lưu ý 2) */}
+      <div className="rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/40 via-white to-slate-50 p-4 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-xl bg-teal-100/70 text-teal-800">
+              <Users className="size-4" />
+            </span>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                Người cùng kíp trực
+                <span className="rounded-md bg-teal-100/80 px-2 py-0.5 text-[10px] font-bold text-teal-800">Tùy chọn ISO</span>
+              </h3>
+              <p className="text-[11px] font-semibold text-slate-500">
+                Đối với kíp trực 2 người, chọn cán bộ cùng kíp. Có thể chọn bỏ qua khi kíp chỉ 1 người.
+              </p>
+            </div>
+          </div>
+
+          {coWorkerId ? (
+            <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-emerald-100 px-3 py-1 text-xs font-black text-emerald-800 border border-emerald-200">
+              <UserCheck className="size-3.5" />
+              Kíp 2 người
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 self-start sm:self-auto rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 border border-slate-200">
+              Kíp 1 người (Đơn lẻ)
+            </span>
+          )}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-1">
+          <label className="sr-only" htmlFor="coWorkerUserId">Chọn thêm người cùng kíp trực</label>
+          <select
+            id="coWorkerUserId"
+            name="coWorkerUserId"
+            value={coWorkerId}
+            onChange={(e) => setCoWorkerId(e.target.value)}
+            className="w-full min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-800 outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30 cursor-pointer"
+          >
+            <option value="">-- Bỏ qua (Kíp chỉ 1 người) --</option>
+            {staffCandidates.map((staff) => {
+              const roleLabel =
+                staff.business_role === "DEPARTMENT_HEAD"
+                  ? "Chỉ huy BMK"
+                  : staff.business_role === "DOCTOR"
+                  ? "Bác sĩ"
+                  : "Kỹ thuật viên";
+              return (
+                <option key={staff.user_id} value={staff.user_id}>
+                  {staff.source_order ? `#${staff.source_order} ` : ""}{staff.full_name} · {roleLabel}
+                </option>
+              );
+            })}
+          </select>
+        </div>
       </div>
 
       {/* Lượng sử dụng được xác định bởi slot/khung giờ của occurrence. */}

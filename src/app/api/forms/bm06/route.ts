@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { validateShiftStatuses } from "@/lib/forms/validation";
 
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
   const occurrenceId = String(data.get("occurrenceId") ?? "");
   const areaCode = String(data.get("areaCode") ?? "");
   const intent = String(data.get("intent") ?? "draft");
+  const coWorkerUserId = String(data.get("coWorkerUserId") ?? "").trim() || null;
 
   let statuses: unknown;
   try {
@@ -96,10 +98,23 @@ export async function POST(request: Request) {
     target_statuses: statuses,
     target_finalize: intent === "finalize",
     target_expected_lock: Number(data.get("lockVersion") || 1),
+    target_coworker_id: coWorkerUserId,
   });
 
   if (error) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
+  }
+
+  try {
+    revalidatePath("/");
+    revalidatePath("/equipment");
+    revalidatePath("/bm06");
+    revalidatePath("/quick-duty");
+    revalidatePath("/dashboard");
+    revalidatePath("/approvals");
+    revalidatePath("/reports");
+  } catch {
+    // Revalidation may be a no-op in standalone test environments
   }
 
   return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);

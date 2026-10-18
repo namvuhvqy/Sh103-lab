@@ -1,8 +1,8 @@
 # 02_FORMS_DATA_RULES_FINAL
 
-**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa  
-**Trạng thái:** FINAL — đặc tả nghiệp vụ biểu mẫu và quy tắc dữ liệu đã khóa cho MVP/Core Pilot  
-**Phụ thuộc:** `00_PRODUCT_SCOPE_FINAL.md`  
+**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa
+**Trạng thái:** FINAL — đặc tả nghiệp vụ biểu mẫu và quy tắc dữ liệu đã khóa cho MVP/Core Pilot
+**Phụ thuộc:** `00_PRODUCT_SCOPE_FINAL.md`
 **Mục đích:** Là nguồn sự thật duy nhất cho **biểu mẫu nào tồn tại, dữ liệu nào phải lưu, lịch/ca nào áp dụng, ngưỡng nào được dùng, cách nhập bù/N-A, cách phê duyệt và cách dựng sổ/báo cáo đầu ra**.
 
 > Nếu code, database, UI hoặc tài liệu khác mâu thuẫn với file này thì **không tự đoán và không tự sửa nghiệp vụ**. Dừng task liên quan, đối chiếu nguồn và cập nhật đặc tả trước.
@@ -654,7 +654,7 @@ Nguồn Phụ lục có tên lặp/không đồng nhất, ví dụ:
 - `Máy xét nghiệm khí máu Geem 3500` xuất hiện hơn một lần;
 - nhiều thiết bị chưa có mã tài sản chuẩn.
 
-**Pilot:** không tự gộp các dòng trùng tên. Mỗi dòng nguồn là một đối tượng riêng trong danh mục bằng ID nội bộ; tạm dùng tên + vị trí/thứ tự để phân biệt nếu cần.  
+**Pilot:** không tự gộp các dòng trùng tên. Mỗi dòng nguồn là một đối tượng riêng trong danh mục bằng ID nội bộ; tạm dùng tên + vị trí/thứ tự để phân biệt nếu cần.
 **Production:** phải chuẩn hóa mã/tên chính thức trước khi dùng dữ liệu thật lâu dài.
 
 ## 10.4. Trạng thái máy FINAL
@@ -1066,3 +1066,21 @@ Sau khi file này được commit vào repo:
 
 đều phải được xem là **thay đổi nghiệp vụ**, cập nhật file này trước hoặc cùng Pull Request. Không được sửa âm thầm chỉ trong code/database.
 
+---
+
+# OWNER DECISION — Form Monitoring + Export Simplification (2026-09-28)
+
+This section supersedes older approval-gated workflow text where there is conflict. Historical approval/audit data remains preserved.
+
+- Production is feature-frozen while this refactor is built on `refactor/simplify-form-monitoring-export`; do not merge to `master` or deploy Production during Owner preview.
+- Approval is no longer a required workflow in daily use. The primary control surface is **Theo dõi biểu mẫu / Kiểm soát hoàn thiện**.
+- Users must be able to see each of the 6 core forms by required obligations, entered records, missing items, abnormalities, entered-by attribution, and change history where needed.
+- Export is independent of approval state: Preview and Excel/XLSX must work for incomplete or unapproved periods. No API may return `409` solely because a period is not `APPROVED`.
+- Legacy states such as `APPROVED`, `READY_FOR_REVIEW`, `RETURNED`, `period_actions`, audit events, and correction history are retained for historical integrity but are not prerequisites for export.
+- `/reports/export` flow is: choose form → choose month/year and relevant contextual filters only → preview → Excel/XLSX. PDF, CSV, and Print are not part of the primary workflow.
+- Preview/export must follow source templates as closely as possible: A4, orientation, administrative header, form code/version/title, merged-cell intent, borders, rows/columns, spacing, signature/admin sections, ordering, and page breaks. Data fills source-template slots; it must not become a generic data table.
+- BM.06 preview follows the current authorized XLSX source layout. The v4.1 XLSX has no explicit row breaks and uses `fitToWidth=1`, `fitToHeight=0`; therefore the app must not invent a fixed day-count page break.
+- Missing database values render blank; never render `—`, `Chưa nhập`, fabricated KTV names, normal/đạt/hoàn thành values, or any business value not entered by a user.
+- Signature/administrative sections must be configurable so Owner can later merge “Người xem xét” and “Chỉ huy khoa” without editing each renderer/template by hand.
+- Source template policy: table-like forms prefer XLSX templates; narrative forms remain DOCX; CSV is raw-data export only and is not a source template. Raw original source files must not be overwritten. If conversion is needed, keep original and create a versioned normalized copy.
+- No destructive migration in this phase: do not drop approval tables/columns, audit, correction history, approved records, or rewrite historical data. Schema cleanup is deferred to a later stabilization phase.

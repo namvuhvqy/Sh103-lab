@@ -1,8 +1,8 @@
 # 03_SCREEN_MENU_UIUX_FINAL
 
-**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa  
-**Trạng thái:** FINAL — màn hình, menu, quyền hiển thị và UI/UX cho MVP/Core Pilot  
-**Phụ thuộc bắt buộc:**  
+**Dự án:** Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa
+**Trạng thái:** FINAL — màn hình, menu, quyền hiển thị và UI/UX cho MVP/Core Pilot
+**Phụ thuộc bắt buộc:**
 - `00_PRODUCT_SCOPE_FINAL.md`
 - `02_FORMS_DATA_RULES_FINAL.md`
 - `01_ARCHITECTURE_FINAL.md`
@@ -1638,3 +1638,22 @@ Screen chỉ merge khi:
 - **Trưởng khoa:** ____________________  Ngày: __________
 
 Sau khi commit, mọi thay đổi thêm/bớt screen, đổi permission, menu, approval UX, PWA/offline contract hoặc cách nhập 6 form phải cập nhật file này trước hoặc cùng Pull Request.
+
+---
+
+# OWNER DECISION — Form Monitoring + Export Simplification (2026-09-28)
+
+This section supersedes older approval-gated workflow text where there is conflict. Historical approval/audit data remains preserved.
+
+- Production is feature-frozen while this refactor is built on `refactor/simplify-form-monitoring-export`; do not merge to `master` or deploy Production during Owner preview.
+- Approval is no longer a required workflow in daily use. The primary control surface is **Theo dõi biểu mẫu / Kiểm soát hoàn thiện**.
+- Users must be able to see each of the 6 core forms by required obligations, entered records, missing items, abnormalities, entered-by attribution, and change history where needed.
+- Export is independent of approval state: Preview and Excel/XLSX must work for incomplete or unapproved periods. No API may return `409` solely because a period is not `APPROVED`.
+- Legacy states such as `APPROVED`, `READY_FOR_REVIEW`, `RETURNED`, `period_actions`, audit events, and correction history are retained for historical integrity but are not prerequisites for export.
+- `/reports/export` flow is: choose form → choose month/year and relevant contextual filters only → preview → Excel/XLSX. PDF, CSV, and Print are not part of the primary workflow.
+- Preview/export must follow source templates as closely as possible: A4, orientation, administrative header, form code/version/title, merged-cell intent, borders, rows/columns, spacing, signature/admin sections, ordering, and page breaks. Data fills source-template slots; it must not become a generic data table.
+- BM.06 preview follows the current authorized XLSX source layout. The v4.1 XLSX has no explicit row breaks and uses `fitToWidth=1`, `fitToHeight=0`; therefore the app must not invent a fixed day-count page break.
+- Missing database values render blank; never render `—`, `Chưa nhập`, fabricated KTV names, normal/đạt/hoàn thành values, or any business value not entered by a user.
+- Signature/administrative sections must be configurable so Owner can later merge “Người xem xét” and “Chỉ huy khoa” without editing each renderer/template by hand.
+- Source template policy: table-like forms prefer XLSX templates; narrative forms remain DOCX; CSV is raw-data export only and is not a source template. Raw original source files must not be overwritten. If conversion is needed, keep original and create a versioned normalized copy.
+- No destructive migration in this phase: do not drop approval tables/columns, audit, correction history, approved records, or rewrite historical data. Schema cleanup is deferred to a later stabilization phase.

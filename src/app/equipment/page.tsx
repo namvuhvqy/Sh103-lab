@@ -9,6 +9,7 @@ import { getEquipmentOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { SHIFT_DEFINITIONS, vietnamParts } from "@/lib/forms/domain";
 import { HOSPITAL_FRIDGES_13 } from "@/constants/fridges";
+import { fetchRosterStaffCandidates } from "@/lib/roster/actions";
 import { Activity, CircleAlert, TestTube2, Wrench, Sparkles, Calendar } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -38,10 +39,11 @@ export default async function EquipmentPage({
   const selectedDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
   const selectedShift = query.shift && /^SHIFT_[1-4]$/.test(query.shift) ? query.shift : undefined;
 
-  const [data, unread, bm06Data] = await Promise.all([
+  const [data, unread, bm06Data, staffCandidates] = await Promise.all([
     getEquipmentOverview(selectedDate, selectedShift),
     getUnreadNotificationCount(),
     getBm06ByDateShift(selectedDate, selectedShift),
+    fetchRosterStaffCandidates().catch(() => []),
   ]);
 
   type Asset = {
@@ -304,6 +306,8 @@ export default async function EquipmentPage({
                 assets={bm06Data.assets}
                 initialStatuses={bm06Data.initialStatuses}
                 lockVersion={bm06Data.lockVersion}
+                staffCandidates={staffCandidates}
+                initialCoWorkerId={bm06Data.initialCoWorkerId}
               />
             ) : (
               <p className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">Chưa tìm thấy occurrence BM.06 cho ngày/ca đang chọn.</p>

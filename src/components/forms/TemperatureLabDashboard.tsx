@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { 
   Search, 
   Download, 
@@ -38,7 +39,6 @@ interface TemperatureLabDashboardProps {
   occurrences: InlineOccurrence[];
   chartPoints: QCTrendPoint[];
   activeDate?: string;
-
 }
 
 export function TemperatureLabDashboard({
@@ -46,8 +46,8 @@ export function TemperatureLabDashboard({
   occurrences,
   chartPoints,
   activeDate = "25/09/2026",
-
 }: TemperatureLabDashboardProps) {
+  const router = useRouter();
   // Owner decision: remove only the Tổng quan button; keep chart/list UX and open read-only list by default.
   const [activeTab, setActiveTab] = useState<"list" | "input" | "chart" | "report" | "config">("list");
 
@@ -55,7 +55,43 @@ export function TemperatureLabDashboard({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
   const [selectedShift, setSelectedShift] = useState<string>("MORNING");
-  const points = initialPoints;
+  const [localOverrides, setLocalOverrides] = useState<Record<string, { temperature: number | null; humidity: number | null; isAbnormal: boolean; updatedAt: string }>>({});
+
+  const points = useMemo(() => {
+    if (Object.keys(localOverrides).length === 0) return initialPoints;
+    return initialPoints.map((pt) => {
+      const override = localOverrides[pt.id];
+      return override ? { ...pt, ...override } : pt;
+    });
+  }, [initialPoints, localOverrides]);
+
+  const handleMeasurementSaved = (occId: string, temp: number | null, hum: number | null) => {
+    const targetPoint = initialPoints.find((p) => p.id === occId);
+    const minTemp = targetPoint?.minTemp ?? 21;
+    const maxTemp = targetPoint?.maxTemp ?? 26;
+    const isAbnormal = Boolean(
+      (temp !== null && (temp < minTemp || temp > maxTemp)) ||
+      (hum !== null && (hum < 20 || hum > 80))
+    );
+    setLocalOverrides((prev) => ({
+      ...prev,
+      [occId]: {
+        temperature: temp,
+        humidity: hum,
+        isAbnormal,
+        updatedAt: new Date().toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Asia/Ho_Chi_Minh",
+        }),
+      },
+    }));
+    try {
+      router.refresh();
+    } catch {
+      // Safe fallback
+    }
+  };
 
   // Lọc theo tìm kiếm, khu vực và slot đo thực tế.
   const filteredPoints = useMemo(() => {
@@ -74,6 +110,19 @@ export function TemperatureLabDashboard({
     () => occurrences.filter((occurrence) => occurrence.slot_code === selectedShift),
     [occurrences, selectedShift]
   );
+
+  const activeChartPoints: QCTrendPoint[] = useMemo(() => {
+    return points
+      .filter((p) => p.temperature !== null || p.humidity !== null)
+      .map((p) => ({
+        areaName: p.name,
+        time: p.updatedAt,
+        temperature: p.temperature,
+        humidity: p.humidity,
+        category: p.code.includes("BM.01") ? ("ROOM" as const) : p.code.includes("BM.03") ? ("FREEZER" as const) : ("COOLER" as const),
+      }));
+  }, [points]);
+
   const totalPoints = filteredPoints.length;
   const recordedCount = filteredPoints.filter((p) => p.temperature !== null).length;
   const recordedPercent = totalPoints > 0 ? Math.round((recordedCount / totalPoints) * 100) : 0;
@@ -185,7 +234,10 @@ export function TemperatureLabDashboard({
               ← Về danh sách điểm đo
             </button>
           </div>
-          <InlineTemperatureList initialOccurrences={filteredOccurrences} />
+          <InlineTemperatureList
+            initialOccurrences={filteredOccurrences}
+            onMeasurementSaved={handleMeasurementSaved}
+          />
         </div>
       ) : (
         <>
@@ -248,7 +300,7 @@ export function TemperatureLabDashboard({
           </div>
 
           {/* 4. Biểu Đồ Xu Hướng 24 Giờ Gần Nhất (Chuẩn Mockup Ảnh 2) */}
-          <QCTrendChart points={chartPoints} />
+          <QCTrendChart points={activeChartPoints.length ? activeChartPoints : chartPoints} />
 
           {/* 5. Danh Sách Điểm Đo (16 Điểm) Khớp Mockup Ảnh 2 */}
           <section className="space-y-3">
