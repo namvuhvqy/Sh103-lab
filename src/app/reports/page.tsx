@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/shell/AppShell";
-import { getExportWorkspace, getReportPeriods } from "@/lib/p5/operational-queries";
+import { getExportWorkspace } from "@/lib/p5/operational-queries";
 import { getCurrentAccess } from "@/lib/forms/workflow";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { buildReportExportModel, type ReportPeriod, type ReportRecord } from "@/lib/p5/report-export-model";
@@ -22,8 +22,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const query = await searchParams;
   const initialTab = query.tab === "forms" ? "forms" : "overview";
 
-  const [periodsRaw, unread, access, workspace] = await Promise.all([
-    getReportPeriods(),
+  const [unread, access, workspace] = await Promise.all([
     getUnreadNotificationCount(),
     getCurrentAccess(),
     getExportWorkspace({
@@ -36,7 +35,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     }),
   ]);
 
-  const periods = (periodsRaw ?? []) as unknown as UnifiedPeriod[];
+  const periods = (workspace.allPeriods ?? workspace.periods ?? []) as unknown as UnifiedPeriod[];
   const selected = workspace.selectedPeriod;
 
   const model = selected

@@ -327,5 +327,5 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
     if (result.error) throw new Error(`Không tải được preview: ${result.error.message}`);
     records = result.data ?? [];
   }
-  return { year, month, day, start, end, shift: filters.shift ?? "ALL", templates: typedTemplates, periods: matching, selectedPeriod, records, templateCode };
+  return { year, month, day, start, end, shift: filters.shift ?? "ALL", templates: typedTemplates, allPeriods: typedPeriods, periods: matching, selectedPeriod, records, templateCode };
 }
