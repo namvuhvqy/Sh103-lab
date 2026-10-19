@@ -21,12 +21,16 @@ const fail = (form: FormData, area: string, message: string): never => {
 };
 
 export async function saveDecontaminationAction(form: FormData) {
+  const isAjax = form.get("ajax") === "1";
   const area = String(form.get("areaCode") ?? "");
   const daily = form.get("daily") === "on";
   const weekly = form.get("weekly") === "on";
   const spill = form.get("spill") === "on";
   const validation = validateDecontamination({ daily, weekly, spill });
-  if (!validation.ok) fail(form, area, validation.error);
+  if (!validation.ok) {
+    if (isAjax) return { success: false, error: validation.error };
+    fail(form, area, validation.error);
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("save_decontamination_record", {
@@ -37,7 +41,11 @@ export async function saveDecontaminationAction(form: FormData) {
     target_spill: spill,
     target_note: String(form.get("note") || "") || null,
   });
-  if (error) fail(form, area, "Không thể lưu khử nhiễm. Vui lòng tải lại và thử lại.");
+  if (error) {
+    const errorMsg = error.message ? `Lỗi hệ thống: ${error.message}` : "Không thể lưu khử nhiễm. Vui lòng tải lại và thử lại.";
+    if (isAjax) return { success: false, error: errorMsg };
+    fail(form, area, errorMsg);
+  }
 
   try {
     revalidatePath("/decontamination");
@@ -49,5 +57,6 @@ export async function saveDecontaminationAction(form: FormData) {
     // Revalidation may be a no-op in standalone test environments
   }
 
+  if (isAjax) return { success: true, saved: area };
   redirect(safeReturnTo(form, area, { saved: area }));
 }
