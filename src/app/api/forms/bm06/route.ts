@@ -19,8 +19,13 @@ const resultUrl = (request: Request, area: string, params: Record<string, string
   return url;
 };
 
-const redirectError = (request: Request, area: string, message: string) =>
-  NextResponse.redirect(resultUrl(request, area, { error: message }), 303);
+const redirectError = (request: Request, area: string, message: string) => {
+  const wantsJson = request.headers.get("accept")?.includes("application/json");
+  if (wantsJson) {
+    return NextResponse.json({ success: false, error: message }, { status: 400 });
+  }
+  return NextResponse.redirect(resultUrl(request, area, { error: message }), 303);
+};
 
 function translateBm06Error(message?: string): string {
   if (!message) return "Không thể lưu ca. Vui lòng kiểm tra lại.";
@@ -142,5 +147,9 @@ export async function POST(request: Request) {
     // Revalidation may be a no-op in standalone test environments
   }
 
+  const wantsJson = request.headers.get("accept")?.includes("application/json");
+  if (wantsJson) {
+    return NextResponse.json({ success: true, saved: "1", intent });
+  }
   return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);
 }
