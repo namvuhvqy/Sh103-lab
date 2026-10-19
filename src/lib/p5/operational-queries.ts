@@ -165,7 +165,7 @@ export async function getReportPeriods() {
     .from("register_periods")
     .select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name)),records(count)")
     .order("period_start", { ascending: false })
-    .limit(100);
+    .limit(500);
   if (error) throw new Error(`Không tải được báo cáo: ${error.message}`);
   return (data ?? []).map((p: any) => ({
     ...p,

@@ -30,6 +30,7 @@ import {
   Lock,
   Printer,
   RefreshCw,
+  Search,
   ShieldCheck,
   Sparkles,
   Thermometer,
@@ -128,24 +129,69 @@ export function ReportsUnifiedView({
   const selectedPeriod = workspace.selectedPeriod;
   const currentTemplateCode = workspace.templateCode;
 
-  // KPI Calculations
-  const totalPeriods = periods.length;
-  const confirmedCount = periods.filter((p) => p.status === "APPROVED").length;
+  // Overview filters & scope
+  const [overviewMonth, setOverviewMonth] = useState<string>(workspace.month || "10");
+  const [overviewYear, setOverviewYear] = useState<string>(workspace.year || "2026");
+  const [overviewSearch, setOverviewSearch] = useState<string>("");
+  const [overviewTemplateFilter, setOverviewTemplateFilter] = useState<string>("ALL");
+  const [overviewStatusFilter, setOverviewStatusFilter] = useState<"ALL" | "APPROVED" | "OPEN">("ALL");
+
+  // Filter periods for overview based on selected month scope
+  const scopePeriods = periods.filter((p) => {
+    if (overviewMonth === "ALL") return true;
+    const pYear = p.period_start.slice(0, 4);
+    const pMonth = p.period_start.slice(5, 7);
+    return pYear === overviewYear && pMonth === overviewMonth.padStart(2, "0");
+  });
+
+  // KPI Calculations strictly for selected scope
+  const totalPeriods = scopePeriods.length;
+  const confirmedCount = scopePeriods.filter((p) => p.status === "APPROVED").length;
   const inProgressCount = totalPeriods - confirmedCount;
   const percentConfirmed = totalPeriods > 0 ? Math.round((confirmedCount / totalPeriods) * 100) : 0;
 
-  // Group periods by template
+  // Metadata description for 6 canonical forms
+  const FORM_SCOPE_META: Record<string, string> = {
+    "BM.01/QL.HTAT.01": "5 Khu vực xét nghiệm (Nhiệt độ & Độ ẩm)",
+    "BM.01_KNBM": "5 Khu vực xét nghiệm (Bàn, sàn, tràn đổ)",
+    "BM.02/QL.HTAT.01": "8 Tủ lạnh mát bảo quản (2–8°C)",
+    "BM.03/QL.HTAT.01": "4 Tủ đông & âm sâu (-20°C / -80°C)",
+    "BM.02/QL.TRTB.01": "26 Thiết bị xét nghiệm & máy phụ trợ",
+    "BM.06/QL.TRTB.01": "20 Máy xét nghiệm chính (4 ca trực liên tục)",
+  };
+
+  // Group periods by template for selected scope
   const templateSummaries = templates.map((t) => {
     const code = t.form_templates.code;
-    const matching = periods.filter((p) => p.form_template_versions.form_templates.code === code);
+    const matching = scopePeriods.filter((p) => p.form_template_versions.form_templates.code === code);
     const confirmed = matching.filter((p) => p.status === "APPROVED").length;
     return {
       code,
       name: t.form_templates.name,
+      scopeDesc: FORM_SCOPE_META[code] ?? "Toàn khoa xét nghiệm",
       total: matching.length,
       confirmed,
       percent: matching.length > 0 ? Math.round((confirmed / matching.length) * 100) : 0,
     };
+  });
+
+  // Filter periods for the directory table
+  const filteredDirectoryPeriods = scopePeriods.filter((p) => {
+    if (overviewTemplateFilter !== "ALL") {
+      if (p.form_template_versions.form_templates.code !== overviewTemplateFilter) return false;
+    }
+    if (overviewStatusFilter !== "ALL") {
+      if (p.status !== overviewStatusFilter) return false;
+    }
+    if (overviewSearch.trim()) {
+      const q = overviewSearch.toLowerCase().trim();
+      const code = p.form_template_versions.form_templates.code.toLowerCase();
+      const name = p.form_template_versions.form_templates.name.toLowerCase();
+      const loc = (p.locations?.name || "").toLowerCase();
+      const asset = (p.assets?.source_name || "").toLowerCase();
+      return code.includes(q) || name.includes(q) || loc.includes(q) || asset.includes(q);
+    }
+    return true;
   });
 
   // Switch Tab without full-page navigation
@@ -164,10 +210,21 @@ export function ReportsUnifiedView({
   };
 
   // Switch Template and navigate to Tab B
-  const handleSelectTemplate = (templateCode: string) => {
+  const handleSelectTemplate = (templateCode: string, targetMonth = overviewMonth !== "ALL" ? overviewMonth : workspace.month) => {
     setActiveTab("forms");
     router.push(
-      `/reports?tab=forms&template=${encodeURIComponent(templateCode)}&year=${workspace.year}&month=${workspace.month}`
+      `/reports?tab=forms&template=${encodeURIComponent(templateCode)}&year=${overviewYear}&month=${targetMonth}`
+    );
+  };
+
+  const handleSelectPeriod = (period: UnifiedPeriod) => {
+    const pMonth = period.period_start.slice(5, 7);
+    const pYear = period.period_start.slice(0, 4);
+    setActiveTab("forms");
+    router.push(
+      `/reports?tab=forms&template=${encodeURIComponent(
+        period.form_template_versions.form_templates.code
+      )}&period=${period.id}&year=${pYear}&month=${pMonth}`
     );
   };
 
@@ -258,12 +315,78 @@ export function ReportsUnifiedView({
       {/* ========================================================================= */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* 4 CARD KPI TINH GỌN */}
+          {/* TOOLBAR CHỌN PHẠM VI THÁNG / KỲ BÁO CÁO */}
+          <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-teal-100 bg-white p-4 shadow-xs">
+            <div>
+              <div className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-teal-700" />
+                <h2 className="text-base font-black text-slate-900">
+                  Bảng Chỉ Số Hoạt Động &amp; Xác Nhận Nội Bộ
+                </h2>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Phạm vi:{" "}
+                <span className="font-bold text-teal-800">
+                  {overviewMonth === "ALL" ? "Toàn bộ lịch sử các kỳ" : `Tháng ${overviewMonth}/${overviewYear}`}
+                </span>{" "}
+                · Tổng số <span className="font-bold text-slate-900">{totalPeriods} sổ kỳ</span>
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => {
+                  setOverviewMonth("10");
+                  setOverviewYear("2026");
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all",
+                  overviewMonth === "10" && overviewYear === "2026"
+                    ? "bg-teal-800 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-white/60"
+                )}
+              >
+                Tháng 10/2026 (Hiện tại)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOverviewMonth("09");
+                  setOverviewYear("2026");
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all",
+                  overviewMonth === "09" && overviewYear === "2026"
+                    ? "bg-teal-800 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-white/60"
+                )}
+              >
+                Tháng 09/2026 (Lưu trữ)
+              </button>
+              <button
+                type="button"
+                onClick={() => setOverviewMonth("ALL")}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all",
+                  overviewMonth === "ALL"
+                    ? "bg-teal-800 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-950 hover:bg-white/60"
+                )}
+              >
+                Tất cả các kỳ
+              </button>
+            </div>
+          </section>
+
+          {/* 4 CARD KPI TRỰC QUAN */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="rounded-2xl border border-teal-100 bg-white p-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500">Tổng số sổ kỳ</span>
-                <ClipboardList className="size-4 text-teal-700" />
+                <div className="grid size-7 place-items-center rounded-lg bg-teal-50 text-teal-700">
+                  <ClipboardList className="size-4" />
+                </div>
               </div>
               <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900">{totalPeriods}</p>
               <p className="mt-1 text-[11px] font-bold text-teal-800">Theo dõi 6 biểu mẫu ISO</p>
@@ -272,143 +395,306 @@ export function ReportsUnifiedView({
             <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500">Xác nhận nội bộ</span>
-                <ShieldCheck className="size-4 text-emerald-700" />
+                <div className="grid size-7 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                  <ShieldCheck className="size-4" />
+                </div>
               </div>
-              <p className="mt-2 text-2xl sm:text-3xl font-black text-emerald-800">{confirmedCount}</p>
-              <p className="mt-1 text-[11px] font-bold text-emerald-700">{percentConfirmed}% đã rà soát</p>
+              <div className="flex items-baseline gap-2 mt-2">
+                <p className="text-2xl sm:text-3xl font-black text-emerald-800">{confirmedCount}</p>
+                <span className="text-xs font-bold text-slate-500">/ {totalPeriods} ({percentConfirmed}%)</span>
+              </div>
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full bg-emerald-600 transition-all duration-300"
+                  style={{ width: `${percentConfirmed}%` }}
+                />
+              </div>
             </div>
 
             <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500">Đang thực hiện</span>
-                <Clock className="size-4 text-blue-700" />
+                <div className="grid size-7 place-items-center rounded-lg bg-blue-50 text-blue-700">
+                  <Clock className="size-4" />
+                </div>
               </div>
               <p className="mt-2 text-2xl sm:text-3xl font-black text-blue-900">{inProgressCount}</p>
-              <p className="mt-1 text-[11px] font-bold text-blue-700">Ghi nhận liên tục các ca</p>
+              <p className="mt-1 text-[11px] font-bold text-blue-700">Ghi nhận liên tục theo ca</p>
             </div>
 
             <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500">Mẫu đầu ra</span>
-                <FileCheck2 className="size-4 text-amber-700" />
+                <div className="grid size-7 place-items-center rounded-lg bg-amber-50 text-amber-700">
+                  <FileCheck2 className="size-4" />
+                </div>
               </div>
               <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900">100%</p>
-              <p className="mt-1 text-[11px] font-bold text-amber-700">Khớp chuẩn Bệnh viện 103</p>
+              <p className="mt-1 text-[11px] font-bold text-amber-700">Khớp phôi chuẩn BV103</p>
             </div>
           </div>
 
-          {/* DANH THIẾP 6 BIỂU MẪU CHUẨN */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
+          {/* BẢNG MA TRẬN TÌNH TRẠNG 6 BIỂU MẪU CHUYÊN MÔN */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h2 className="text-lg font-black text-slate-900">Danh mục 6 biểu mẫu chuyên môn</h2>
-                <p className="text-xs text-slate-500">Bấm vào biểu mẫu để mở ngay màn hình xem trước và xuất file Excel</p>
+                <h2 className="text-lg font-black text-slate-900">Ma trận tiến độ 6 biểu mẫu chuyên môn</h2>
+                <p className="text-xs text-slate-500">
+                  Tình trạng sổ kỳ theo dõi và xác nhận nội bộ theo từng quy trình ISO 15189
+                </p>
               </div>
+              <span className="rounded-md bg-teal-50 px-2.5 py-1 text-xs font-black text-teal-800 self-start sm:self-auto">
+                {overviewMonth === "ALL" ? "Tất cả các kỳ" : `Kỳ Tháng ${overviewMonth}/${overviewYear}`}
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {templateSummaries.map((item) => {
-                const Icon = getTemplateIcon(item.code);
-                return (
-                  <div
-                    key={item.code}
-                    onClick={() => handleSelectTemplate(item.code)}
-                    className="group flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-xs hover:border-teal-600 hover:shadow-md transition-all cursor-pointer"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="grid size-9 place-items-center rounded-xl bg-teal-50 text-teal-800 group-hover:bg-teal-700 group-hover:text-white transition">
-                          <Icon className="size-4" />
-                        </div>
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                          {item.code}
-                        </span>
-                      </div>
-                      <h3 className="mt-3 text-sm font-black text-slate-900 group-hover:text-teal-800 transition line-clamp-2">
-                        {item.name}
-                      </h3>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {item.total} sổ kỳ · {item.confirmed} đã xác nhận nội bộ
-                      </p>
-                    </div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="py-3 px-4">Mã &amp; Tên biểu mẫu</th>
+                    <th className="py-3 px-4">Phạm vi giám sát</th>
+                    <th className="py-3 px-4 text-center">Số sổ trong kỳ</th>
+                    <th className="py-3 px-4">Tiến độ xác nhận</th>
+                    <th className="py-3 px-4 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {templateSummaries.map((item) => {
+                    const Icon = getTemplateIcon(item.code);
+                    const isAllConfirmed = item.total > 0 && item.confirmed === item.total;
+                    return (
+                      <tr key={item.code} className="hover:bg-teal-50/30 transition">
+                        <td className="py-3 px-4 font-semibold text-slate-900">
+                          <div className="flex items-center gap-3">
+                            <div className="grid size-8 place-items-center rounded-lg bg-teal-50 text-teal-800 shrink-0">
+                              <Icon className="size-4" />
+                            </div>
+                            <div>
+                              <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-700 mb-0.5">
+                                {item.code}
+                              </span>
+                              <div className="font-bold text-slate-900 line-clamp-1">{item.name}</div>
+                            </div>
+                          </div>
+                        </td>
 
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-teal-700">
-                      <span>Mở biểu mẫu &amp; Xuất</span>
-                      <ArrowRight className="size-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </div>
-                );
-              })}
+                        <td className="py-3 px-4 text-slate-600 font-medium">
+                          {item.scopeDesc}
+                        </td>
+
+                        <td className="py-3 px-4 text-center font-black text-slate-900">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs">
+                            {item.total} sổ
+                          </span>
+                        </td>
+
+                        <td className="py-3 px-4 min-w-[160px]">
+                          <div className="flex items-center justify-between text-[11px] mb-1">
+                            <span className={cn("font-bold", isAllConfirmed ? "text-emerald-700" : "text-slate-600")}>
+                              {item.confirmed}/{item.total} đã xác nhận
+                            </span>
+                            <span className="font-bold text-slate-500">{item.percent}%</span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className={cn(
+                                "h-full transition-all duration-300",
+                                isAllConfirmed ? "bg-emerald-600" : "bg-teal-600"
+                              )}
+                              style={{ width: `${item.percent}%` }}
+                            />
+                          </div>
+                        </td>
+
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectTemplate(item.code)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white px-3 py-1.5 text-xs font-bold text-teal-800 hover:bg-teal-700 hover:text-white transition shadow-2xs"
+                          >
+                            <span>Mở &amp; Xuất</span>
+                            <ArrowRight className="size-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </section>
 
-          {/* LỊCH SỬ CÁC KỲ GẦN ĐÂY */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <History className="size-4 text-teal-700" />
-                <h2 className="text-base font-black text-slate-900">Sổ kỳ theo dõi gần nhất</h2>
+          {/* DANH MỤC CHI TIẾT CÁC SỔ KỲ THEO DÕI */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <History className="size-4 text-teal-700" />
+                  <h2 className="text-base font-black text-slate-900">Danh mục chi tiết sổ kỳ theo dõi</h2>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Tìm kiếm, kiểm tra số lượng bản ghi thực tế và chuyển nhanh tới màn hình xuất Excel
+                </p>
               </div>
-              <span className="text-xs font-medium text-slate-500">Tự động đồng bộ từ Supabase</span>
+
+              {/* Ô TÌM KIẾM */}
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={overviewSearch}
+                  onChange={(e) => setOverviewSearch(e.target.value)}
+                  placeholder="Tìm máy, phòng, mã..."
+                  className="w-full rounded-xl border border-slate-200 pl-9 pr-3 py-1.5 text-xs focus:border-teal-600 focus:outline-hidden"
+                />
+              </div>
             </div>
 
+            {/* BỘ LỌC BIỂU MẪU & TRẠNG THÁI */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="font-bold text-slate-500 mr-1">Lọc mẫu:</span>
+                <button
+                  type="button"
+                  onClick={() => setOverviewTemplateFilter("ALL")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition",
+                    overviewTemplateFilter === "ALL"
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  )}
+                >
+                  Tất cả ({scopePeriods.length})
+                </button>
+                {templates.map((t) => {
+                  const code = t.form_templates.code;
+                  const count = scopePeriods.filter((p) => p.form_template_versions.form_templates.code === code).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setOverviewTemplateFilter(code)}
+                      className={cn(
+                        "px-2.5 py-1 rounded-lg font-bold transition",
+                        overviewTemplateFilter === code
+                          ? "bg-teal-800 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      {code} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-500 mr-1">Trạng thái:</span>
+                <button
+                  type="button"
+                  onClick={() => setOverviewStatusFilter("ALL")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition",
+                    overviewStatusFilter === "ALL"
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  )}
+                >
+                  Tất cả
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverviewStatusFilter("APPROVED")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition",
+                    overviewStatusFilter === "APPROVED"
+                      ? "bg-emerald-700 text-white"
+                      : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                  )}
+                >
+                  Đã xác nhận ({confirmedCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverviewStatusFilter("OPEN")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg font-bold transition",
+                    overviewStatusFilter === "OPEN"
+                      ? "bg-blue-700 text-white"
+                      : "bg-blue-50 text-blue-800 hover:bg-blue-100"
+                  )}
+                >
+                  Đang theo dõi ({inProgressCount})
+                </button>
+              </div>
+            </div>
+
+            {/* DANH SÁCH BẢNG SỔ KỲ */}
             <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100 text-xs">
-              {periods.slice(0, 10).map((period) => {
-                const pMonth = period.period_start.slice(5, 7);
-                const pYear = period.period_start.slice(0, 4);
-                return (
-                  <div
-                    key={period.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 hover:bg-slate-50/80 transition"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-teal-800">
-                          {period.form_template_versions.form_templates.code}
-                        </span>
-                        <span className="font-semibold text-slate-900 truncate">
-                          {period.form_template_versions.form_templates.name}
-                        </span>
-                        {typeof period.record_count === "number" && (
-                          <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-800">
-                            {period.record_count} bản ghi
+              {filteredDirectoryPeriods.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 font-medium">
+                  Không tìm thấy sổ kỳ nào phù hợp với bộ lọc hiện tại.
+                </div>
+              ) : (
+                filteredDirectoryPeriods.slice(0, 30).map((period) => {
+                  return (
+                    <div
+                      key={period.id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 hover:bg-teal-50/30 transition"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-black text-teal-800">
+                            {period.form_template_versions.form_templates.code}
                           </span>
-                        )}
+                          <span className="font-semibold text-slate-900 truncate">
+                            {period.form_template_versions.form_templates.name}
+                          </span>
+                          {typeof period.record_count === "number" && (
+                            <span className="rounded bg-teal-50 px-1.5 py-0.5 text-[10px] font-bold text-teal-800">
+                              {period.record_count} bản ghi
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 text-slate-500">
+                          <span className="font-medium text-slate-700">
+                            {period.locations?.name ?? period.assets?.source_name ?? "Toàn khoa"}
+                          </span>
+                          {" · "}Kỳ: {period.period_label ?? `${period.period_start} – ${period.period_end}`}
+                        </p>
                       </div>
-                      <p className="mt-0.5 text-slate-500">
-                        {period.locations?.name ?? period.assets?.source_name ?? "Toàn khoa"} · Kỳ:{" "}
-                        {period.period_label ?? `${period.period_start} – ${period.period_end}`}
-                      </p>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${
-                          period.status === "APPROVED"
-                            ? "bg-emerald-50 text-emerald-800"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {period.status === "APPROVED" ? "Đã xác nhận nội bộ" : "Đang theo dõi"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          router.push(
-                            `/reports?tab=forms&template=${encodeURIComponent(
-                              period.form_template_versions.form_templates.code
-                            )}&period=${period.id}&year=${pYear}&month=${pMonth}`
-                          );
-                        }}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
-                      >
-                        Xem chi tiết
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[10px] font-black",
+                            period.status === "APPROVED"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-slate-100 text-slate-600 border border-slate-200"
+                          )}
+                        >
+                          {period.status === "APPROVED" ? "Đã xác nhận nội bộ" : "Đang theo dõi"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPeriod(period)}
+                          className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-800 hover:bg-teal-700 hover:text-white transition shadow-2xs"
+                        >
+                          Xem chi tiết &amp; Xuất
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
+
+            {filteredDirectoryPeriods.length > 30 && (
+              <p className="text-center text-[11px] text-slate-400">
+                Hiển thị 30 / {filteredDirectoryPeriods.length} sổ kỳ. Sử dụng bộ lọc để thu hẹp kết quả tìm kiếm.
+              </p>
+            )}
           </section>
         </div>
       )}

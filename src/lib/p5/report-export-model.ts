@@ -134,6 +134,57 @@ function daysFor(startDateStr: string) {
   }));
 }
 
+function resolveDaySlots(
+  records: ReportRecord[],
+  dateStr: string
+): { morning: ReportRecord | undefined; afternoon: ReportRecord | undefined } {
+  const dayRecords = records.filter((r) => r.business_date === dateStr);
+  if (!dayRecords.length) return { morning: undefined, afternoon: undefined };
+
+  const isMorningSlot = (r: ReportRecord) => {
+    const sc = (r.slot_code ?? "").toUpperCase().trim();
+    return sc === "MORNING" || sc === "SÁNG" || sc === "SANG" || sc === "SHIFT_1" || sc === "SLOT_1";
+  };
+
+  const isAfternoonSlot = (r: ReportRecord) => {
+    const sc = (r.slot_code ?? "").toUpperCase().trim();
+    return sc === "AFTERNOON" || sc === "CHIỀU" || sc === "CHIEU" || sc === "SHIFT_3" || sc === "SLOT_2";
+  };
+
+  // 1. Strict slot matching
+  const morningList = dayRecords.filter(isMorningSlot);
+  const afternoonList = dayRecords.filter(isAfternoonSlot);
+
+  let morning = morningList.length > 0 ? morningList[morningList.length - 1] : undefined;
+  let afternoon = afternoonList.length > 0 ? afternoonList[afternoonList.length - 1] : undefined;
+
+  // 2. Only unassigned records with NO explicit conflicting slot code can fall back by time
+  const unassigned = dayRecords.filter(
+    (r) => r !== morning && r !== afternoon && !isMorningSlot(r) && !isAfternoonSlot(r)
+  );
+
+  if (unassigned.length > 0) {
+    const sorted = [...unassigned].sort((a, b) => {
+      const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
+      const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
+      return tA - tB;
+    });
+
+    for (const r of sorted) {
+      const ts = r.performed_at ?? r.entered_at;
+      if (!ts) continue;
+      const vnHour = (new Date(ts).getUTCHours() + 7) % 24;
+      if (vnHour < 12 && !morning) {
+        morning = r;
+      } else if (vnHour >= 12 && !afternoon) {
+        afternoon = r;
+      }
+    }
+  }
+
+  return { morning, afternoon };
+}
+
 function findSlot(
   records: ReportRecord[],
   dateStr: string,
@@ -143,50 +194,22 @@ function findSlot(
   const dayRecords = records.filter((r) => r.business_date === dateStr);
   if (!dayRecords.length) return undefined;
 
-  // 1. First priority: Exact match with targetSlot or label (e.g. SHIFT_1, MORNING, AFTERNOON, etc.)
+  const target = targetSlot.toUpperCase().trim();
+  const lbl = (label ?? "").toUpperCase().trim();
+
   const exact = dayRecords.filter((r) => {
     const sc = (r.slot_code ?? "").toUpperCase().trim();
-    const target = targetSlot.toUpperCase().trim();
-    const lbl = (label ?? "").toUpperCase().trim();
-
     if (sc === target || (lbl && sc === lbl)) return true;
 
-    if (target === "MORNING") {
-      return sc === "SÁNG" || sc === "SANG" || sc === "SHIFT_1" || sc === "SLOT_1";
-    }
-    if (target === "AFTERNOON") {
-      return sc === "CHIỀU" || sc === "CHIEU" || sc === "SHIFT_3" || sc === "SLOT_2";
-    }
+    if (target === "SHIFT_1") return sc === "CA 1" || sc === "CA1" || sc === "SÁNG" || sc === "MORNING";
+    if (target === "SHIFT_2") return sc === "CA 2" || sc === "CA2" || sc === "TRƯA";
+    if (target === "SHIFT_3") return sc === "CA 3" || sc === "CA3" || sc === "CHIỀU" || sc === "AFTERNOON";
+    if (target === "SHIFT_4") return sc === "CA 4" || sc === "CA4" || sc === "ĐÊM" || sc === "NIGHT";
     return false;
   });
 
   if (exact.length > 0) {
-    // Return the latest record if multiple revisions exist
     return exact[exact.length - 1];
-  }
-
-  // 2. Second priority for temperature: Fallback by performed_at / entered_at time in Vietnam timezone (UTC+7)
-  const targetUpper = targetSlot.toUpperCase().trim();
-  if (targetUpper === "MORNING" || targetUpper === "AFTERNOON") {
-    const sorted = [...dayRecords].sort((a, b) => {
-      const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
-      const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
-      return tA - tB;
-    });
-
-    if (sorted.length === 1) {
-      const r = sorted[0];
-      const ts = r.performed_at ?? r.entered_at;
-      if (ts) {
-        const vnHour = (new Date(ts).getUTCHours() + 7) % 24;
-        if (targetUpper === "MORNING" && vnHour < 12) return r;
-        if (targetUpper === "AFTERNOON" && vnHour >= 12) return r;
-      }
-      return undefined;
-    }
-
-    if (targetUpper === "MORNING") return sorted[0];
-    if (targetUpper === "AFTERNOON") return sorted[sorted.length - 1];
   }
 
   return undefined;
@@ -246,8 +269,7 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
+      const { morning: rMorning, afternoon: rAfternoon } = resolveDaySlots(records, d.dateStr);
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 
@@ -328,8 +350,7 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
+      const { morning: rMorning, afternoon: rAfternoon } = resolveDaySlots(records, d.dateStr);
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 
@@ -337,9 +358,15 @@ export function buildReportExportModel(input: {
       if (rMorning) rIds.push(rMorning.id);
       if (rAfternoon) rIds.push(rAfternoon.id);
 
-      const evalText = (mM?.temperature_abnormal || mA?.temperature_abnormal)
+      const hasTempM = typeof mM?.temperature_c === "number" && !isNaN(mM.temperature_c);
+      const hasTempA = typeof mA?.temperature_c === "number" && !isNaN(mA.temperature_c);
+      const hasAnyTemp = hasTempM || hasTempA;
+
+      const isAbnormal = (hasTempM && Boolean(mM?.temperature_abnormal)) || (hasTempA && Boolean(mA?.temperature_abnormal));
+
+      const evalText = isAbnormal
         ? "Ngoài ngưỡng"
-        : (mM?.temperature_c !== null || mA?.temperature_c !== null ? "Đạt" : null);
+        : (hasAnyTemp ? "Đạt" : null);
 
       const performerM = formatShortName(rMorning?.profiles?.full_name);
       const performerA = formatShortName(rAfternoon?.profiles?.full_name);
