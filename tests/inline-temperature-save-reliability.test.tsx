@@ -41,7 +41,7 @@ describe("Task 5: Temperature BM.01, BM.02, BM.03 Save Reliability", () => {
 
     render(<InlineTemperatureCard occurrence={savedOcc} />);
 
-    expect(screen.getByText("Đã lưu: 24°C")).toBeDefined();
+    expect(screen.getByText("Bình thường: 24°C")).toBeDefined();
     expect(screen.queryByText("Chờ đồng bộ")).toBeNull();
   });
 
@@ -99,7 +99,7 @@ describe("Task 5: Temperature BM.01, BM.02, BM.03 Save Reliability", () => {
     fireEvent.click(retryBtn);
 
     await waitFor(() => {
-      expect(screen.getByText("Đã lưu: 23.5°C")).toBeDefined();
+      expect(screen.getByText("Bình thường: 23.5°C")).toBeDefined();
     });
 
     // Local storage cleaned up after confirmed server save

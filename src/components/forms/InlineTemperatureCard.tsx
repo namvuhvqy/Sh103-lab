@@ -278,7 +278,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-800 border border-emerald-300">
                   <Check className="size-3 text-emerald-600 stroke-[3]" />
-                  Đã lưu: {numTemp}°C
+                  Bình thường: {numTemp}°C
                 </span>
               )
             ) : (

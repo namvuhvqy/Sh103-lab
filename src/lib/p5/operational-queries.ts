@@ -286,8 +286,8 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const start = isValidIsoDate(candidateStart) ? candidateStart : `${year}-${month}-01`;
   const end = day && start === candidateStart ? start : new Date(Date.UTC(Number(year), Number(month), 0)).toISOString().slice(0, 10);
 
-  let matchingInMonth = allMatching.filter((p) => p.period_start.startsWith(`${year}-${month}`));
-  let matching = matchingInMonth.length > 0 ? matchingInMonth : allMatching;
+  const matchingInMonth = allMatching.filter((p) => p.period_start.startsWith(`${year}-${month}`));
+  const matching = matchingInMonth.length > 0 ? matchingInMonth : allMatching;
 
   // Deduplicate by location/asset name: if multiple periods exist, keep the one with higher record_count
   const dedupMap = new Map<string, Period>();

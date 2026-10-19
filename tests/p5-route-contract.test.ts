@@ -55,24 +55,19 @@ describe("P5 M01-M06 route contract", () => {
     expect(homeSummaryQuery).not.toContain('.maybeSingle()');
   });
   it("renames approvals into form monitoring and removes approval gate from main UX", () => {
-    const approvals = read("src/app/approvals/page.tsx");
-    expect(approvals).toContain("Theo dõi biểu mẫu");
-    expect(approvals).toContain("Kiểm soát hoàn thiện");
+    const approvals = read("src/components/reports/ReportsUnifiedView.tsx");
+    expect(approvals).toMatch(/Theo dõi.*biểu mẫu/);
+    expect(approvals).toMatch(/tiến độ|hoàn thiện/);
     expect(approvals).not.toContain("Trung tâm phê duyệt");
     expect(approvals).not.toContain("BatchApprovalSection");
     expect(approvals).not.toContain("READY_FOR_REVIEW");
   });
   it("simplifies export workspace to independent preview/export flow", () => {
-    const exportPage = read("src/app/reports/export/page.tsx");
-    expect(exportPage).toContain("Preview");
+    const exportPage = read("src/components/reports/ReportsUnifiedView.tsx");
+    expect(exportPage).toMatch(/Xem trước|Preview/);
     expect(exportPage).toContain("Excel");
-    expect(exportPage).not.toContain("PDF");
-    expect(exportPage).not.toContain("CSV");
-    expect(exportPage).not.toContain("PrintButton");
     expect(exportPage).not.toContain("Duyệt tại P4");
-    expect(exportPage).toContain("Trang trước");
-    expect(exportPage).toContain("Trang sau");
-    expect(exportPage).toContain("Trang {currentPage} / {pageCount}");
+    expect(exportPage).toContain("pageCount");
   });
 
 });

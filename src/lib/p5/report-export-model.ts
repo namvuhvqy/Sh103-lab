@@ -247,7 +247,7 @@ export function buildReportExportModel(input: {
   const templateCode = period.form_template_versions.form_templates.code;
   const templateName = period.form_template_versions.form_templates.name;
   const isApproved = true;
-  const approvalStatusLabel = "CHÍNH THỨC";
+  const approvalStatusLabel = period.status === "APPROVED" ? "ĐÃ PHÊ DUYỆT (LỊCH SỬ)" : "CHÍNH THỨC";
   const approvalTimestampLabel = period.approved_at ?? "";
   const filenamePrefix = "";
   const objectLabel = period.locations?.name ?? period.assets?.source_name ?? "";
@@ -453,7 +453,7 @@ export function buildReportExportModel(input: {
                 ? [detail.equipment_shift_statuses]
                 : [])
             : [];
-          const byOrder = new Map(statuses.map((s) => [s.asset_display_order_snapshot, s.status_code]));
+          const byOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
 
           // Performer formatting: Primary + Coworker
           const primaryName = formatShortName(r?.profiles?.full_name);

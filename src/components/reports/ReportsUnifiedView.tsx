@@ -108,16 +108,11 @@ export function ReportsUnifiedView({
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "forms">(initialTab);
   const [isPending, startTransition] = useTransition();
-  const [confirmStatus, setConfirmStatus] = useState<boolean>(
-    workspace.selectedPeriod?.status === "APPROVED"
-  );
+  const isApproved = workspace.selectedPeriod?.status === "APPROVED";
+  const [overrideStatus, setOverrideStatus] = useState<boolean | null>(null);
+  const confirmStatus = overrideStatus !== null ? overrideStatus : isApproved;
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Sync confirm status with selectedPeriod
-  useEffect(() => {
-    setConfirmStatus(workspace.selectedPeriod?.status === "APPROVED");
-  }, [workspace.selectedPeriod?.id, workspace.selectedPeriod?.status]);
 
   // BM.06 cycle & sub-page view
   const isBm06 = workspace.templateCode.includes("BM.06");
@@ -232,16 +227,17 @@ export function ReportsUnifiedView({
   const handleToggleConfirm = async () => {
     if (!canConfirm || !selectedPeriod) return;
     const nextVal = !confirmStatus;
-    setConfirmStatus(nextVal);
+    setOverrideStatus(nextVal);
     setStatusMessage(null);
 
     startTransition(async () => {
       const res = await toggleInternalConfirmationAction(selectedPeriod.id, nextVal);
       if (!res.ok) {
-        setConfirmStatus(!nextVal); // Rollback
+        setOverrideStatus(!nextVal); // Rollback
         setStatusMessage(res.message ?? "Lỗi cập nhật xác nhận");
       } else {
         setStatusMessage(nextVal ? "Đã ghi nhận xác nhận nội bộ của Chỉ huy BMK." : "Đã hủy xác nhận nội bộ.");
+        setOverrideStatus(null);
         router.refresh();
       }
     });
@@ -1308,7 +1304,7 @@ export function ReportsUnifiedView({
                 <p className="text-xs text-slate-400">
                   {workspace.month === "10" ? (
                     <span>
-                      Gợi ý: Chọn nút <strong className="text-teal-700">"Tháng 09/2026"</strong> ở trên để xem đầy đủ hồ sơ mẫu chuẩn ISO 15189 đã được kiểm tra.
+                      Gợi ý: Chọn nút <strong className="text-teal-700">&quot;Tháng 09/2026&quot;</strong> ở trên để xem đầy đủ hồ sơ mẫu chuẩn ISO 15189 đã được kiểm tra.
                     </span>
                   ) : (
                     "Các ca trực ghi nhận sẽ tự động hiển thị tại đây."

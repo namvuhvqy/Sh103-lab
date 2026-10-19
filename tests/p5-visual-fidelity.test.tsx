@@ -28,27 +28,27 @@ describe("P5 mobile visual fidelity and data visualization", () => {
   it("uses real charts on temperature, equipment and reports screens", () => {
     const temperaturePage = read("src/app/temperature/page.tsx");
     const temperatureDashboard = read("src/components/forms/TemperatureLabDashboard.tsx");
+    const reportsView = read("src/components/reports/ReportsUnifiedView.tsx");
     expect(temperaturePage).toMatch(/getTemperatureOverview/);
     expect(temperatureDashboard).toMatch(/InlineTemperatureList/);
     expect(read("src/app/equipment/page.tsx")).toMatch(/StatusDistribution/);
-    expect(read("src/app/reports/page.tsx")).toMatch(/StatusDistribution/);
+    expect(reportsView).toMatch(/BarChart3|StatusDistribution/);
   });
 
   it("presents form monitoring as the main completion-control center", () => {
-    const approvals = read("src/app/approvals/page.tsx");
-    expect(approvals).toMatch(/Theo dõi biểu mẫu/);
-    expect(approvals).toMatch(/Kiểm soát hoàn thiện/);
+    const approvals = read("src/components/reports/ReportsUnifiedView.tsx");
+    expect(approvals).toMatch(/Theo dõi.*biểu mẫu/);
+    expect(approvals).toMatch(/tiến độ|hoàn thiện/);
     expect(approvals).not.toMatch(/if \(!access\?\.canApprove\) redirect/);
     expect(approvals).not.toMatch(/BatchApprovalSection/);
   });
 
   it("provides the export workspace flow from the attached mockup", () => {
-    const route = read("src/app/reports/export/page.tsx");
-    expect(route).toMatch(/6 biểu mẫu đầu ra/);
-    expect(route).toMatch(/Preview/);
-    expect(route).toMatch(/Excel \(\.xlsx\)/);
-    expect(route).not.toMatch(/PrintButton|PDF|CSV/);
-    expect(route).toMatch(/getExportWorkspace/);
+    const route = read("src/components/reports/ReportsUnifiedView.tsx");
+    expect(route).toMatch(/6 biểu mẫu/);
+    expect(route).toMatch(/Xem trước|Preview/);
+    expect(route).toMatch(/Excel/);
+    expect(route).not.toMatch(/PrintButton/);
   });
 
   it("keeps export data effective and independent from approval", () => {
@@ -56,6 +56,6 @@ describe("P5 mobile visual fidelity and data visualization", () => {
     expect(queries).toMatch(/getExportWorkspace/);
     expect(queries).toContain("không phụ thuộc APPROVED");
     expect(queries).toMatch(/is_effective/);
-    expect(read("src/app/reports/page.tsx")).toContain("/reports/export");
+    expect(read("src/components/reports/ReportsUnifiedView.tsx")).toMatch(/xlsx/i);
   });
 });

@@ -23,7 +23,7 @@ export async function loginAction(_previous: { ok: boolean; message?: string }, 
   }
 
   const supabase = await createClient();
-  let password = rawPassword.length === 5 ? `${rawPassword}_sh` : rawPassword;
+  const password = rawPassword.length === 5 ? `${rawPassword}_sh` : rawPassword;
   let { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   // Thuận tiện: Hỗ trợ cả mật khẩu mặc định 123@abc lẫn 12345 / 123456

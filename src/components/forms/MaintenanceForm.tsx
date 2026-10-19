@@ -120,7 +120,11 @@ export function MaintenanceForm({
         try {
           localStorage.removeItem(`lab103_maintenance_draft_${occurrenceId}`);
         } catch {}
-        router.push(res?.redirectUrl || "/tasks?saved=maintenance");
+        if (router) {
+          router.push(res?.redirectUrl || "/tasks?saved=maintenance");
+        } else if (typeof window !== "undefined") {
+          window.location.href = res?.redirectUrl || "/tasks?saved=maintenance";
+        }
       }
     } catch (err: any) {
       setSaveStatus("error");
@@ -208,6 +212,7 @@ export function MaintenanceForm({
               type="radio"
               name="result"
               value="PASS"
+              aria-label="Đạt"
               checked={result === "PASS"}
               onChange={() => handleResultChange("PASS")}
               className="size-4 text-emerald-600 focus:ring-emerald-500"
@@ -226,6 +231,7 @@ export function MaintenanceForm({
               type="radio"
               name="result"
               value="FAIL"
+              aria-label="Không đạt"
               checked={result === "FAIL"}
               onChange={() => handleResultChange("FAIL")}
               className="size-4 text-rose-600 focus:ring-rose-500"

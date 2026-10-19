@@ -408,7 +408,7 @@ export function UnifiedAreaWorkspace({
             </span>
           </div>
 
-          <form action={saveDecontaminationAction} className="space-y-4">
+          <form action={async (fd: FormData) => { await saveDecontaminationAction(fd); }} className="space-y-4">
             <input type="hidden" name="periodId" value={currentArea.decon.periodId} />
             <input type="hidden" name="areaCode" value={currentArea.code} />
             <input type="hidden" name="businessDate" value={today} />

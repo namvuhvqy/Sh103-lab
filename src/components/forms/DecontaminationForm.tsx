@@ -134,7 +134,7 @@ export function DecontaminationForm({
           localStorage.removeItem(`lab103_knbm_${areaCode}_${periodId}`);
         } catch {}
         startTransition(() => {
-          router.refresh();
+          if (router) router.refresh();
         });
       }
     } catch (err: any) {
