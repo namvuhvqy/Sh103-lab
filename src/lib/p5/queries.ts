@@ -81,7 +81,10 @@ export interface IncidentEventItem {
   actor?: { full_name: string; email?: string } | null;
 }
 
-export async function getNotifications(filter?: "all" | "unread" | "critical"): Promise<NotificationItem[]> {
+export async function getNotifications(
+  filter?: "all" | "unread" | "critical",
+  options?: { limit?: number; offset?: number }
+): Promise<NotificationItem[]> {
   const supabase = await createClient();
   let query = supabase
     .from("notifications")
@@ -92,6 +95,11 @@ export async function getNotifications(filter?: "all" | "unread" | "critical"): 
     query = query.is("read_at", null);
   } else if (filter === "critical") {
     query = query.in("severity", ["WARNING", "CRITICAL"]);
+  }
+
+  if (typeof options?.limit === "number" && options.limit > 0) {
+    const from = options.offset ?? 0;
+    query = query.range(from, from + options.limit - 1);
   }
 
   const { data, error } = await query;
