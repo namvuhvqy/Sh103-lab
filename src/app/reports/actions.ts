@@ -46,17 +46,21 @@ export async function toggleInternalConfirmationAction(periodId: string, confirm
 
   // Insert audit event
   try {
-    await supabase.rpc("audit_event", {
-      action_name: confirmed ? "INTERNAL_CONFIRMATION_CHECK" : "INTERNAL_CONFIRMATION_UNCHECK",
-      target_entity: "register_period",
-      target_id: periodId,
-      before_state: null,
-      after_state: {
+    const { error: rpcErr } = await supabase.rpc("audit_event", {
+      target_action: confirmed ? "INTERNAL_CONFIRMATION_CHECK" : "INTERNAL_CONFIRMATION_UNCHECK",
+      target_entity_type: "register_period",
+      target_entity_id: periodId,
+      target_before: null,
+      target_after: {
         confirmed,
         confirmed_by: profile?.full_name,
+        period_id: periodId,
         timestamp: new Date().toISOString(),
       },
     });
+    if (rpcErr) {
+      console.error("[toggleInternalConfirmationAction] Audit log error:", rpcErr);
+    }
   } catch (e) {
     console.warn("Audit log warning (non-fatal):", e);
   }

@@ -65,12 +65,33 @@ export default function PrototypePreviewPage() {
   };
 
   const machines = [
-    { code: "DEV_01", order: 1, name: "Máy XN Khí Máu GEM Premier 3000", area: "NUOC_TIEU", areaName: "Nước tiểu & Khí máu", desc: "Serial: GEM-3000-01" },
-    { code: "DEV_02", order: 2, name: "Máy Primier Hb 9210 -M1", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Máy đo HbA1c tự động" },
-    { code: "DEV_07", order: 7, name: "Máy XN SH - MD tự động ARCHITECT-2", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Abbott Architect i2000SR" },
-    { code: "DEV_11", order: 11, name: "Hệ thống Automation AU5800-M4-5", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Beckman Coulter DxA 5000" },
+    // 1. SINH HÓA (7 máy)
+    { code: "DEV_01", order: 1, name: "Máy XN Khí Máu GEM Premier 3000", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Đo khí máu động mạch khẩn cấp" },
+    { code: "DEV_02", order: 2, name: "Máy Primier Hb 9210 -M1", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Máy đo HbA1c tự động cột sắc ký" },
+    { code: "DEV_05", order: 5, name: "Máy Primier Hb 9210- M2", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Máy đo HbA1c tự động dự phòng" },
+    { code: "DEV_09", order: 9, name: "Máy xét nghiệm khí máu Geem 3500", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Hệ thống điện giải & khí máu" },
+    { code: "DEV_11", order: 11, name: "Hệ thống Automation AU5800-M4-5", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Hệ thống Sinh hóa công suất cao module 4-5" },
+    { code: "DEV_12", order: 12, name: "Hệ thống Automation AU5800-M6", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Hệ thống Sinh hóa công suất cao module 6" },
+    { code: "DEV_17", order: 17, name: "Máy Hb-HLC-723G11 Hãng Tosoh", area: "SINH_HOA", areaName: "Khu Sinh hóa", desc: "Đo sắc ký lỏng cao áp HPLC" },
+
+    // 2. MIỄN DỊCH (6 máy)
+    { code: "DEV_07", order: 7, name: "Máy XN SH - MD tự động ARCHITECT-2", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Hệ thống miễn dịch hóa phát quang Abbott" },
+    { code: "DEV_13", order: 13, name: "Hệ thống Automation MD DXI-M3", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Beckman Coulter UniCel DxI 800 (M3)" },
+    { code: "DEV_14", order: 14, name: "Hệ thống Automation MD DXI-M4", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Beckman Coulter UniCel DxI 800 (M4)" },
     { code: "DEV_15", order: 15, name: "Máy xét nghiệm Miễn dịch Maglumi X3", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Snibe Maglumi X3 CLIA" },
-    { code: "DEV_21", order: 21, name: "Máy li tâm 24 lỗ lạnh UNIVERSAL 320R", area: "LY_TAM", areaName: "Ly tâm & Khác", desc: "Hettich Zentrifugen" },
+    { code: "DEV_18", order: 18, name: "Máy XN SH-MD Anility", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Abbott Alinity ci-series" },
+    { code: "DEV_20", order: 20, name: "Máy lắc VORTEX", area: "MIEN_DICH", areaName: "Khu Miễn dịch", desc: "Máy trộn mẫu xoáy ống nghiệm" },
+
+    // 3. NƯỚC TIỂU (3 máy)
+    { code: "DEV_03", order: 3, name: "Máy XN nước tiểu LabUMat 2- M1", area: "NUOC_TIEU", areaName: "Khu Nước tiểu", desc: "Xét nghiệm hóa học nước tiểu tự động M1" },
+    { code: "DEV_10", order: 10, name: "Máy nước tiểu ureader Plus 2 - M2", area: "NUOC_TIEU", areaName: "Khu Nước tiểu", desc: "Máy đọc que thử nước tiểu bán tự động" },
+    { code: "DEV_16", order: 16, name: "Máy xét nghiệm nước tiểu LabUmat 2-M2", area: "NUOC_TIEU", areaName: "Khu Nước tiểu", desc: "Xét nghiệm cặn soi & hóa học nước tiểu M2" },
+
+    // 4. LY TÂM (4 máy)
+    { code: "DEV_21", order: 21, name: "Máy li tâm 24 lỗ lạnh UNIVERSAL 320R", area: "LY_TAM", areaName: "Khu Ly tâm", desc: "Hettich Zentrifugen lạnh 24 ống" },
+    { code: "DEV_22", order: 22, name: "Máy li tâm 68 lỗ ROTOFIX 32A", area: "LY_TAM", areaName: "Khu Ly tâm", desc: "Hettich Rotofix 32A công suất lớn" },
+    { code: "DEV_24", order: 24, name: "Máy li tâm Ependox-M1", area: "LY_TAM", areaName: "Khu Ly tâm", desc: "Máy ly tâm vi lượng Eppendorf M1" },
+    { code: "DEV_25", order: 25, name: "Máy li tâm Ependox-M2", area: "LY_TAM", areaName: "Khu Ly tâm", desc: "Máy ly tâm vi lượng Eppendorf M2" },
   ];
 
   const filteredMachines = selectedArea === "ALL" ? machines : machines.filter((m) => m.area === selectedArea);
@@ -142,7 +163,7 @@ export default function PrototypePreviewPage() {
               </span>
               <h2 className="text-2xl font-black text-white">Trung tâm Thông báo Nội bộ Khoa trên Mobile</h2>
               <p className="text-xs text-slate-400">
-                Giao diện mô phỏng 100% tiếng Việt, phân cấp 4 màu trực quan. Bạn có thể bấm <strong>"Đã rõ / Like 👍"</strong> để tăng số đếm thực và gõ <strong>bình luận phản hồi</strong> thử trực tiếp!
+                Giao diện mô phỏng 100% tiếng Việt, phân cấp 4 màu trực quan. Bạn có thể bấm <strong>"Like 👍"</strong> để tăng số đếm thực và gõ <strong>bình luận phản hồi</strong> thử trực tiếp!
               </p>
             </div>
 
@@ -212,7 +233,7 @@ export default function PrototypePreviewPage() {
                           }`}
                         >
                           <span>👍</span>
-                          <span>Đã rõ</span>
+                          <span>Like</span>
                           <span className="font-black text-teal-800 ml-0.5">{likes["notif-1"].count}</span>
                         </button>
 
@@ -284,7 +305,7 @@ export default function PrototypePreviewPage() {
                           }`}
                         >
                           <span>👍</span>
-                          <span>Đã rõ</span>
+                          <span>Like</span>
                           <span className="font-black text-teal-800 ml-0.5">{likes["notif-2"].count}</span>
                         </button>
                         <div className="flex items-center -space-x-1.5">
@@ -349,7 +370,7 @@ export default function PrototypePreviewPage() {
                           }`}
                         >
                           <span>👍</span>
-                          <span>Đã rõ</span>
+                          <span>Like</span>
                           <span className="font-black text-teal-800 ml-0.5">{likes["notif-3"].count}</span>
                         </button>
                         <span className="text-[10px] text-slate-400">{likes["notif-3"].count} nhân viên đã nhận</span>
@@ -441,10 +462,11 @@ export default function PrototypePreviewPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] text-xs font-black">
               {[
                 { code: "ALL", label: "Tất cả (20 máy)" },
-                { code: "SINH_HOA", label: "Sinh hóa (7 máy)" },
-                { code: "MIEN_DICH", label: "Miễn dịch (4 máy)" },
-                { code: "NUOC_TIEU", label: "Nước tiểu & Khí máu (5 máy)" },
-                { code: "LY_TAM", label: "Ly tâm & Khác (4 máy)" },
+                { code: "SINH_HOA", label: "Khu Sinh hóa (7 máy)" },
+                { code: "MIEN_DICH", label: "Khu Miễn dịch (6 máy)" },
+                { code: "NUOC_TIEU", label: "Khu Nước tiểu (3 máy)" },
+                { code: "LY_TAM", label: "Khu Ly tâm (4 máy)" },
+                { code: "NHAN_BENH_PHAM", label: "Nhận bệnh phẩm (0 máy · Khử nhiễm)" },
               ].map((tab) => (
                 <button
                   key={tab.code}

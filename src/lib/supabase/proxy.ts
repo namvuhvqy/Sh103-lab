@@ -19,7 +19,36 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  let user = null;
+  let authError: any = null;
+  try {
+    const res = await supabase.auth.getUser();
+    user = res.data.user;
+    authError = res.error;
+  } catch (err: any) {
+    authError = err;
+  }
+
+  // Handle invalid/deleted refresh token gracefully: clear cookies and redirect to login
+  const hasSbCookies = request.cookies.getAll().some((cookie) => cookie.name.startsWith("sb-"));
+  const isInvalidRefreshToken = hasSbCookies && authError && (
+    typeof authError.message === "string" && (
+      authError.message.includes("Refresh Token Not Found") ||
+      authError.message.includes("Invalid Refresh Token") ||
+      authError.message.includes("refresh_token_not_found")
+    )
+  );
+
+  if (isInvalidRefreshToken && request.nextUrl.pathname !== "/login") {
+    const redirectResponse = NextResponse.redirect(new URL("/login?error=session_expired", request.url));
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.startsWith("sb-")) {
+        redirectResponse.cookies.delete(cookie.name);
+      }
+    });
+    return redirectResponse;
+  }
+
   const access = routeAccessLevel(request.nextUrl.pathname);
   if (access === "public") {
     if (user && request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
@@ -36,11 +65,16 @@ export async function updateSession(request: NextRequest) {
 
   if (!user) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url));
 
-  const { data: profile } = await supabase.from("profiles").select("active,is_admin").eq("user_id", user.id).maybeSingle();
-  if (!profile?.active) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(new URL("/login?error=inactive", request.url));
+  // Fast path for standard authenticated routes: session is valid, defer granular profile to getCurrentAccess()
+  // Only query profiles in middleware for admin routes to guard /admin/*
+  if (access === "admin") {
+    const { data: profile } = await supabase.from("profiles").select("active,is_admin").eq("user_id", user.id).maybeSingle();
+    if (!profile?.active) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(new URL("/login?error=inactive", request.url));
+    }
+    if (!profile.is_admin) return NextResponse.redirect(new URL("/?error=forbidden", request.url));
   }
-  if (access === "admin" && !profile.is_admin) return NextResponse.redirect(new URL("/?error=forbidden", request.url));
+
   return response;
 }

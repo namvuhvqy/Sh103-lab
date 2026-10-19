@@ -6,6 +6,8 @@ interface Props {
   today: string;
   shift: string;
   areas: DecontaminationWorkspaceArea[];
+  savedArea?: string;
+  errorMsg?: string;
 }
 
 const doneLabel = (area: DecontaminationWorkspaceArea) => {
@@ -15,12 +17,24 @@ const doneLabel = (area: DecontaminationWorkspaceArea) => {
   return `Đã ghi ${done}/3 mục`;
 };
 
-export function DecontaminationWorkspace({ today, shift, areas }: Props) {
+export function DecontaminationWorkspace({ today, shift, areas, savedArea, errorMsg }: Props) {
   const completed = areas.filter((area) => area.status !== "PENDING" || area.recordId).length;
   const returnTo = `/decontamination?date=${encodeURIComponent(today)}&shift=${encodeURIComponent(shift)}`;
 
   return (
     <div className="space-y-6">
+      {savedArea ? (
+        <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 font-bold text-sm flex items-center gap-2 shadow-xs">
+          <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
+          <span>Đã xác nhận: Khử nhiễm khu vực {savedArea} đã được lưu thành công lên hệ thống.</span>
+        </div>
+      ) : null}
+      {errorMsg ? (
+        <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-rose-900 font-bold text-sm flex items-center gap-2 shadow-xs">
+          <CircleAlert className="size-5 text-rose-600 shrink-0" />
+          <span>Lưu thất bại: {decodeURIComponent(errorMsg)}. Vui lòng kiểm tra lại.</span>
+        </div>
+      ) : null}
       <section className="rounded-[1.75rem] border border-cyan-100 bg-white p-5 shadow-[0_14px_40px_rgba(14,116,144,0.09)] sm:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div

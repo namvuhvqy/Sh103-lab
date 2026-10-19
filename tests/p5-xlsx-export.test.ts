@@ -27,7 +27,7 @@ describe("official XLSX export", () => {
       records: [{ id: "record-1", record_type: "MEASUREMENT", business_date: "2026-09-25", slot_code: "MORNING", performed_at: "2026-09-25T01:00:00Z", entered_at: "2026-09-25T01:05:00Z", is_na: false, na_reason: null, note: "Đạt", revision_no: 1 }],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     const workbook = new ExcelJS.Workbook();
@@ -49,7 +49,7 @@ describe("official XLSX export", () => {
 
   it("exports non-approved periods without approval gate", async () => {
     getOfficialPeriodReport.mockResolvedValue({ official: false, period: { status: "OPEN", period_start: "2026-09-01", period_end: "2026-09-30", period_label: null, approved_at: null, locations: null, assets: null, form_template_versions: { version_label: "v1", form_templates: { code: "BM.01", name: "Theo dõi nhiệt độ" } } }, records: [] });
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     expect(response.status).toBe(200);
   });
 
@@ -82,7 +82,7 @@ describe("official XLSX export", () => {
       }],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     const row = workbook.getWorksheet("Bản ghi hiệu lực")!.getRow(2);
@@ -129,7 +129,7 @@ describe("official XLSX export", () => {
       }],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     expect(workbook.worksheets.map((sheet) => sheet.name).slice(0, 2)).toEqual(["Trang 1", "Trang 2"]);
@@ -163,7 +163,7 @@ describe("official XLSX export", () => {
       }],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     const row = workbook.getWorksheet("Bản ghi hiệu lực")!.getRow(2);
@@ -190,7 +190,7 @@ describe("official XLSX export", () => {
       records: [],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     const row = workbook.getWorksheet("Bản ghi hiệu lực")!.getRow(2);
@@ -219,7 +219,7 @@ describe("official XLSX export", () => {
       records: [],
     });
 
-    const response = await GET(new Request("https://example.test"), context);
+    const response = await GET(new Request("https://example.test?legacy=1"), context);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(new Uint8Array(await response.arrayBuffer()) as unknown as ExcelJS.Buffer);
     const row = workbook.getWorksheet("Bản ghi hiệu lực")!.getRow(2);

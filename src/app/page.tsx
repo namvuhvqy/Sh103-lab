@@ -24,7 +24,7 @@ export default async function Home() {
     getCurrentBm06(),
     getOperationalDashboard(),
     getCurrentAccess(),
-    getNotifications(),
+    getNotifications("all", { limit: 5 }),
   ]);
   const activeShift = shiftData?.shift ?? currentShift();
   const shiftCompleted = Object.keys(shiftData?.initialStatuses ?? {}).length;

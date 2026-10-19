@@ -35,7 +35,7 @@ import { getCurrentAccess } from "@/lib/forms/workflow";
 export default async function EquipmentPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; shift?: string }>;
+  searchParams?: Promise<{ date?: string; shift?: string; error?: string; saved?: string }>;
 }) {
   const query = (await searchParams) ?? {};
   const todayIso = vietnamParts(new Date()).date;
@@ -312,6 +312,19 @@ export default async function EquipmentPage({
             })}
           </div>
         </section>
+
+        {query.saved === "1" ? (
+          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 font-bold text-sm flex items-center gap-2 shadow-xs">
+            <span className="grid size-6 place-items-center rounded-full bg-emerald-200 text-emerald-800 text-xs font-black">✓</span>
+            <span>Đã xác nhận: Dữ liệu BM.06 đã được lưu thành công lên hệ thống.</span>
+          </div>
+        ) : null}
+        {query.error ? (
+          <div className="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-rose-900 font-bold text-sm flex items-center gap-2 shadow-xs">
+            <CircleAlert className="size-5 text-rose-600 shrink-0" />
+            <span>Lưu thất bại: {decodeURIComponent(query.error)}. Dữ liệu chưa được cập nhật, vui lòng thử lại.</span>
+          </div>
+        ) : null}
 
         <section id="bm06-entry" className="overflow-hidden rounded-3xl border border-teal-200 bg-white shadow-sm">
           <div className="border-b border-teal-100 bg-teal-50/60 p-5">

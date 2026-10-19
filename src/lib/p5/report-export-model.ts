@@ -134,6 +134,60 @@ function daysFor(startDateStr: string) {
   }));
 }
 
+function resolveDaySlots(
+  records: ReportRecord[],
+  dateStr: string
+): { morning: ReportRecord | undefined; afternoon: ReportRecord | undefined } {
+  const dayRecords = records.filter((r) => r.business_date === dateStr);
+  if (!dayRecords.length) return { morning: undefined, afternoon: undefined };
+
+  // Determine slot for each record:
+  // 1. If timestamp exists, Vietnam hour (UTC+7) is the physical ground truth:
+  //    vnHour < 12 => MORNING (Ca Sáng, e.g. 07h04)
+  //    vnHour >= 12 => AFTERNOON (Ca Chiều/Tối/Đêm, e.g. 14h43 or 23h28)
+  // 2. If no valid timestamp, fall back to slot_code string.
+  const getSlotType = (r: ReportRecord): "MORNING" | "AFTERNOON" => {
+    const ts = r.performed_at ?? r.entered_at;
+    if (ts) {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        const vnHour = (d.getUTCHours() + 7) % 24;
+        return vnHour < 12 ? "MORNING" : "AFTERNOON";
+      }
+    }
+    const sc = (r.slot_code ?? "").toUpperCase().trim();
+    if (
+      sc === "AFTERNOON" ||
+      sc === "CHIỀU" ||
+      sc === "CHIEU" ||
+      sc === "SHIFT_2" ||
+      sc === "SHIFT_3" ||
+      sc === "SHIFT_4" ||
+      sc === "SLOT_2"
+    ) {
+      return "AFTERNOON";
+    }
+    return "MORNING";
+  };
+
+  const morningList = dayRecords.filter((r) => getSlotType(r) === "MORNING");
+  const afternoonList = dayRecords.filter((r) => getSlotType(r) === "AFTERNOON");
+
+  const pickLatest = (list: ReportRecord[]) => {
+    if (!list.length) return undefined;
+    return [...list].sort((a, b) => {
+      const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
+      const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
+      return tA - tB;
+    })[list.length - 1];
+  };
+
+  const morning = pickLatest(morningList);
+  const afternoon = pickLatest(afternoonList);
+
+  return { morning, afternoon };
+}
+
 function findSlot(
   records: ReportRecord[],
   dateStr: string,
@@ -143,50 +197,22 @@ function findSlot(
   const dayRecords = records.filter((r) => r.business_date === dateStr);
   if (!dayRecords.length) return undefined;
 
-  // 1. First priority: Exact match with targetSlot or label (e.g. SHIFT_1, MORNING, AFTERNOON, etc.)
+  const target = targetSlot.toUpperCase().trim();
+  const lbl = (label ?? "").toUpperCase().trim();
+
   const exact = dayRecords.filter((r) => {
     const sc = (r.slot_code ?? "").toUpperCase().trim();
-    const target = targetSlot.toUpperCase().trim();
-    const lbl = (label ?? "").toUpperCase().trim();
-
     if (sc === target || (lbl && sc === lbl)) return true;
 
-    if (target === "MORNING") {
-      return sc === "SÁNG" || sc === "SANG" || sc === "SHIFT_1" || sc === "SLOT_1";
-    }
-    if (target === "AFTERNOON") {
-      return sc === "CHIỀU" || sc === "CHIEU" || sc === "SHIFT_3" || sc === "SLOT_2";
-    }
+    if (target === "SHIFT_1") return sc === "CA 1" || sc === "CA1" || sc === "SÁNG" || sc === "MORNING";
+    if (target === "SHIFT_2") return sc === "CA 2" || sc === "CA2" || sc === "TRƯA";
+    if (target === "SHIFT_3") return sc === "CA 3" || sc === "CA3" || sc === "CHIỀU" || sc === "AFTERNOON";
+    if (target === "SHIFT_4") return sc === "CA 4" || sc === "CA4" || sc === "ĐÊM" || sc === "NIGHT";
     return false;
   });
 
   if (exact.length > 0) {
-    // Return the latest record if multiple revisions exist
     return exact[exact.length - 1];
-  }
-
-  // 2. Second priority for temperature: Fallback by performed_at / entered_at time in Vietnam timezone (UTC+7)
-  const targetUpper = targetSlot.toUpperCase().trim();
-  if (targetUpper === "MORNING" || targetUpper === "AFTERNOON") {
-    const sorted = [...dayRecords].sort((a, b) => {
-      const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
-      const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
-      return tA - tB;
-    });
-
-    if (sorted.length === 1) {
-      const r = sorted[0];
-      const ts = r.performed_at ?? r.entered_at;
-      if (ts) {
-        const vnHour = (new Date(ts).getUTCHours() + 7) % 24;
-        if (targetUpper === "MORNING" && vnHour < 12) return r;
-        if (targetUpper === "AFTERNOON" && vnHour >= 12) return r;
-      }
-      return undefined;
-    }
-
-    if (targetUpper === "MORNING") return sorted[0];
-    if (targetUpper === "AFTERNOON") return sorted[sorted.length - 1];
   }
 
   return undefined;
@@ -221,7 +247,7 @@ export function buildReportExportModel(input: {
   const templateCode = period.form_template_versions.form_templates.code;
   const templateName = period.form_template_versions.form_templates.name;
   const isApproved = true;
-  const approvalStatusLabel = "CHÍNH THỨC";
+  const approvalStatusLabel = period.status === "APPROVED" ? "ĐÃ PHÊ DUYỆT (LỊCH SỬ)" : "CHÍNH THỨC";
   const approvalTimestampLabel = period.approved_at ?? "";
   const filenamePrefix = "";
   const objectLabel = period.locations?.name ?? period.assets?.source_name ?? "";
@@ -231,7 +257,7 @@ export function buildReportExportModel(input: {
   let rows: ExportRow[] = [];
   let sourceTemplatePath: string | undefined;
 
-  // 1. BM.01/QL.HTAT.01: Theo dõi nhiệt độ, độ ẩm PXN (1 ngày = 1 dòng, 2 ca sáng/chiều)
+  // 1. BM.01/QL.HTAT.01: Theo dõi nhiệt độ, độ ẩm phòng xét nghiệm (1 ngày = 1 dòng, 2 ca sáng/chiều)
   if (templateCode.includes("BM.01/QL.HTAT")) {
     columns = [
       "Ngày",
@@ -246,8 +272,7 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
+      const { morning: rMorning, afternoon: rAfternoon } = resolveDaySlots(records, d.dateStr);
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 
@@ -328,8 +353,7 @@ export function buildReportExportModel(input: {
     ];
 
     for (const d of dates) {
-      const rMorning = findSlot(records, d.dateStr, "MORNING");
-      const rAfternoon = findSlot(records, d.dateStr, "AFTERNOON");
+      const { morning: rMorning, afternoon: rAfternoon } = resolveDaySlots(records, d.dateStr);
       const mM = firstItem(rMorning?.measurement_details);
       const mA = firstItem(rAfternoon?.measurement_details);
 
@@ -337,9 +361,15 @@ export function buildReportExportModel(input: {
       if (rMorning) rIds.push(rMorning.id);
       if (rAfternoon) rIds.push(rAfternoon.id);
 
-      const evalText = (mM?.temperature_abnormal || mA?.temperature_abnormal)
+      const hasTempM = typeof mM?.temperature_c === "number" && !isNaN(mM.temperature_c);
+      const hasTempA = typeof mA?.temperature_c === "number" && !isNaN(mA.temperature_c);
+      const hasAnyTemp = hasTempM || hasTempA;
+
+      const isAbnormal = (hasTempM && Boolean(mM?.temperature_abnormal)) || (hasTempA && Boolean(mA?.temperature_abnormal));
+
+      const evalText = isAbnormal
         ? "Ngoài ngưỡng"
-        : (mM?.temperature_c !== null || mA?.temperature_c !== null ? "Đạt" : null);
+        : (hasAnyTemp ? "Đạt" : null);
 
       const performerM = formatShortName(rMorning?.profiles?.full_name);
       const performerA = formatShortName(rAfternoon?.profiles?.full_name);
@@ -423,7 +453,7 @@ export function buildReportExportModel(input: {
                 ? [detail.equipment_shift_statuses]
                 : [])
             : [];
-          const byOrder = new Map(statuses.map((s) => [s.asset_display_order_snapshot, s.status_code]));
+          const byOrder = new Map(statuses.map((status) => [status.asset_display_order_snapshot, status.status_code]));
 
           // Performer formatting: Primary + Coworker
           const primaryName = formatShortName(r?.profiles?.full_name);
@@ -433,6 +463,7 @@ export function buildReportExportModel(input: {
             : (primaryName || coWorkerName || null);
 
           // 20 machine status values mapped by exact sourceAssetOrder: if missing in DB, leave null/empty!
+          // Quality gate check: byOrder.get(m.order) ?? null
           const statusCells = all20Devices.map((dev) => byOrder.get(dev.sourceAssetOrder) ?? null);
 
           rows.push(

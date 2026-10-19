@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { shiftProgress } from "@/lib/forms/domain";
-import { RotateCcw, HelpCircle, Users, UserCheck } from "lucide-react";
+import { RotateCcw, HelpCircle, Users, UserCheck, CheckCircle2, AlertCircle, Clock, Loader2, RefreshCw } from "lucide-react";
 
 export type ShiftAsset = { id: string; sourceOrder: number; name: string; locationCode: string };
 
@@ -21,6 +21,7 @@ export function ShiftRegisterForm({
   areaCode,
   staffCandidates = [],
   initialCoWorkerId = null,
+  initialNote = "",
 }: {
   occurrenceId: string;
   assets: ShiftAsset[];
@@ -29,11 +30,32 @@ export function ShiftRegisterForm({
   areaCode?: string;
   staffCandidates?: StaffCandidate[];
   initialCoWorkerId?: string | null;
+  initialNote?: string;
 }) {
   const [statuses, setStatuses] = useState(initialStatuses);
   const [coWorkerId, setCoWorkerId] = useState<string>(initialCoWorkerId ?? "");
+  const [note, setNote] = useState<string>(initialNote);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastIntent, setLastIntent] = useState<"draft" | "finalize">("draft");
+
+  // Restore unsaved local draft if more complete than initial server data
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(`lab103_bm06_draft_${occurrenceId}`);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed.statuses && Object.keys(parsed.statuses).length > Object.keys(initialStatuses).length) {
+          setStatuses(parsed.statuses);
+          if (parsed.coWorkerId) setCoWorkerId(parsed.coWorkerId);
+          if (parsed.note) setNote(parsed.note);
+          setSaveStatus("dirty");
+        }
+      }
+    } catch {}
+  }, [occurrenceId, initialStatuses]);
 
   const visible = areaCode ? assets.filter((a) => a.locationCode === areaCode) : assets;
   const progress = shiftProgress(
@@ -51,6 +73,11 @@ export function ShiftRegisterForm({
     [statuses, areaCode, visible]
   );
 
+  const handleStatusChange = (assetId: string, status: string) => {
+    setStatuses((prev) => ({ ...prev, [assetId]: status }));
+    setSaveStatus("dirty");
+    setErrorMessage(null);
+  };
 
   const handleClearAll = () => {
     const updated = { ...statuses };
@@ -58,23 +85,114 @@ export function ShiftRegisterForm({
       delete updated[a.id];
     });
     setStatuses(updated);
+    setSaveStatus("dirty");
+    setErrorMessage(null);
+  };
+
+  const handleSubmitIntent = async (e: React.FormEvent, intent: "draft" | "finalize") => {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSaveStatus("saving");
+    setErrorMessage(null);
+    setLastIntent(intent);
+
+    try {
+      localStorage.setItem(`lab103_bm06_draft_${occurrenceId}`, JSON.stringify({
+        statuses,
+        coWorkerId,
+        note,
+        updatedAt: new Date().toISOString(),
+      }));
+    } catch {}
+
+    const formData = new FormData();
+    formData.append("occurrenceId", occurrenceId);
+    formData.append("lockVersion", String(lockVersion));
+    formData.append("statuses", payload);
+    formData.append("areaCode", areaCode ?? "");
+    formData.append("intent", intent);
+    formData.append("note", note);
+    if (coWorkerId) formData.append("coWorkerUserId", coWorkerId);
+
+    try {
+      const res = await fetch("/api/forms/bm06", {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || (data && !data.success)) {
+        throw new Error(data?.error || `Lỗi lưu (${res.status})`);
+      }
+
+      setSaveStatus("saved");
+      setErrorMessage(null);
+      try { localStorage.removeItem(`lab103_bm06_draft_${occurrenceId}`); } catch {}
+    } catch (err: any) {
+      setSaveStatus("error");
+      setErrorMessage(err?.message || "Không thể kết nối đến máy chủ. Dữ liệu đã được giữ nguyên.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <form action="/api/forms/bm06" method="post" onSubmit={() => setIsSubmitting(true)} className="space-y-4">
+    <form action="/api/forms/bm06" method="post" className="space-y-4">
       <input type="hidden" name="occurrenceId" value={occurrenceId} />
       <input type="hidden" name="lockVersion" value={lockVersion} />
       <input type="hidden" name="statuses" value={payload} />
       <input type="hidden" name="areaCode" value={areaCode ?? ""} />
 
-      {/* Sticky Progress Header */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold text-slate-700 shadow-xs" aria-label="Trạng thái lưu BM.06">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-800">Draft · Bản nháp</span>
-          <span className="rounded-full bg-sky-50 px-2.5 py-1 text-sky-800">{isSubmitting ? "Saving · Đang lưu" : "Saved · Đã lưu sau khi server xác nhận"}</span>
-          <span className="rounded-full bg-red-50 px-2.5 py-1 text-red-800">Error · Lỗi sẽ hiển thị ở đầu trang sau khi redirect</span>
-          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800">Completed · Hoàn tất khi đủ 20/20</span>
+      {/* Dynamic Save Status Notification Banner */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 text-xs font-bold shadow-xs" aria-label="Trạng thái lưu BM.06">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700">BM.06 · Nhật ký ca</span>
+            {saveStatus === "saving" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-sky-800 border border-sky-200">
+                <Loader2 className="size-3.5 animate-spin text-sky-600" />
+                Đang lưu lên hệ thống…
+              </span>
+            ) : saveStatus === "saved" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 border border-emerald-200">
+                <CheckCircle2 className="size-3.5 text-emerald-600" />
+                Đã lưu thành công
+              </span>
+            ) : saveStatus === "dirty" ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-amber-800 border border-amber-200">
+                <Clock className="size-3.5 text-amber-600" />
+                Chưa lưu: Có thay đổi chưa gửi
+              </span>
+            ) : (
+              <span className="rounded-full bg-slate-50 px-2.5 py-1 text-slate-600">Sẵn sàng nhập liệu</span>
+            )}
+            {progress.canFinalize ? (
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-800 font-black">Đủ 20/20 máy</span>
+            ) : null}
+          </div>
         </div>
+
+        {saveStatus === "error" ? (
+          <div className="mt-2.5 rounded-xl border border-rose-300 bg-rose-50 p-3 text-rose-900">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 font-black text-xs sm:text-sm">
+                <AlertCircle className="size-4 text-rose-600 shrink-0" />
+                Lưu thất bại: {errorMessage}. Dữ liệu vừa nhập vẫn được giữ nguyên.
+              </div>
+              <button
+                type="button"
+                onClick={(e) => handleSubmitIntent(e, lastIntent)}
+                className="inline-flex items-center gap-1 self-start sm:self-auto rounded-xl bg-rose-700 px-3 py-1 text-xs font-black text-white hover:bg-rose-800 transition"
+              >
+                <RefreshCw className="size-3" />
+                Thử lưu lại
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Sticky Progress Header */}
@@ -185,7 +303,7 @@ export function ShiftRegisterForm({
                       key={code}
                       type="button"
                       aria-pressed={isSelected}
-                      onClick={() => setStatuses((s) => ({ ...s, [asset.id]: code }))}
+                      onClick={() => handleStatusChange(asset.id, code)}
                       className={`min-h-11 rounded-lg border px-1 text-xs font-bold transition-all duration-150 active:scale-95 flex items-center justify-center gap-1 select-none ${
                         isSelected
                           ? activeStyle
@@ -267,6 +385,8 @@ export function ShiftRegisterForm({
           Ghi chú bàn giao &amp; Sự cố thiết bị
           <textarea
             name="note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
             rows={2}
             className="mt-1.5 w-full rounded-xl border border-slate-200 p-3 text-sm outline-none transition-all duration-200 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/30"
             placeholder="Ghi nhận các lưu ý đặc biệt, lỗi máy hoặc cảnh báo hóa chất nếu có..."
@@ -281,17 +401,25 @@ export function ShiftRegisterForm({
         }`}
       >
         <button
+          type="button"
           name="intent"
           value="draft"
+          onClick={(e) => handleSubmitIntent(e, "draft")}
           disabled={isSubmitting || Object.keys(statuses).filter((id) => visible.some((asset) => asset.id === id)).length === 0}
           className="min-h-12 rounded-xl border border-teal-700 font-bold text-teal-800 disabled:border-slate-200 disabled:text-slate-400 hover:bg-teal-50 active:scale-95 transition-all select-none shadow-xs"
         >
-          {areaCode ? "Lưu nháp khu vực" : `Lưu nháp (${progress.completed}/${progress.total} máy)`}
+          {isSubmitting && lastIntent === "draft"
+            ? "Đang lưu nháp…"
+            : areaCode
+            ? "Lưu nháp khu vực"
+            : `Lưu nháp (${progress.completed}/${progress.total} máy)`}
         </button>
         {!areaCode ? (
           <button
+            type="button"
             name="intent"
             value="finalize"
+            onClick={(e) => handleSubmitIntent(e, "finalize")}
             disabled={isSubmitting || !progress.canFinalize}
             className={`min-h-12 rounded-xl font-bold transition-all select-none shadow-xs ${
               progress.canFinalize
@@ -304,7 +432,9 @@ export function ShiftRegisterForm({
                 : `Cần ghi nhận đủ ${progress.total}/${progress.total} máy để hoàn tất ca (Hiện có: ${progress.completed}/${progress.total})`
             }
           >
-            {progress.canFinalize
+            {isSubmitting && lastIntent === "finalize"
+              ? "Đang hoàn tất…"
+              : progress.canFinalize
               ? `Hoàn tất ca (${progress.total}/${progress.total} máy)`
               : `Hoàn tất ca (Thiếu ${Math.max(progress.total - progress.completed, 0)} máy)`}
           </button>

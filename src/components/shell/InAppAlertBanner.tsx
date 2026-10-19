@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { Bell, BellRing, X } from "lucide-react";
+import { Bell, BellRing, CheckCircle2, Loader2, X } from "lucide-react";
 
 type PushState = "unsupported" | NotificationPermission;
 
@@ -18,8 +18,21 @@ function getServerPushState(): PushState {
   return "unsupported";
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export function InAppAlertBanner() {
   const [dismissed, setDismissed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribedSuccess, setSubscribedSuccess] = useState(false);
   const pushState = useSyncExternalStore(subscribeToNotificationPermission, getPushState, getServerPushState);
   const [permissionOverride, setPermissionOverride] = useState<NotificationPermission | null>(null);
   const effectivePermission = permissionOverride ?? pushState;
@@ -28,17 +41,41 @@ export function InAppAlertBanner() {
 
   const requestNotification = async () => {
     if (!pushSupported) return;
+    setSubscribing(true);
     try {
       const res = await Notification.requestPermission();
       setPermissionOverride(res);
       if (res === "granted") {
-        new Notification("Khoa Sinh hóa · Bệnh viện Quân y 103", {
-          body: "Đã bật thông báo đẩy thành công! Bạn sẽ nhận thông báo ca trực và phê duyệt.",
-          icon: "/icon-192.png",
-        });
+        const vapidPublicKey =
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+          "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
+        if (typeof window !== "undefined" && "serviceWorker" in navigator && vapidPublicKey) {
+          const reg = await navigator.serviceWorker.ready;
+          let sub = await reg.pushManager.getSubscription();
+          if (!sub) {
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+            });
+          }
+          if (sub) {
+            await fetch("/api/notifications/subscribe", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                subscription: sub,
+                userAgent: navigator.userAgent,
+              }),
+            });
+          }
+        }
+        setSubscribedSuccess(true);
+        setTimeout(() => setSubscribedSuccess(false), 5000);
       }
     } catch (e) {
-      console.error(e);
+      console.error("VAPID push subscription error:", e);
+    } finally {
+      setSubscribing(false);
     }
   };
 
@@ -57,15 +94,25 @@ export function InAppAlertBanner() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {pushSupported && !pushGranted ? (
+          {subscribedSuccess ? (
+            <span className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-emerald-800 text-emerald-100 px-2.5 py-1 text-[11px] font-bold border border-emerald-600 animate-pulse">
+              <CheckCircle2 className="size-3 text-emerald-300" />
+              <span>Đã bật báo đẩy</span>
+            </span>
+          ) : pushSupported && !pushGranted ? (
             <button
               type="button"
+              disabled={subscribing}
               onClick={requestNotification}
-              className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-teal-800 hover:bg-teal-700 px-2.5 py-1 text-[11px] font-bold text-teal-100 transition border border-teal-700"
-              title="Bật thông báo ngoài màn hình để không bỏ lỡ ca trực"
+              className="inline-flex min-h-7 items-center gap-1 rounded-lg bg-teal-800 hover:bg-teal-700 px-2.5 py-1 text-[11px] font-bold text-teal-100 transition border border-teal-700 disabled:opacity-50"
+              title="Bật thông báo ngoài màn hình điện thoại & máy tính"
             >
-              <BellRing className="size-3 text-teal-300" />
-              <span>Bật báo đẩy</span>
+              {subscribing ? (
+                <Loader2 className="size-3 animate-spin text-teal-300" />
+              ) : (
+                <BellRing className="size-3 text-teal-300" />
+              )}
+              <span>{subscribing ? "Đang bật..." : "Bật báo đẩy"}</span>
             </button>
           ) : null}
 

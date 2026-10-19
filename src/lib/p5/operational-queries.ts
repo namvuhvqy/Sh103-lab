@@ -165,7 +165,7 @@ export async function getReportPeriods() {
     .from("register_periods")
     .select("id,period_label,period_start,period_end,status,approved_at,approved_by,locations(name),assets(source_name),form_template_versions(version_label,form_templates(code,name)),records(count)")
     .order("period_start", { ascending: false })
-    .limit(100);
+    .limit(500);
   if (error) throw new Error(`Không tải được báo cáo: ${error.message}`);
   return (data ?? []).map((p: any) => ({
     ...p,
@@ -286,7 +286,7 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   const start = isValidIsoDate(candidateStart) ? candidateStart : `${year}-${month}-01`;
   const end = day && start === candidateStart ? start : new Date(Date.UTC(Number(year), Number(month), 0)).toISOString().slice(0, 10);
 
-  let matchingInMonth = allMatching.filter((p) => p.period_start.startsWith(`${year}-${month}`));
+  const matchingInMonth = allMatching.filter((p) => p.period_start.startsWith(`${year}-${month}`));
   let matching = matchingInMonth.length > 0 ? matchingInMonth : allMatching;
 
   // Deduplicate by location/asset name: if multiple periods exist, keep the one with higher record_count
@@ -327,5 +327,5 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
     if (result.error) throw new Error(`Không tải được preview: ${result.error.message}`);
     records = result.data ?? [];
   }
-  return { year, month, day, start, end, shift: filters.shift ?? "ALL", templates: typedTemplates, periods: matching, selectedPeriod, records, templateCode };
+  return { year, month, day, start, end, shift: filters.shift ?? "ALL", templates: typedTemplates, allPeriods: typedPeriods, periods: matching, selectedPeriod, records, templateCode };
 }

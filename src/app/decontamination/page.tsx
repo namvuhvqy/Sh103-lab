@@ -13,7 +13,7 @@ import { getCurrentAccess } from "@/lib/forms/workflow";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams?: Promise<{ date?: string; shift?: string; slot?: string }>;
+  searchParams?: Promise<{ date?: string; shift?: string; slot?: string; saved?: string; error?: string }>;
 }
 
 export default async function DecontaminationPage(props: PageProps) {
@@ -56,7 +56,13 @@ export default async function DecontaminationPage(props: PageProps) {
           availableStaff={sessionData.availableStaff}
           currentUserId={sessionData.userId}
         />
-        <DecontaminationWorkspace today={workspace.today} shift={selectedShift} areas={workspace.areas} />
+        <DecontaminationWorkspace
+          today={workspace.today}
+          shift={selectedShift}
+          areas={workspace.areas}
+          savedArea={searchParams?.saved}
+          errorMsg={searchParams?.error}
+        />
       </main>
     </AppShell>
   );

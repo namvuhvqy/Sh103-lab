@@ -81,7 +81,10 @@ export interface IncidentEventItem {
   actor?: { full_name: string; email?: string } | null;
 }
 
-export async function getNotifications(filter?: "all" | "unread" | "critical"): Promise<NotificationItem[]> {
+export async function getNotifications(
+  filter?: "all" | "unread" | "critical",
+  options?: { limit?: number; offset?: number }
+): Promise<NotificationItem[]> {
   const supabase = await createClient();
   let query = supabase
     .from("notifications")
@@ -92,6 +95,11 @@ export async function getNotifications(filter?: "all" | "unread" | "critical"): 
     query = query.is("read_at", null);
   } else if (filter === "critical") {
     query = query.in("severity", ["WARNING", "CRITICAL"]);
+  }
+
+  if (typeof options?.limit === "number" && options.limit > 0) {
+    const from = options.offset ?? 0;
+    query = query.range(from, from + options.limit - 1);
   }
 
   const { data, error } = await query;
@@ -222,3 +230,52 @@ export async function getIncidentDetail(id: string): Promise<{
     events: (events ?? []) as unknown as IncidentEventItem[],
   };
 }
+
+export interface NotificationInteractionSummary {
+  likesCount: Record<string, number>;
+  userLiked: Record<string, boolean>;
+  comments: Record<string, Array<{ id: string; author: string; role?: string; text: string; createdAt: string }>>;
+}
+
+export async function getNotificationInteractions(
+  targetIds: string[],
+  currentUserId?: string
+): Promise<NotificationInteractionSummary> {
+  const summary: NotificationInteractionSummary = {
+    likesCount: {},
+    userLiked: {},
+    comments: {},
+  };
+  if (!targetIds.length) return summary;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notification_interactions")
+    .select("id, target_id, user_id, interaction_type, content, created_at, profiles(full_name, business_role)")
+    .in("target_id", targetIds)
+    .order("created_at", { ascending: true });
+
+  if (error || !data) return summary;
+
+  for (const row of data as any[]) {
+    const tId = row.target_id;
+    if (row.interaction_type === "LIKE") {
+      summary.likesCount[tId] = (summary.likesCount[tId] || 0) + 1;
+      if (currentUserId && row.user_id === currentUserId) {
+        summary.userLiked[tId] = true;
+      }
+    } else if (row.interaction_type === "COMMENT") {
+      if (!summary.comments[tId]) summary.comments[tId] = [];
+      summary.comments[tId].push({
+        id: row.id,
+        author: row.profiles?.full_name || "Nhân sự",
+        role: row.profiles?.business_role,
+        text: row.content || "",
+        createdAt: row.created_at,
+      });
+    }
+  }
+
+  return summary;
+}
+
