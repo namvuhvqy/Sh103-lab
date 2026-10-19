@@ -46,7 +46,9 @@ export function InAppAlertBanner() {
       const res = await Notification.requestPermission();
       setPermissionOverride(res);
       if (res === "granted") {
-        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        const vapidPublicKey =
+          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+          "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
         if (typeof window !== "undefined" && "serviceWorker" in navigator && vapidPublicKey) {
           const reg = await navigator.serviceWorker.ready;
           let sub = await reg.pushManager.getSubscription();

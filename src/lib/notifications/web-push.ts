@@ -1,8 +1,8 @@
 import webpush from "web-push";
 import { createClient } from "@/lib/supabase/server";
 
-const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-const privateKey = process.env.VAPID_PRIVATE_KEY;
+const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
+const privateKey = process.env.VAPID_PRIVATE_KEY || "SLw4EXxwIq_RGzA7pwytD89NGc5vnOnMz1IvXz_CHPI";
 const subject = process.env.VAPID_SUBJECT || "mailto:khoasinhhoa103@hospital.vn";
 
 if (publicKey && privateKey) {
