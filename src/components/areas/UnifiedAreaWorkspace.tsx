@@ -149,11 +149,21 @@ export function UnifiedAreaWorkspace({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start md:self-auto rounded-2xl bg-white/10 px-3.5 py-2 text-xs font-bold border border-white/10 backdrop-blur-md">
-            <span>Ca trực:</span>
-            <span className="text-teal-300 font-extrabold">{shift.label}</span>
-            <span className="text-slate-400">·</span>
-            <span>{today}</span>
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            <Link
+              href="/areas/qr-print"
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-teal-500/20 hover:bg-teal-500/30 px-3.5 py-2 text-xs font-bold border border-teal-400/40 text-teal-200 transition backdrop-blur-md"
+              title="In trọn bộ 20 tem dán QR cho tất cả máy xét nghiệm chuẩn ISO 15189"
+            >
+              <QrCode className="size-3.5" />
+              <span>In 20 Tem QR Máy</span>
+            </Link>
+            <div className="flex items-center gap-2 rounded-2xl bg-white/10 px-3.5 py-2 text-xs font-bold border border-white/10 backdrop-blur-md">
+              <span>Ca trực:</span>
+              <span className="text-teal-300 font-extrabold">{shift.label}</span>
+              <span className="text-slate-400">·</span>
+              <span>{today}</span>
+            </div>
           </div>
         </div>
 
