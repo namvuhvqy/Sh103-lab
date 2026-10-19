@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Thermometer, Droplets, ShieldCheck, Check, Loader2, AlertTriangle, Clock3 } from "lucide-react";
+import { Thermometer, Droplets, ShieldCheck, Check, Loader2, AlertTriangle, Clock3, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface InlineOccurrence {
@@ -101,6 +101,9 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     }
   }, []);
 
+  const inFlightRef = useRef(false);
+  const queuedRef = useRef<{ temp: number | null; hum: number | null; force: boolean } | null>(null);
+
   // Hàm lưu dữ liệu lên Supabase & Audit trail
   const saveToServer = useCallback(
     async (temp: number | null, hum: number | null, force = false) => {
@@ -118,6 +121,11 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
         // localStorage có thể bị khóa ở môi trường private
       }
 
+      if (inFlightRef.current) {
+        queuedRef.current = { temp, hum, force };
+        return;
+      }
+
       setSaveSuccess(false);
       setSaveError(null);
 
@@ -127,6 +135,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
         return;
       }
 
+      inFlightRef.current = true;
       setIsSaving(true);
       try {
         const res = await fetch("/api/measurements/quick-save", {
@@ -145,15 +154,23 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
         setLastSavedHum(hum);
         setPendingSync(false);
         setSaveSuccess(true);
+        setSaveError(null);
         try { localStorage.removeItem(`lab103_temp_${occurrence.id}`); } catch {}
         setTimeout(() => setSaveSuccess(false), 2500);
         if (temp !== null) triggerHaptic(isAbnormal);
         onSaved?.(occurrence.id, temp, hum);
       } catch (err) {
         setPendingSync(true);
+        setSaveSuccess(false);
         setSaveError(err instanceof Error ? err.message : "Chưa thể đồng bộ số đo");
       } finally {
         setIsSaving(false);
+        inFlightRef.current = false;
+        if (queuedRef.current) {
+          const next = queuedRef.current;
+          queuedRef.current = null;
+          saveToServer(next.temp, next.hum, next.force);
+        }
       }
     },
     [occurrence.id, lastSavedTemp, lastSavedHum, triggerHaptic, onSaved, isAbnormal, isEnv]
@@ -238,9 +255,19 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
           {/* Badge trạng thái đo - Chuyển màu tức thì */}
           <div className="shrink-0 flex items-center gap-1.5">
             {isSaving ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                <Loader2 className="size-3 animate-spin text-teal-600" />
-                Lưu…
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-800 border border-sky-200">
+                <Loader2 className="size-3 animate-spin text-sky-600" />
+                Đang lưu…
+              </span>
+            ) : saveError ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-800 border border-rose-300">
+                <AlertTriangle className="size-3 text-rose-600" />
+                Lưu thất bại
+              </span>
+            ) : pendingSync ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-900 border border-amber-300">
+                <Clock3 className="size-3 text-amber-600" />
+                Chờ đồng bộ
               </span>
             ) : isTempEntered ? (
               isAbnormal ? (
@@ -251,12 +278,12 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-black text-emerald-800 border border-emerald-300">
                   <Check className="size-3 text-emerald-600 stroke-[3]" />
-                  Bình thường: {numTemp}°C
+                  Đã lưu: {numTemp}°C
                 </span>
               )
             ) : (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 border border-amber-200">
-                <Clock3 className="size-3 text-amber-600" />
+              <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600 border border-slate-200">
+                <Clock3 className="size-3 text-slate-400" />
                 Chưa đo
               </span>
             )}
@@ -351,6 +378,31 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
             </div>
           ) : null}
         </div>
+
+        {/* Cảnh báo và nút Thử lưu lại khi mất mạng / Supabase lỗi */}
+        {(saveError || pendingSync) && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs font-bold text-amber-900 shadow-xs animate-fadeIn">
+            <div className="flex items-center gap-1.5 truncate">
+              <AlertTriangle className="size-3.5 text-amber-600 shrink-0" />
+              <span className="truncate">
+                {saveError ? `Lưu thất bại: ${saveError}` : "Số đo chưa lưu lên hệ thống (Chờ đồng bộ)"}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const parsedTemp = tempVal.trim() !== "" ? parseFloat(tempVal) : null;
+                const parsedHum = humVal.trim() !== "" ? parseFloat(humVal) : null;
+                saveToServer(parsedTemp, parsedHum, true);
+              }}
+              disabled={isSaving}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-700 px-2.5 py-1 text-[10px] font-black text-white hover:bg-amber-800 transition disabled:opacity-50"
+            >
+              <RefreshCw className="size-3" />
+              Thử lưu lại
+            </button>
+          </div>
+        )}
 
         {/* Trợ giúp thao tác nhanh: Chạm để sửa ngay */}
         <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
