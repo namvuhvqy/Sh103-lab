@@ -22,7 +22,8 @@ export function routeAccessLevel(pathname: string): RouteAccessLevel {
     pathname === "/offline" ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/prototypes") ||
-    pathname.startsWith("/api/webhooks/")
+    pathname.startsWith("/api/webhooks/") ||
+    pathname.startsWith("/api/notifications/")
   ) {
     return "public";
   }

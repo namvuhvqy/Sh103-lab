@@ -76,6 +76,16 @@ async function handleShiftReminder(request: Request) {
       ? `📢 [NHẮC VIỆC CA TRỰC KHOA SINH HÓA · BVQY 103]\n📅 Ngày: ${today} · ${shift.label} (${shift.timeRange})\n\nCác hạng mục ca trực cần hoàn tất:\n${missingItems.join("\n")}\n\n👉 Kỹ thuật viên phụ trách vui lòng truy cập hệ thống để hoàn tất:\nhttps://sh103-lab.vercel.app/areas`
       : `✅ [KHOA SINH HÓA · BVQY 103]\nCa trực ${shift.label} ngày ${today} đã hoàn tất 100% nhiệm vụ (BM.06 đủ 20/20 máy, khử nhiễm đủ 5/5 khu vực).`;
 
+    // Also push directly to registered phone/desktop Web Push subscribers
+    if (needsReminder) {
+      const { sendPushToAllSubscriptions } = await import("@/lib/notifications/web-push");
+      sendPushToAllSubscriptions({
+        title: `📢 Nhắc việc: ${shift.label}`,
+        body: `Còn thiếu: ${totalMachines - recordedMachinesCount} máy BM.06 & ${totalDecon - completedDecon} khu vực khử nhiễm.`,
+        url: "/areas",
+      }).catch((e) => console.error("Web push error during shift reminder:", e));
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: new Date().toISOString(),

@@ -90,3 +90,63 @@ self.addEventListener("fetch", (event) => {
       })
   );
 });
+
+// ==========================================
+// Web Push Notifications (Android & iOS Safari 16.4+)
+// ==========================================
+self.addEventListener("push", (event) => {
+  let payload = {
+    title: "Khoa Sinh Hóa · Bệnh viện Quân y 103",
+    body: "Bạn có thông báo mới từ ca trực xét nghiệm.",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: "/notifications" },
+  };
+
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      payload = { ...payload, ...parsed };
+      if (!payload.data) payload.data = { url: parsed.url || "/notifications" };
+    } catch {
+      payload.body = event.data.text();
+    }
+  }
+
+  const notificationOptions = {
+    body: payload.body,
+    icon: payload.icon || "/icon-192.png",
+    badge: payload.badge || "/icon-192.png",
+    vibrate: [200, 100, 200],
+    data: payload.data || { url: "/notifications" },
+    tag: payload.tag || "sh103-notification",
+    renotify: true,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, notificationOptions)
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "/notifications";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Focus existing tab if open
+      for (const client of clientList) {
+        if ("focus" in client) {
+          if (client.url.includes(targetUrl)) {
+            return client.focus();
+          }
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
