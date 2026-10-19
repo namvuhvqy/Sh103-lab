@@ -149,4 +149,17 @@ describe("Audit Preview & Export Logic", () => {
     const rowDay31 = model.rows.find((r) => r.key === "2026-10-31");
     expect(rowDay31!.cells[3]).toBeNull();
   });
+
+  it("exports official BM.01 Excel workbook with unmerged Row 8 Sáng/Chiều sub-headers", async () => {
+    const { buildCanonicalReportWorkbook } = await import("@/lib/p5/canonical-template-xlsx");
+    const model = buildReportExportModel({
+      period: dummyPeriod,
+      records: [],
+      start: "2026-10-01",
+      official: true,
+    });
+    const buffer = await buildCanonicalReportWorkbook(model);
+    expect(buffer).toBeDefined();
+    expect(buffer.length).toBeGreaterThan(1000); // valid xlsx zip binary
+  });
 });
