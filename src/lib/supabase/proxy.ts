@@ -30,16 +30,16 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Handle invalid/deleted refresh token gracefully: clear cookies and redirect to login
-  const isInvalidRefreshToken = authError && (
-    (typeof authError.message === "string" && (
+  const hasSbCookies = request.cookies.getAll().some((cookie) => cookie.name.startsWith("sb-"));
+  const isInvalidRefreshToken = hasSbCookies && authError && (
+    typeof authError.message === "string" && (
       authError.message.includes("Refresh Token Not Found") ||
       authError.message.includes("Invalid Refresh Token") ||
       authError.message.includes("refresh_token_not_found")
-    )) ||
-    authError.status === 400
+    )
   );
 
-  if (isInvalidRefreshToken) {
+  if (isInvalidRefreshToken && request.nextUrl.pathname !== "/login") {
     const redirectResponse = NextResponse.redirect(new URL("/login?error=session_expired", request.url));
     request.cookies.getAll().forEach((cookie) => {
       if (cookie.name.startsWith("sb-")) {
