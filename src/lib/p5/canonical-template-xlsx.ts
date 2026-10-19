@@ -39,6 +39,16 @@ export async function buildCanonicalReportWorkbook(model: ReportExportModel, cyc
     const locName = model.period.locations?.name || "Khu vực Xét nghiệm";
     ws.cell("A4").value(`Khu vực: ${locName} - Thời gian: tháng ${month} năm ${year}`);
 
+    // In original template, B7:C8, D8:E8, F8:G8 are merged.
+    // Unmerge them so row 8 can hold distinct "Sáng" and "Chiều" columns without being swallowed or hidden.
+    ws.range("B7:C8").merged(false);
+    ws.range("D8:E8").merged(false);
+    ws.range("F8:G8").merged(false);
+
+    // Merge B7:C7 for "Giờ kiểm tra" header
+    ws.range("B7:C7").merged(true);
+    ws.cell("B7").value("Giờ kiểm tra");
+
     // Populate Sub-headers for Sáng / Chiều in Row 8 of BM.01
     ws.cell("B8").value("Sáng");
     ws.cell("C8").value("Chiều");

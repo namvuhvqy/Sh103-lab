@@ -141,46 +141,49 @@ function resolveDaySlots(
   const dayRecords = records.filter((r) => r.business_date === dateStr);
   if (!dayRecords.length) return { morning: undefined, afternoon: undefined };
 
-  const isMorningSlot = (r: ReportRecord) => {
+  // Determine slot for each record:
+  // 1. If timestamp exists, Vietnam hour (UTC+7) is the physical ground truth:
+  //    vnHour < 12 => MORNING (Ca Sáng, e.g. 07h04)
+  //    vnHour >= 12 => AFTERNOON (Ca Chiều/Tối/Đêm, e.g. 14h43 or 23h28)
+  // 2. If no valid timestamp, fall back to slot_code string.
+  const getSlotType = (r: ReportRecord): "MORNING" | "AFTERNOON" => {
+    const ts = r.performed_at ?? r.entered_at;
+    if (ts) {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        const vnHour = (d.getUTCHours() + 7) % 24;
+        return vnHour < 12 ? "MORNING" : "AFTERNOON";
+      }
+    }
     const sc = (r.slot_code ?? "").toUpperCase().trim();
-    return sc === "MORNING" || sc === "SÁNG" || sc === "SANG" || sc === "SHIFT_1" || sc === "SLOT_1";
+    if (
+      sc === "AFTERNOON" ||
+      sc === "CHIỀU" ||
+      sc === "CHIEU" ||
+      sc === "SHIFT_2" ||
+      sc === "SHIFT_3" ||
+      sc === "SHIFT_4" ||
+      sc === "SLOT_2"
+    ) {
+      return "AFTERNOON";
+    }
+    return "MORNING";
   };
 
-  const isAfternoonSlot = (r: ReportRecord) => {
-    const sc = (r.slot_code ?? "").toUpperCase().trim();
-    return sc === "AFTERNOON" || sc === "CHIỀU" || sc === "CHIEU" || sc === "SHIFT_3" || sc === "SLOT_2";
-  };
+  const morningList = dayRecords.filter((r) => getSlotType(r) === "MORNING");
+  const afternoonList = dayRecords.filter((r) => getSlotType(r) === "AFTERNOON");
 
-  // 1. Strict slot matching
-  const morningList = dayRecords.filter(isMorningSlot);
-  const afternoonList = dayRecords.filter(isAfternoonSlot);
-
-  let morning = morningList.length > 0 ? morningList[morningList.length - 1] : undefined;
-  let afternoon = afternoonList.length > 0 ? afternoonList[afternoonList.length - 1] : undefined;
-
-  // 2. Only unassigned records with NO explicit conflicting slot code can fall back by time
-  const unassigned = dayRecords.filter(
-    (r) => r !== morning && r !== afternoon && !isMorningSlot(r) && !isAfternoonSlot(r)
-  );
-
-  if (unassigned.length > 0) {
-    const sorted = [...unassigned].sort((a, b) => {
+  const pickLatest = (list: ReportRecord[]) => {
+    if (!list.length) return undefined;
+    return [...list].sort((a, b) => {
       const tA = new Date(a.performed_at ?? a.entered_at ?? 0).getTime();
       const tB = new Date(b.performed_at ?? b.entered_at ?? 0).getTime();
       return tA - tB;
-    });
+    })[list.length - 1];
+  };
 
-    for (const r of sorted) {
-      const ts = r.performed_at ?? r.entered_at;
-      if (!ts) continue;
-      const vnHour = (new Date(ts).getUTCHours() + 7) % 24;
-      if (vnHour < 12 && !morning) {
-        morning = r;
-      } else if (vnHour >= 12 && !afternoon) {
-        afternoon = r;
-      }
-    }
-  }
+  const morning = pickLatest(morningList);
+  const afternoon = pickLatest(afternoonList);
 
   return { morning, afternoon };
 }

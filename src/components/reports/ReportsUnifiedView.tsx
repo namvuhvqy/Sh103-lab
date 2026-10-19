@@ -262,7 +262,7 @@ export function ReportsUnifiedView({
   return (
     <div className="space-y-6">
       {/* HEADER HERO */}
-      <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-teal-100 bg-white p-5 shadow-xs">
+      <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-teal-100 bg-white p-5 shadow-xs print:hidden">
         <div className="flex items-center gap-3.5">
           <HospitalLogo size="lg" />
           <div>
@@ -705,7 +705,7 @@ export function ReportsUnifiedView({
       {activeTab === "forms" && (
         <div className="space-y-6">
           {/* THANH CHỌN BIỂU MẪU NHANH */}
-          <section className="rounded-3xl border border-teal-100 bg-white p-4 shadow-xs space-y-3">
+          <section className="rounded-3xl border border-teal-100 bg-white p-4 shadow-xs space-y-3 print:hidden">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-teal-800">
                 1. Chọn Biểu Mẫu Chuyên Môn
@@ -798,7 +798,7 @@ export function ReportsUnifiedView({
           </section>
 
           {/* THANH ĐIỀU KHIỂN KỲ & CHECKBOX XÁC NHẬN NỘI BỘ */}
-          <section className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+          <section className="rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-4 print:hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               {/* Thông tin kỳ đang chọn */}
               <div className="min-w-0">
@@ -948,7 +948,7 @@ export function ReportsUnifiedView({
           </section>
 
           {/* KHUNG PREVIEW BIỂU MẪU MÔ PHỎNG CHUẨN GỐC BỆNH VIỆN 103 */}
-          <section className="rounded-3xl border border-slate-300 bg-white p-6 shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0">
+          <section className="rounded-3xl border border-slate-300 bg-white p-6 shadow-sm overflow-hidden print:border-none print:shadow-none print:p-0 print:overflow-visible">
             {/* Header In Ấn Chuẩn */}
             <div className="border-b-2 border-slate-900 pb-4 mb-4">
               <div className="flex justify-between items-start text-xs font-black">
@@ -977,7 +977,7 @@ export function ReportsUnifiedView({
 
             {/* ĐIỀU KHIỂN RIÊNG CHO BM.06: CHU KỲ 3 NGÀY & TÁCH TRANG 1 / TRANG 2 */}
             {isBm06 && pageCount > 1 && (
-              <div className="mb-4 space-y-3 rounded-2xl bg-slate-50 p-3.5 border border-slate-200 text-xs">
+              <div className="mb-4 space-y-3 rounded-2xl bg-slate-50 p-3.5 border border-slate-200 text-xs print:hidden">
                 {/* 10 Đợt chu kỳ 3 ngày */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-black text-slate-700 uppercase tracking-wider text-[11px]">
@@ -1055,7 +1055,7 @@ export function ReportsUnifiedView({
             {/* RENDER BẢNG PREVIEW THEO TỪNG MẪU CHUẨN                       */}
             {/* ============================================================= */}
             {model && visibleRows.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto print:overflow-visible">
                 {/* 1. MẪU BM.01: NHIỆT ĐỘ, ĐỘ ẨM PXN */}
                 {currentTemplateCode.includes("BM.01/QL.HTAT") ? (
                   <table className="w-full border-collapse border border-slate-900 text-xs">

@@ -63,18 +63,18 @@ describe("Audit Preview & Export Logic", () => {
       official: true,
     });
 
-    // Check Day 1 (2026-10-01)
+    // Check Day 1 (2026-10-01) - 14:43 is PM, so it must be in Chiều (Afternoon) column, leaving Sáng (Morning) blank
     const rowDay1 = model.rows.find((r) => r.key === "2026-10-01");
     expect(rowDay1).toBeDefined();
     // Cells: [day, timeM, timeA, tempM, tempA, humM, humA, note, performer]
     const cells1 = rowDay1!.cells;
     expect(cells1[0]).toBe(1);
-    expect(cells1[1]).toBe("14:43"); // Morning time
-    expect(cells1[2]).toBeNull();    // Afternoon time MUST be null (empty), NOT duplicated!
-    expect(cells1[3]).toBe(22);      // Temp M
-    expect(cells1[4]).toBeNull();    // Temp A MUST be null!
-    expect(cells1[5]).toBe(6);       // Hum M
-    expect(cells1[6]).toBeNull();    // Hum A MUST be null!
+    expect(cells1[1]).toBeNull();    // Morning MUST be empty!
+    expect(cells1[2]).toBe("14:43"); // Afternoon time
+    expect(cells1[3]).toBeNull();    // Temp M MUST be empty!
+    expect(cells1[4]).toBe(22);      // Temp A
+    expect(cells1[5]).toBeNull();    // Hum M MUST be empty!
+    expect(cells1[6]).toBe(6);       // Hum A
 
     // Check Day 2 (completely empty)
     const rowDay2 = model.rows.find((r) => r.key === "2026-10-02");
@@ -85,15 +85,17 @@ describe("Audit Preview & Export Logic", () => {
     expect(cells2[3]).toBeNull();
     expect(cells2[4]).toBeNull();
 
-    // Check Day 18 (2026-10-18)
+    // Check Day 18 (2026-10-18) - 23:28 is PM/Night, so it must be in Chiều (Afternoon) column, leaving Sáng (Morning) blank
     const rowDay18 = model.rows.find((r) => r.key === "2026-10-18");
     expect(rowDay18).toBeDefined();
     const cells18 = rowDay18!.cells;
     expect(cells18[0]).toBe(18);
-    expect(cells18[1]).toBe("23:28"); // Morning time
-    expect(cells18[2]).toBeNull();    // Afternoon MUST be null!
-    expect(cells18[3]).toBe(22);
-    expect(cells18[4]).toBeNull();    // Afternoon MUST be null!
+    expect(cells18[1]).toBeNull();    // Morning MUST be empty!
+    expect(cells18[2]).toBe("23:28"); // Afternoon time
+    expect(cells18[3]).toBeNull();    // Temp M MUST be empty!
+    expect(cells18[4]).toBe(22);      // Temp A
+    expect(cells18[5]).toBeNull();    // Hum M MUST be empty!
+    expect(cells18[6]).toBe(60);      // Hum A
   });
 
   it("leaves evaluation empty on unentered days for BM.02 and BM.03 instead of reporting Đạt", () => {

@@ -60,10 +60,13 @@ button, a { touch-action: manipulation; }
 }
 
 @media print {
-  [data-app-chrome], nav, header, .no-print { display: none !important; }
-  body { background: #fff; }
+  [data-app-chrome], nav, header, aside, .no-print { display: none !important; }
+  body { background: #fff !important; }
   main { padding: 0 !important; max-width: none !important; }
   .print-sheet { border: 0 !important; box-shadow: none !important; }
+  table { width: 100% !important; border-collapse: collapse !important; }
+  thead { display: table-header-group !important; }
+  tr { page-break-inside: avoid !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

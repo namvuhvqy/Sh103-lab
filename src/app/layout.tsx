@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   title: "SH103 Lab - Quản lý Biểu mẫu Sinh Hóa",
   description: "Web app quản lý biểu mẫu nội bộ Khoa/Bộ môn Sinh hóa",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/images/logo103.png",
+    apple: "/images/logo103.png",
+    shortcut: "/images/logo103.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
