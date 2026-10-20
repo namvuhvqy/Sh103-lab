@@ -248,5 +248,64 @@ describe("TASK 01: QR BM06 Concurrency, Offline Queue, and UI Truthfulness", () 
     const queue = localStorage.getItem("lab103_bm06_offline_queue_v1");
     expect(JSON.parse(queue || "[]")).toEqual([]);
   });
+
+  it("PRIORITY 1: Offline sync includes client_timestamp and preserves newer status when server skips outdated items", async () => {
+    localStorage.setItem(
+      "lab103_bm06_offline_queue_v1",
+      JSON.stringify([
+        {
+          occurrenceId: "occ-bm06-test",
+          assetId: "dev-01-uuid",
+          machineName: "AU5800 - Số 1",
+          machineOrder: 1,
+          status: "H",
+          note: "",
+          areaCode: "SINH_HOA",
+          timestamp: "2026-10-20T08:00:00.000Z",
+        },
+      ])
+    );
+
+    let sentPayload: any = null;
+    global.fetch = vi.fn().mockImplementation(async (url: string, opts: any) => {
+      if (url === "/api/forms/bm06") {
+        sentPayload = JSON.parse(opts.body.get("statuses"));
+        return {
+          ok: true,
+          json: async () => ({
+            success: true,
+            saved: "1",
+            lockVersion: 5,
+            skippedOutdated: ["dev-01-uuid"],
+            message: "Dữ liệu trên máy chủ đã mới hơn, giữ nguyên trạng thái mới nhất từ máy chủ.",
+          }),
+        };
+      }
+      return { ok: false };
+    });
+
+    render(
+      <QRScannerProvider>
+        <UnifiedAreaWorkspace
+          areas={mockAreas}
+          today="2026-10-20"
+          shift={{ code: "SHIFT_1", label: "Ca 1" }}
+          bm06OccurrenceId="occ-bm06-test"
+          bm06LockVersion={4}
+          initialStatuses={{ "dev-01-uuid": "BT" }}
+        />
+      </QRScannerProvider>
+    );
+
+    const syncBtn = screen.getByRole("button", { name: /Đồng bộ lên máy chủ/i });
+    fireEvent.click(syncBtn);
+
+    await waitFor(() => {
+      expect(sentPayload).not.toBeNull();
+      expect(sentPayload[0].client_timestamp).toBe("2026-10-20T08:00:00.000Z");
+      // UI must acknowledge that server data was preserved
+      expect(screen.getByText(/giữ nguyên bản ghi mới hơn từ máy chủ/i)).toBeDefined();
+    });
+  });
 });
 

@@ -228,6 +228,7 @@ export function UnifiedAreaWorkspace({
       const statusesPayload = currentQ.map((item) => ({
         asset_id: item.assetId,
         status: item.status,
+        client_timestamp: item.timestamp,
       }));
 
       const formData = new FormData();
@@ -256,16 +257,25 @@ export function UnifiedAreaWorkspace({
 
       // Update local react statuses state
       const syncedStatuses = { ...statuses };
+      const skippedSet = new Set((data.skippedOutdated || []) as string[]);
       currentQ.forEach((item) => {
-        syncedStatuses[item.assetId] = item.status;
+        if (!skippedSet.has(item.assetId)) {
+          syncedStatuses[item.assetId] = item.status;
+        }
       });
       setStatuses(syncedStatuses);
 
       clearOfflineQueueForOccurrence(bm06OccurrenceId);
       setOfflineQueue([]);
+
+      const skippedCount = skippedSet.size;
+      const successText = skippedCount > 0
+        ? `✓ Đã đồng bộ thành công (${statusesPayload.length - skippedCount} máy cập nhật, ${skippedCount} máy giữ nguyên bản ghi mới hơn từ máy chủ).`
+        : `✓ Đã đồng bộ thành công ${statusesPayload.length} máy lên máy chủ Supabase (v${data.lockVersion ?? currentLockVersion})!`;
+
       setSyncBannerMsg({
         type: "success",
-        text: `✓ Đã đồng bộ thành công ${statusesPayload.length} máy lên máy chủ Supabase (v${data.lockVersion ?? currentLockVersion})!`,
+        text: successText,
       });
       setTimeout(() => setSyncBannerMsg(null), 4000);
     } catch (err: any) {

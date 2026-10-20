@@ -8,12 +8,10 @@ import { QRScannerProvider, useQRScanner } from "@/components/qr/QRScannerContex
 const mockStart = vi.fn().mockResolvedValue(true);
 const mockStop = vi.fn().mockResolvedValue(true);
 const mockClear = vi.fn().mockResolvedValue(true);
-const mockGetCameras = vi.fn().mockResolvedValue([]);
 
 vi.mock("html5-qrcode", () => {
   return {
     Html5Qrcode: class {
-      static getCameras = (...args: any[]) => mockGetCameras(...args);
       start = (...args: any[]) => mockStart(...args);
       stop = (...args: any[]) => mockStop(...args);
       clear = (...args: any[]) => mockClear(...args);
@@ -48,7 +46,6 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     mockStart.mockReset().mockResolvedValue(true);
     mockStop.mockReset().mockResolvedValue(true);
     mockClear.mockReset().mockResolvedValue(true);
-    mockGetCameras.mockReset().mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -69,7 +66,7 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     expect(screen.getByText(/Chọn máy/)).toBeDefined();
   });
 
-  it("PRIORITY 0: Defaults strictly to REAR camera ({ facingMode: 'environment' }) and starts exactly ONCE", async () => {
+  it("PRIORITY 0: Defaults strictly to REAR camera ({ facingMode: 'environment' }) and renders sweeping teal laser", async () => {
     render(
       <QRScannerProvider initialMachines={mockMachines}>
         <TestHarness />
@@ -78,9 +75,9 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
 
     fireEvent.click(screen.getByText("Mở Trình Quét"));
 
-    // Advance timer past the 120ms debounce
+    // Advance timer past the 100ms debounce
     await act(async () => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(150);
     });
 
     // Check that start was called with { facingMode: "environment" } (REAR camera)
@@ -88,11 +85,48 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     const cameraArg = mockStart.mock.calls[0][0];
     expect(cameraArg).toEqual({ facingMode: "environment" });
 
-    // Ensure it does NOT start again or loop infinitely
+    // Check configuration: NO aspectRatio constraint (avoids freezing Android track)
+    const configArg = mockStart.mock.calls[0][1];
+    expect(configArg.aspectRatio).toBeUndefined();
+
+    // Verify continuous sweeping teal laser beam exists in DOM
+    const laserElement = document.querySelector(".animate-scan-laser");
+    expect(laserElement).not.toBeNull();
+
+    // Ensure it does NOT loop infinitely
     await act(async () => {
       vi.advanceTimersByTime(500);
     });
     expect(mockStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("PRIORITY 0: Switching camera cleanly toggles from rear to front camera ({ facingMode: 'user' })", async () => {
+    render(
+      <QRScannerProvider initialMachines={mockMachines}>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    expect(mockStart.mock.calls[0][0]).toEqual({ facingMode: "environment" });
+
+    // Click "Đổi camera"
+    const toggleButton = screen.getByRole("button", { name: /Đổi camera/i });
+    fireEvent.click(toggleButton);
+
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+
+    // Old session must have been stopped, and new session started with { facingMode: "user" }
+    expect(mockStop).toHaveBeenCalled();
+    expect(mockStart).toHaveBeenCalledTimes(2);
+    expect(mockStart.mock.calls[1][0]).toEqual({ facingMode: "user" });
   });
 
   it("PRIORITY 0: Switching to tab 'Tải ảnh QR' or 'Chọn máy' immediately stops/releases the camera", async () => {
@@ -105,7 +139,7 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     fireEvent.click(screen.getByText("Mở Trình Quét"));
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(150);
     });
     expect(mockStart).toHaveBeenCalledTimes(1);
 
@@ -133,7 +167,7 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     fireEvent.click(screen.getByText("Mở Trình Quét"));
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(150);
     });
 
     // Final state should be running one session
@@ -163,7 +197,7 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     fireEvent.click(screen.getByText("Mở Trình Quét"));
 
     await act(async () => {
-      vi.advanceTimersByTime(200);
+      vi.advanceTimersByTime(150);
     });
 
     // Check Vietnamese error message

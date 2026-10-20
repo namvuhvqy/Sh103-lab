@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   WifiOff,
+  Zap,
 } from "lucide-react";
 import { parseQRCode } from "@/lib/qr/parse-qr";
 import { useQRScanner, type ScannerMachine } from "./QRScannerContext";
@@ -27,8 +28,8 @@ export function QRScannerModal() {
   const [isScanningFile, setIsScanningFile] = useState(false);
   const [scanWarning, setScanWarning] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [isStreamStalled, setIsStreamStalled] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef(false);
@@ -37,10 +38,17 @@ export function QRScannerModal() {
   const shouldStopRef = useRef(false);
   const sessionIdRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const watchdogTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Stop scanner safely without throwing or racing
   const stopScanner = useCallback(async () => {
     shouldStopRef.current = true;
+    if (watchdogTimerRef.current) {
+      clearInterval(watchdogTimerRef.current);
+      watchdogTimerRef.current = null;
+    }
+    setIsStreamStalled(false);
+
     if (isStoppingRef.current) return;
 
     if (scannerRef.current && isScanningRef.current) {
@@ -104,12 +112,13 @@ export function QRScannerModal() {
 
   // Start camera session
   const startCamera = useCallback(
-    async (targetCameraId?: string | null) => {
+    async (targetFacingMode: "environment" | "user" = "environment") => {
       const currentSession = ++sessionIdRef.current;
       shouldStopRef.current = false;
 
       setCameraError(null);
       setScanWarning(null);
+      setIsStreamStalled(false);
       setIsInitializing(true);
 
       // Verify secure context (HTTPS / localhost)
@@ -126,12 +135,12 @@ export function QRScannerModal() {
         return;
       }
 
-      // Wait if a start is already in flight
+      // Avoid overlapping start operations
       if (isStartingRef.current) {
         return;
       }
 
-      // If already scanning with the same scanner, stop first
+      // Stop previous session if still running
       if (scannerRef.current && isScanningRef.current) {
         try {
           await scannerRef.current.stop();
@@ -162,22 +171,18 @@ export function QRScannerModal() {
 
       isStartingRef.current = true;
 
-      // CRITICAL CONFIGURATION:
-      // Always default strictly to rear/back camera ({ facingMode: "environment" }).
-      // Only use specific device ID when the user explicitly clicks "Đổi camera".
-      const cameraConfig: any = targetCameraId || { facingMode: "environment" };
+      // P0 FIX:
+      // 1. Pass facingMode constraint directly ({ facingMode: targetFacingMode }).
+      // 2. DO NOT pass aspectRatio (calling applyConstraints on Android freezes live video track!).
+      // 3. DO NOT pass qrbox (omitting qrbox scans full video frame at maximum speed without clashing shaded elements).
+      // 4. DO NOT call Html5Qrcode.getCameras() (which calls getUserMedia and stops tracks, freezing Android Chrome!).
+      const cameraConfig: any = { facingMode: targetFacingMode };
 
       try {
         await scannerRef.current.start(
           cameraConfig,
           {
-            fps: 10,
-            qrbox: (w, h) => {
-              const minSize = Math.min(w, h);
-              const size = Math.floor(minSize * 0.72);
-              return { width: Math.max(size, 200), height: Math.max(size, 200) };
-            },
-            aspectRatio: 1.0,
+            fps: 15, // Smooth frame analysis
           },
           (decodedText) => {
             handleDecodedText(decodedText);
@@ -200,22 +205,43 @@ export function QRScannerModal() {
         isScanningRef.current = true;
         setIsInitializing(false);
 
-        // Lazily enumerate available cameras in background for switch button
-        // without triggering a loop on startCamera
-        try {
-          const devices = await Html5Qrcode.getCameras();
-          if (devices && devices.length > 0) {
-            setAvailableCameras((prev) => {
-              if (prev.length === devices.length) return prev;
-              return devices.map((d) => ({
-                id: d.id,
-                label: d.label || `Camera ${d.id}`,
-              }));
-            });
+        // Ensure video element has proper attributes for continuous mobile playback
+        const video = container.querySelector("video") as HTMLVideoElement | null;
+        if (video) {
+          video.setAttribute("playsinline", "true");
+          video.setAttribute("webkit-playsinline", "true");
+          video.muted = true;
+          if (video.paused) {
+            video.play().catch(() => {});
           }
-        } catch {
-          // Camera enumeration failure is non-fatal
         }
+
+        // Setup Frame Progression Watchdog to detect and recover from frozen/stalled frames
+        if (watchdogTimerRef.current) clearInterval(watchdogTimerRef.current);
+        let lastTime = -1;
+        let stalledCount = 0;
+
+        watchdogTimerRef.current = setInterval(() => {
+          if (!isScanningRef.current) return;
+          const v = document.querySelector("#sh103-qr-reader video") as HTMLVideoElement | null;
+          if (!v) return;
+
+          if (v.paused && v.readyState >= 2) {
+            v.play().catch(() => {});
+          }
+
+          if (v.currentTime === lastTime && v.readyState >= 2) {
+            stalledCount++;
+            if (stalledCount >= 4) { // ~4 seconds without advancing frame
+              console.warn("[QRScannerModal] Video stream frozen/stalled.");
+              setIsStreamStalled(true);
+            }
+          } else {
+            lastTime = v.currentTime;
+            stalledCount = 0;
+            setIsStreamStalled(false);
+          }
+        }, 1000);
       } catch (err: any) {
         if (currentSession !== sessionIdRef.current || shouldStopRef.current) {
           setIsInitializing(false);
@@ -255,11 +281,11 @@ export function QRScannerModal() {
             "Camera đang bị một ứng dụng khác sử dụng hoặc bị khóa bởi hệ điều hành. Vui lòng tắt các ứng dụng khác và bấm 'Thử lại'."
           );
         } else if (errName === "OverconstrainedError") {
-          // Fallback if rear facingMode is not supported on this specific browser
+          // Fallback to front camera if rear camera constraint failed
           try {
             await scannerRef.current?.start(
               { facingMode: "user" },
-              { fps: 10, qrbox: 220 },
+              { fps: 15 },
               (decoded) => handleDecodedText(decoded),
               () => {}
             );
@@ -286,19 +312,20 @@ export function QRScannerModal() {
       setActiveTab("camera");
       setScanWarning(null);
       setCameraError(null);
-      setSelectedCameraId(null);
+      setFacingMode("environment");
+      setIsStreamStalled(false);
     }
   }, [isOpen]);
 
-  // Main lifecycle: controls camera start/stop strictly based on modal state and active tab
+  // Main lifecycle: controls camera start/stop strictly based on modal state, active tab, and facingMode
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
 
     if (isOpen && activeTab === "camera") {
-      // Delay 120ms to allow DOM modal animation and #sh103-qr-reader container to be mounted
+      // Small debounce (100ms) to allow DOM container #sh103-qr-reader to be painted
       timer = setTimeout(() => {
-        startCamera(selectedCameraId);
-      }, 120);
+        startCamera(facingMode);
+      }, 100);
     } else {
       // Releasing camera immediately when modal closed or user switches to "file" or "manual"
       stopScanner();
@@ -308,12 +335,36 @@ export function QRScannerModal() {
       if (timer) clearTimeout(timer);
       stopScanner();
     };
-  }, [isOpen, activeTab, selectedCameraId, startCamera, stopScanner]);
+  }, [isOpen, activeTab, facingMode, startCamera, stopScanner]);
+
+  // Handle mobile / PWA backgrounding and foregrounding
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (isOpen && activeTab === "camera") {
+          const v = document.querySelector("#sh103-qr-reader video") as HTMLVideoElement | null;
+          if (!v || v.paused || v.ended) {
+            // Screen unlocked or returned from background: restart camera session cleanly
+            startCamera(facingMode);
+          }
+        }
+      } else if (document.visibilityState === "hidden") {
+        // App went to background: pause scanner to release hardware cleanly
+        stopScanner();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isOpen, activeTab, facingMode, startCamera, stopScanner]);
 
   // Unmount cleanup
   useEffect(() => {
     return () => {
       shouldStopRef.current = true;
+      if (watchdogTimerRef.current) {
+        clearInterval(watchdogTimerRef.current);
+      }
       if (scannerRef.current) {
         try {
           if (isScanningRef.current) {
@@ -328,20 +379,10 @@ export function QRScannerModal() {
     };
   }, []);
 
-  // Toggle/Switch Camera safely
-  const handleSwitchCamera = useCallback(() => {
-    if (availableCameras.length <= 1) return;
-
-    const currentIndex = selectedCameraId
-      ? availableCameras.findIndex((c) => c.id === selectedCameraId)
-      : 0;
-
-    const nextIndex = (currentIndex + 1) % availableCameras.length;
-    const nextCamera = availableCameras[nextIndex];
-    if (nextCamera) {
-      setSelectedCameraId(nextCamera.id);
-    }
-  }, [availableCameras, selectedCameraId]);
+  // Toggle/Switch Camera safely (Rear <-> Front)
+  const handleToggleCamera = useCallback(() => {
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
+  }, []);
 
   // Handle file scan
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -481,34 +522,62 @@ export function QRScannerModal() {
             <div className="space-y-3">
               {/* VIEWFINDER CONTAINER */}
               <div className="relative mx-auto aspect-square w-full max-w-[280px] rounded-2xl overflow-hidden bg-slate-950 border-2 border-slate-800 shadow-inner flex items-center justify-center">
+                {/* Real Video Scanner DOM Element */}
                 <div id="sh103-qr-reader" className="w-full h-full" />
 
-                {/* SCANNER OVERLAY ANIMATION */}
+                {/* CONTINUOUS SWEEPING TEAL LASER & SCANNER OVERLAY */}
                 {!cameraError && !isInitializing ? (
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="relative size-48 rounded-xl border-2 border-teal-400/80 shadow-[0_0_15px_rgba(45,212,191,0.3)]">
-                      {/* Laser scanner line */}
-                      <div className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-teal-300 to-transparent shadow-[0_0_8px_#2dd4bf] animate-bounce" />
-                      {/* Corners */}
-                      <span className="absolute -top-1 -left-1 size-3 border-t-2 border-l-2 border-teal-400" />
-                      <span className="absolute -top-1 -right-1 size-3 border-t-2 border-r-2 border-teal-400" />
-                      <span className="absolute -bottom-1 -left-1 size-3 border-b-2 border-l-2 border-teal-400" />
-                      <span className="absolute -bottom-1 -right-1 size-3 border-b-2 border-r-2 border-teal-400" />
+                    {/* Viewfinder target box */}
+                    <div className="relative size-52 rounded-2xl border-2 border-teal-400/70 shadow-[0_0_20px_rgba(45,212,191,0.25)] overflow-hidden">
+                      {/* Sweeping Teal Laser Beam */}
+                      <div className="absolute inset-x-2 h-0.5 bg-teal-300 shadow-[0_0_12px_#2dd4bf,0_0_6px_#ffffff] rounded-full animate-scan-laser pointer-events-none">
+                        {/* Glow trailing gradient */}
+                        <div className="absolute inset-x-0 h-12 -top-12 bg-gradient-to-b from-transparent via-teal-400/15 to-teal-400/35 pointer-events-none" />
+                      </div>
+
+                      {/* 4 Corner Markers */}
+                      <span className="absolute top-0 left-0 size-4 border-t-3 border-l-3 border-teal-300 rounded-tl-lg" />
+                      <span className="absolute top-0 right-0 size-4 border-t-3 border-r-3 border-teal-300 rounded-tr-lg" />
+                      <span className="absolute bottom-0 left-0 size-4 border-b-3 border-l-3 border-teal-300 rounded-bl-lg" />
+                      <span className="absolute bottom-0 right-0 size-4 border-b-3 border-r-3 border-teal-300 rounded-br-lg" />
+
+                      {/* Subtle center crosshair dot */}
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-1.5 rounded-full bg-teal-400/60" />
                     </div>
                   </div>
                 ) : null}
 
                 {/* LOADING STATE */}
                 {isInitializing ? (
-                  <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 text-white p-4 text-center">
+                  <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 text-white p-4 text-center z-10">
                     <RefreshCw className="size-6 text-teal-400 animate-spin" />
-                    <p className="text-xs font-bold">Đang kết nối camera sau...</p>
+                    <p className="text-xs font-bold">
+                      {facingMode === "environment" ? "Đang kết nối camera sau..." : "Đang kết nối camera trước..."}
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* STALLED STREAM NOTICE */}
+                {isStreamStalled && !cameraError && !isInitializing ? (
+                  <div className="absolute bottom-2 inset-x-2 bg-slate-950/90 border border-amber-500/50 rounded-xl p-2.5 flex items-center justify-between gap-2 text-white text-[11px] z-20 animate-fadeIn">
+                    <div className="flex items-center gap-1.5">
+                      <Zap className="size-3.5 text-amber-400 shrink-0" />
+                      <span className="text-slate-200">Hình ảnh bị đứng?</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => startCamera(facingMode)}
+                      className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 font-bold text-white transition active:scale-95"
+                    >
+                      Làm mới
+                    </button>
                   </div>
                 ) : null}
 
                 {/* CAMERA ERROR STATE */}
                 {cameraError ? (
-                  <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center gap-3 text-white p-5 text-center">
+                  <div className="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center gap-3 text-white p-5 text-center z-20">
                     <AlertTriangle className="size-8 text-amber-400 shrink-0" />
                     <p className="text-xs text-slate-200 leading-relaxed font-medium">
                       {cameraError}
@@ -516,8 +585,8 @@ export function QRScannerModal() {
                     <div className="flex flex-wrap gap-2 justify-center pt-1">
                       <button
                         type="button"
-                        onClick={() => startCamera(selectedCameraId)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition"
+                        onClick={() => startCamera(facingMode)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition active:scale-95"
                       >
                         <RotateCcw className="size-3.5" />
                         <span>Thử lại</span>
@@ -525,7 +594,7 @@ export function QRScannerModal() {
                       <button
                         type="button"
                         onClick={() => setActiveTab("file")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-bold transition border border-slate-700"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 text-xs font-bold transition border border-slate-700 active:scale-95"
                       >
                         <ImageIcon className="size-3.5" />
                         <span>Tải ảnh</span>
@@ -538,18 +607,20 @@ export function QRScannerModal() {
               {/* CAMERA CONTROLS */}
               {!cameraError && (
                 <div className="flex items-center justify-between px-2 text-[11px] text-slate-500">
-                  <p className="font-semibold">Mặc định: Camera sau (Hướng vào tem QR dán trên máy)</p>
-                  {availableCameras.length > 1 ? (
-                    <button
-                      type="button"
-                      onClick={handleSwitchCamera}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition active:scale-95"
-                      title="Chuyển đổi camera sau / trước"
-                    >
-                      <RotateCcw className="size-3" />
-                      <span>Đổi camera</span>
-                    </button>
-                  ) : null}
+                  <p className="font-semibold">
+                    {facingMode === "environment"
+                      ? "Mặc định: Camera sau (Hướng vào tem QR)"
+                      : "Đang dùng: Camera trước"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleToggleCamera}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition active:scale-95"
+                    title="Chuyển đổi camera sau / trước"
+                  >
+                    <RotateCcw className="size-3" />
+                    <span>Đổi camera ({facingMode === "environment" ? "Sau" : "Trước"})</span>
+                  </button>
                 </div>
               )}
             </div>

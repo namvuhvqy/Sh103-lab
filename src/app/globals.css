@@ -53,6 +53,49 @@ button, a { touch-action: manipulation; }
 .safe-bottom { padding-bottom: max(.65rem, env(safe-area-inset-bottom)); }
 .safe-top { padding-top: env(safe-area-inset-top); }
 
+/* QR Scanner Video & Sweeping Laser Animation */
+#sh103-qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#sh103-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  border-radius: 1rem !important;
+}
+
+#sh103-qr-reader canvas {
+  display: none !important;
+}
+
+#qr-shaded-region {
+  display: none !important;
+}
+
+@keyframes scanLaserBeam {
+  0% {
+    top: 4%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 4%;
+    opacity: 0.8;
+  }
+}
+
+.animate-scan-laser {
+  animation: scanLaserBeam 2.2s ease-in-out infinite;
+}
+
 @media (max-width: 359px) {
   .phone-grid-auto { grid-template-columns: 1fr !important; }
   .phone-action-stack { grid-template-columns: 1fr !important; }
