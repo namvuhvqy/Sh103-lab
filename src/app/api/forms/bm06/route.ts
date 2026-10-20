@@ -50,6 +50,7 @@ export async function POST(request: Request) {
   const areaCode = String(data.get("areaCode") ?? "");
   const intent = String(data.get("intent") ?? "draft");
   const coWorkerUserId = String(data.get("coWorkerUserId") ?? "").trim() || null;
+  const incomingNote = String(data.get("note") || "").trim() || null;
 
   let statuses: unknown;
   try {
@@ -65,13 +66,37 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: occ, error: occurrenceError } = await supabase
     .from("schedule_occurrences")
-    .select("period_id, register_periods(form_version_id)")
+    .select("period_id, register_periods(form_version_id), fulfilled_by_record_id")
     .eq("id", occurrenceId)
     .single();
 
   const period = occ?.register_periods as unknown as { form_version_id: string } | null;
   if (occurrenceError || !period) {
     return redirectError(request, areaCode, "Không tìm thấy ca hoặc bạn không có quyền truy cập");
+  }
+
+  // Pre-load existing draft record if one already exists to preserve general shift info
+  // (Prevents wiping note, usage, unit, or coworker on first save AND on retry!)
+  let existingRec: any = null;
+  if (occ?.fulfilled_by_record_id) {
+    const { data: recData } = await supabase
+      .from("records")
+      .select(`
+        id,
+        record_state,
+        lock_version,
+        note,
+        equipment_shift_details(usage_value, usage_unit, co_worker_id),
+        equipment_shift_statuses(asset_id, status_code, updated_at)
+      `)
+      .eq("id", occ.fulfilled_by_record_id)
+      .maybeSingle();
+    existingRec = recData;
+  }
+
+  // Check if draft is already finalized
+  if (existingRec && existingRec.record_state === "COMPLETED" && intent === "draft") {
+    return redirectError(request, areaCode, "Ca làm việc đã được hoàn tất; không thể sửa đổi trạng thái.");
   }
 
   const { data: expected, error: assetError } = await supabase
@@ -85,9 +110,45 @@ export async function POST(request: Request) {
     return redirectError(request, areaCode, "Không tải được danh sách thiết bị");
   }
 
-  const mapped = statuses.map((item: Record<string, unknown>) => ({
-    assetId: String(item.asset_id),
-    status: String(item.status),
+  // Guard against offline sync overwriting newer server data:
+  // If an incoming machine has client_timestamp older than server updated_at, skip updating that asset
+  const existingStatuses = (existingRec?.equipment_shift_statuses || []) as Array<{ asset_id: string; status_code: string; updated_at?: string }>;
+  const existingStatusMap = new Map(existingStatuses.map((s) => [s.asset_id, s]));
+
+  const filteredStatuses: Array<{ asset_id: string; status: string }> = [];
+  const skippedOutdatedAssets: string[] = [];
+
+  for (const s of statuses as Array<{ asset_id: string; status: string; client_timestamp?: string }>) {
+    const existing = existingStatusMap.get(s.asset_id);
+    if (existing && existing.updated_at && s.client_timestamp) {
+      const serverTime = new Date(existing.updated_at).getTime();
+      const clientTime = new Date(s.client_timestamp).getTime();
+      if (serverTime > clientTime) {
+        skippedOutdatedAssets.push(s.asset_id);
+        continue;
+      }
+    }
+    filteredStatuses.push({ asset_id: s.asset_id, status: s.status });
+  }
+
+  // If all items were outdated and skipped, return gracefully without overwriting
+  if (filteredStatuses.length === 0 && skippedOutdatedAssets.length > 0) {
+    const wantsJson = request.headers.get("accept")?.includes("application/json");
+    if (wantsJson) {
+      return NextResponse.json({
+        success: true,
+        saved: "1",
+        intent,
+        lockVersion: existingRec?.lock_version ?? 1,
+        skippedOutdated: skippedOutdatedAssets,
+        message: "Dữ liệu trên máy chủ đã mới hơn, giữ nguyên trạng thái mới nhất từ máy chủ.",
+      });
+    }
+  }
+
+  const mapped = filteredStatuses.map((item) => ({
+    assetId: item.asset_id,
+    status: item.status,
   }));
 
   const required = intent === "finalize" ? (expected ?? []).map((item) => item.asset_id) : mapped.map((item) => item.assetId);
@@ -96,17 +157,96 @@ export async function POST(request: Request) {
     return redirectError(request, areaCode, validation.error);
   }
 
-  const targetNote = String(data.get("note") || "").trim() || null;
-  const { error } = await supabase.rpc("save_equipment_shift_draft", {
+  // Preserve existing note if incoming is empty/not provided
+  const targetNote = incomingNote ? incomingNote : (existingRec?.note ?? null);
+  const resolvedNote = targetNote;
+
+  // Preserve existing coworker if incoming is null/not provided
+  const existingCoworker = existingRec?.equipment_shift_details?.[0]?.co_worker_id || null;
+  const resolvedCoworker = coWorkerUserId ? coWorkerUserId : existingCoworker;
+
+  // Preserve existing usage values
+  const resolvedUsage = existingRec?.equipment_shift_details?.[0]?.usage_value ?? null;
+  const resolvedUnit = existingRec?.equipment_shift_details?.[0]?.usage_unit ?? null;
+
+  let lockVersion = Number(data.get("lockVersion") || existingRec?.lock_version || 1);
+
+  let { error } = await supabase.rpc("save_equipment_shift_draft", {
     target_occurrence_id: occurrenceId,
-    target_usage: null,
-    target_unit: null,
+    target_usage: resolvedUsage ?? null, // preserves target_usage: null for v4.1 compatibility
+    target_unit: resolvedUnit ?? null, // preserves target_unit: null for v4.1 compatibility
     target_note: targetNote,
-    target_statuses: statuses,
+    target_statuses: filteredStatuses,
     target_finalize: intent === "finalize",
-    target_expected_lock: Number(data.get("lockVersion") || 1),
-    target_coworker_id: coWorkerUserId,
+    target_expected_lock: lockVersion,
+    target_coworker_id: resolvedCoworker,
   });
+
+  // Concurrency resolution for draft saves:
+  // If another technician updated the draft concurrently:
+  // 1. Verify the record is still in DRAFT mode (if finalized, do not retry).
+  // 2. Check for human conflicts on the SAME machine: if incoming status contradicts an already recorded status, reject with conflict warning.
+  // 3. Preserve existing note, coworker, and usage values.
+  if (error && intent === "draft" && error.message.includes("Record changed or finalized")) {
+    const { data: latestOcc } = await supabase
+      .from("schedule_occurrences")
+      .select(`
+        records:fulfilled_by_record_id(
+          record_state,
+          lock_version,
+          note,
+          equipment_shift_details(usage_value, usage_unit, co_worker_id),
+          equipment_shift_statuses(asset_id, status_code)
+        )
+      `)
+      .eq("id", occurrenceId)
+      .maybeSingle();
+
+    const rec = latestOcc?.records as any;
+    if (rec && rec.record_state === "DRAFT" && typeof rec.lock_version === "number") {
+      // Check for direct status conflicts on the same machine
+      const currentStatuses = (rec.equipment_shift_statuses || []) as Array<{ asset_id: string; status_code: string }>;
+      const currentStatusMap = new Map(currentStatuses.map((s) => [s.asset_id, s.status_code]));
+
+      let hasConflict = false;
+      for (const s of filteredStatuses) {
+        const initialStatus = existingStatusMap.get(s.asset_id)?.status_code;
+        const currentCode = currentStatusMap.get(s.asset_id);
+        const wasTouchedConcurrently = currentCode !== initialStatus;
+        if (wasTouchedConcurrently && currentCode !== undefined && currentCode !== s.status) {
+          hasConflict = true;
+          break;
+        }
+      }
+
+      if (hasConflict) {
+        return redirectError(
+          request,
+          areaCode,
+          "Xung đột dữ liệu: Thiết bị này vừa được cập nhật trạng thái khác bởi nhân sự khác trong cùng ca. Vui lòng tải lại trang để đối soát."
+        );
+      }
+
+      // Preserve existing note and coworker if not supplied
+      const retryNote = incomingNote ? incomingNote : (rec.note ?? resolvedNote);
+      const retryCoworker = coWorkerUserId ? coWorkerUserId : (rec.equipment_shift_details?.[0]?.co_worker_id ?? resolvedCoworker);
+      const retryUsage = rec.equipment_shift_details?.[0]?.usage_value ?? resolvedUsage;
+      const retryUnit = rec.equipment_shift_details?.[0]?.usage_unit ?? resolvedUnit;
+
+      lockVersion = rec.lock_version;
+      const retryRes = await supabase.rpc("save_equipment_shift_draft", {
+        target_occurrence_id: occurrenceId,
+        target_usage: retryUsage ?? null, // preserves target_usage: null for v4.1 compatibility
+        target_unit: retryUnit ?? null, // preserves target_unit: null for v4.1 compatibility
+        target_note: retryNote,
+        target_statuses: filteredStatuses,
+        target_finalize: false,
+        target_expected_lock: lockVersion,
+        target_coworker_id: retryCoworker,
+      });
+      error = retryRes.error;
+    }
+  }
 
   if (error) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
@@ -116,6 +256,7 @@ export async function POST(request: Request) {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     const { logAuditEvent } = await import("@/lib/audit");
+    const statuses = filteredStatuses;
     await logAuditEvent({
       action: intent === "finalize" ? "BM06_FINALIZE_SHIFT" : "BM06_SAVE_SHIFT",
       entityType: "schedule_occurrences",
@@ -124,10 +265,10 @@ export async function POST(request: Request) {
       afterData: {
         action_label: intent === "finalize" ? "Hoàn tất ca BM.06" : "Lưu trạng thái BM.06",
         note: targetNote,
-        statuses_count: Array.isArray(statuses) ? statuses.length : 0,
+        statuses_count: statuses.length,
         machine_statuses: statuses,
         area_code: areaCode || "ALL",
-        co_worker_user_id: coWorkerUserId,
+        co_worker_user_id: resolvedCoworker,
         finalized: intent === "finalize",
       },
     });
@@ -149,7 +290,20 @@ export async function POST(request: Request) {
 
   const wantsJson = request.headers.get("accept")?.includes("application/json");
   if (wantsJson) {
-    return NextResponse.json({ success: true, saved: "1", intent });
+    // Fetch latest lockVersion to send back to client
+    const { data: latestRec } = await supabase
+      .from("schedule_occurrences")
+      .select("records:fulfilled_by_record_id(lock_version)")
+      .eq("id", occurrenceId)
+      .maybeSingle();
+    const currentLock = (latestRec?.records as any)?.lock_version ?? (lockVersion + 1);
+    return NextResponse.json({
+      success: true,
+      saved: "1",
+      intent,
+      lockVersion: currentLock,
+      skippedOutdated: skippedOutdatedAssets,
+    });
   }
   return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);
 }

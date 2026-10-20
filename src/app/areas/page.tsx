@@ -4,7 +4,6 @@ import { getBm06ByDateShift } from "@/lib/forms/context";
 import { getDecontaminationWorkspace } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
 import { currentShift, vietnamParts } from "@/lib/forms/domain";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
