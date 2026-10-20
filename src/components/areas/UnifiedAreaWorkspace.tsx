@@ -323,7 +323,10 @@ export function UnifiedAreaWorkspace({
       const data = await res.json().catch(() => null);
 
       if (!res.ok || !data?.success) {
-        throw new Error(data?.error || "Không thể lưu trạng thái máy lên hệ thống");
+        setIsSavingSingleMachine(false);
+        setSaveSuccessMsg(null);
+        setSaveErrorMsg(data?.error || `Lỗi máy chủ (${res.status}): Không thể lưu trạng thái máy.`);
+        return;
       }
 
       if (typeof data.lockVersion === "number") {
@@ -369,23 +372,31 @@ export function UnifiedAreaWorkspace({
       // REQUIREMENT 3 & 4: NEVER display "Đã lưu" when data is only in localStorage!
       setSaveSuccessMsg(null);
 
-      // Save into structured offline sync queue
-      const offlineItem: OfflineQueueItem = {
-        occurrenceId: bm06OccurrenceId,
-        assetId: actionSheetMachine.id,
-        machineName: actionSheetMachine.name,
-        machineOrder: actionSheetMachine.sourceOrder,
-        status: currentStatus,
-        note: bm06Note,
-        areaCode: currentArea.code,
-        timestamp: new Date().toISOString(),
-      };
-      addToOfflineQueue(offlineItem);
-      setOfflineQueue(getOfflineQueue().filter((q) => q.occurrenceId === bm06OccurrenceId));
+      const isOfflineEvent =
+        typeof window !== "undefined" &&
+        (!navigator.onLine || err?.name === "TypeError" || String(err).includes("fetch"));
 
-      setSaveErrorMsg(
-        `⚠️ Chưa đồng bộ lên máy chủ: Dữ liệu máy #${actionSheetMachine.sourceOrder} đã lưu tạm trong bộ nhớ máy (${err?.message || "Mất kết nối mạng"}). Vui lòng bấm 'Đồng bộ' khi có kết nối.`
-      );
+      if (isOfflineEvent) {
+        // Save into structured offline sync queue ONLY on genuine network/offline error
+        const offlineItem: OfflineQueueItem = {
+          occurrenceId: bm06OccurrenceId,
+          assetId: actionSheetMachine.id,
+          machineName: actionSheetMachine.name,
+          machineOrder: actionSheetMachine.sourceOrder,
+          status: currentStatus,
+          note: bm06Note,
+          areaCode: currentArea.code,
+          timestamp: new Date().toISOString(),
+        };
+        addToOfflineQueue(offlineItem);
+        setOfflineQueue(getOfflineQueue().filter((q) => q.occurrenceId === bm06OccurrenceId));
+
+        setSaveErrorMsg(
+          `⚠️ Chưa đồng bộ lên máy chủ: Dữ liệu máy #${actionSheetMachine.sourceOrder} đã lưu tạm trong bộ nhớ máy do mất mạng. Vui lòng bấm 'Đồng bộ' khi có kết nối trở lại.`
+        );
+      } else {
+        setSaveErrorMsg(`Lỗi kết nối: ${err?.message || "Không thể gửi dữ liệu"}`);
+      }
     }
   };
 

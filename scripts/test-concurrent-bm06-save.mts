@@ -15,10 +15,26 @@ async function main() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  console.log("Signing in staffClient with test staff account (adminsinhhoa@sh103.hospital)...");
+  const testStaffEmail = process.env.TEST_STAFF_EMAIL;
+  const testStaffPassword = process.env.TEST_STAFF_PASSWORD;
+
+  if (!testStaffEmail || !testStaffPassword) {
+    console.warn("⚠️ TEST_STAFF_EMAIL or TEST_STAFF_PASSWORD not set in environment.");
+    console.warn("Live database mutation test skipped to prevent credential exposure.");
+    console.warn("All unit/integration tests run safely via Vitest in tests/qr-bm06-concurrency-and-offline.test.tsx.");
+    return;
+  }
+
+  if (process.env.ALLOW_DATABASE_MUTATION_TEST !== "true") {
+    console.warn("⚠️ Database mutation test is blocked by default to protect database integrity.");
+    console.warn("Set ALLOW_DATABASE_MUTATION_TEST=true explicitly in non-production test environments.");
+    return;
+  }
+
+  console.log(`Signing in staffClient with configured test staff account (${testStaffEmail})...`);
   const { data: authData, error: authErr } = await staffClient.auth.signInWithPassword({
-    email: "adminsinhhoa@sh103.hospital",
-    password: "123@abc",
+    email: testStaffEmail,
+    password: testStaffPassword,
   });
 
   if (authErr || !authData.user) {

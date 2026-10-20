@@ -207,4 +207,46 @@ describe("TASK 01: QR BM06 Concurrency, Offline Queue, and UI Truthfulness", () 
     ).toBeDefined();
     expect(screen.getByRole("button", { name: /Quét lại/i })).toBeDefined();
   });
+
+  it("PRIORITY 1: Does NOT treat HTTP 403/400 server rejection as network loss and does NOT queue into offline storage", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        success: false,
+        error: "Tài khoản của bạn chưa có quyền ghi nhận ca này.",
+      }),
+    });
+
+    render(
+      <QRScannerProvider>
+        <UnifiedAreaWorkspace
+          areas={mockAreas}
+          today="2026-10-20"
+          shift={{ code: "SHIFT_1", label: "Ca 1" }}
+          bm06OccurrenceId="occ-bm06-test"
+          bm06LockVersion={2}
+          initialStatuses={{ "dev-01-uuid": "BT" }}
+          scannedDeviceId="dev-01-uuid"
+        />
+      </QRScannerProvider>
+    );
+
+    const saveButton = screen.getByRole("button", { name: /Lưu vào BM.06/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      // Direct server error must be shown to technician
+      expect(
+        screen.getByText(/Tài khoản của bạn chưa có quyền ghi nhận ca này/i)
+      ).toBeDefined();
+      // Must NOT claim "Đã lưu"
+      expect(screen.queryByText(/✓ Đã lưu thành công/i)).toBeNull();
+    });
+
+    // Offline queue MUST remain empty
+    const queue = localStorage.getItem("lab103_bm06_offline_queue_v1");
+    expect(JSON.parse(queue || "[]")).toEqual([]);
+  });
 });
+

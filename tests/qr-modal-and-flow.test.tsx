@@ -1,17 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { QRScannerModal } from "@/components/qr/QRScannerModal";
 import { QRScannerProvider, useQRScanner } from "@/components/qr/QRScannerContext";
 
 // Mock html5-qrcode library
+const mockStart = vi.fn().mockResolvedValue(true);
+const mockStop = vi.fn().mockResolvedValue(true);
+const mockClear = vi.fn().mockResolvedValue(true);
+const mockGetCameras = vi.fn().mockResolvedValue([]);
+
 vi.mock("html5-qrcode", () => {
   return {
     Html5Qrcode: class {
-      static getCameras = vi.fn().mockResolvedValue([]);
-      start = vi.fn().mockResolvedValue(true);
-      stop = vi.fn().mockResolvedValue(true);
-      clear = vi.fn().mockResolvedValue(true);
+      static getCameras = (...args: any[]) => mockGetCameras(...args);
+      start = (...args: any[]) => mockStart(...args);
+      stop = (...args: any[]) => mockStop(...args);
+      clear = (...args: any[]) => mockClear(...args);
+      scanFile = vi.fn().mockResolvedValue("DEV_01");
       scanFileV2 = vi.fn().mockResolvedValue({ decodedText: "DEV_01" });
     },
     Html5QrcodeSupportedFormats: {
@@ -21,23 +27,32 @@ vi.mock("html5-qrcode", () => {
 });
 
 function TestHarness() {
-  const { openScanner } = useQRScanner();
+  const { openScanner, closeScanner } = useQRScanner();
   return (
     <div>
       <button onClick={openScanner}>Mở Trình Quét</button>
+      <button onClick={closeScanner}>Đóng Trình Quét</button>
       <QRScannerModal />
     </div>
   );
 }
 
-describe("QRScannerModal Component Tests", () => {
+describe("QRScannerModal Component & Lifecycle Tests", () => {
   const mockMachines = [
     { id: "dev-01", sourceOrder: 1, name: "Máy Sinh Hóa AU5800 - Số 1", locationCode: "SINH_HOA" },
     { id: "dev-02", sourceOrder: 2, name: "Máy Miễn Dịch DxI 800 - Số 1", locationCode: "MIEN_DICH" },
   ];
 
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockStart.mockReset().mockResolvedValue(true);
+    mockStop.mockReset().mockResolvedValue(true);
+    mockClear.mockReset().mockResolvedValue(true);
+    mockGetCameras.mockReset().mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("Requirement 5: renders 3 tabs (Camera, Tải ảnh, Chọn máy)", () => {
@@ -47,13 +62,118 @@ describe("QRScannerModal Component Tests", () => {
       </QRScannerProvider>
     );
 
-    // Open modal
     fireEvent.click(screen.getByText("Mở Trình Quét"));
 
-    // Check tabs
     expect(screen.getByText(/^Camera$/)).toBeDefined();
     expect(screen.getByText("Tải ảnh QR")).toBeDefined();
     expect(screen.getByText(/Chọn máy/)).toBeDefined();
+  });
+
+  it("PRIORITY 0: Defaults strictly to REAR camera ({ facingMode: 'environment' }) and starts exactly ONCE", async () => {
+    render(
+      <QRScannerProvider initialMachines={mockMachines}>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+
+    // Advance timer past the 120ms debounce
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Check that start was called with { facingMode: "environment" } (REAR camera)
+    expect(mockStart).toHaveBeenCalledTimes(1);
+    const cameraArg = mockStart.mock.calls[0][0];
+    expect(cameraArg).toEqual({ facingMode: "environment" });
+
+    // Ensure it does NOT start again or loop infinitely
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(mockStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("PRIORITY 0: Switching to tab 'Tải ảnh QR' or 'Chọn máy' immediately stops/releases the camera", async () => {
+    render(
+      <QRScannerProvider initialMachines={mockMachines}>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(mockStart).toHaveBeenCalledTimes(1);
+
+    // Switch to tab "Tải ảnh QR"
+    fireEvent.click(screen.getByText("Tải ảnh QR"));
+
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Camera must be stopped
+    expect(mockStop).toHaveBeenCalled();
+  });
+
+  it("PRIORITY 0: Rapid modal open/close toggles safely and stops the camera without crashing", async () => {
+    render(
+      <QRScannerProvider initialMachines={mockMachines}>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    // Rapid open -> close -> open
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+    fireEvent.click(screen.getByText("Đóng Trình Quét"));
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Final state should be running one session
+    expect(mockStart).toHaveBeenCalled();
+
+    // Now close modal
+    fireEvent.click(screen.getByText("Đóng Trình Quét"));
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Scanner must be stopped
+    expect(mockStop).toHaveBeenCalled();
+  });
+
+  it("PRIORITY 0: Displays Vietnamese error clearly when Camera permission is denied", async () => {
+    const permError = new Error("Permission denied");
+    permError.name = "NotAllowedError";
+    mockStart.mockRejectedValueOnce(permError);
+
+    render(
+      <QRScannerProvider initialMachines={mockMachines}>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+
+    // Check Vietnamese error message
+    expect(
+      screen.getByText(/Quyền truy cập Camera bị từ chối/i)
+    ).toBeDefined();
+
+    // Offers "Thử lại" and "Tải ảnh" buttons
+    expect(screen.getByRole("button", { name: /^Thử lại$/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /^Tải ảnh$/i })).toBeDefined();
   });
 
   it("allows selecting a machine via quick list when camera is unavailable or denied", () => {
@@ -64,18 +184,12 @@ describe("QRScannerModal Component Tests", () => {
     );
 
     fireEvent.click(screen.getByText("Mở Trình Quét"));
-
-    // Switch to tab 3 "Chọn máy"
     fireEvent.click(screen.getByText(/Chọn máy/));
 
-    // Verify machine list is displayed
     expect(screen.getByText("Máy Sinh Hóa AU5800 - Số 1")).toBeDefined();
     expect(screen.getByText("Máy Miễn Dịch DxI 800 - Số 1")).toBeDefined();
 
-    // Click on machine 1
     fireEvent.click(screen.getByText("Máy Sinh Hóa AU5800 - Số 1"));
-
-    // Modal should close on selection
     expect(screen.queryByText("Trình Quét QR Thiết Bị")).toBeNull();
   });
 
@@ -92,7 +206,6 @@ describe("QRScannerModal Component Tests", () => {
     const searchInput = screen.getByPlaceholderText(/Tìm theo STT/i);
     fireEvent.change(searchInput, { target: { value: "DxI" } });
 
-    // Machine 2 should remain visible, Machine 1 should be filtered out
     expect(screen.getByText("Máy Miễn Dịch DxI 800 - Số 1")).toBeDefined();
     expect(screen.queryByText("Máy Sinh Hóa AU5800 - Số 1")).toBeNull();
   });

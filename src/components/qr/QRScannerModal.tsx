@@ -28,19 +28,31 @@ export function QRScannerModal() {
   const [scanWarning, setScanWarning] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [availableCameras, setAvailableCameras] = useState<Array<{ id: string; label: string }>>([]);
-  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isRunningRef = useRef(false);
+  const isScanningRef = useRef(false);
+  const isStartingRef = useRef(false);
+  const isStoppingRef = useRef(false);
+  const shouldStopRef = useRef(false);
+  const sessionIdRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Stop scanner safely without throwing or racing
   const stopScanner = useCallback(async () => {
-    if (scannerRef.current && isRunningRef.current) {
+    shouldStopRef.current = true;
+    if (isStoppingRef.current) return;
+
+    if (scannerRef.current && isScanningRef.current) {
+      isStoppingRef.current = true;
       try {
         await scannerRef.current.stop();
-        isRunningRef.current = false;
       } catch (err) {
-        console.warn("[QRScannerModal] Stop error:", err);
+        // html5-qrcode may throw if already stopping or stopped; ignore in cleanup
+        console.warn("[QRScannerModal] stop error (safe to ignore):", err);
+      } finally {
+        isScanningRef.current = false;
+        isStoppingRef.current = false;
       }
     }
   }, []);
@@ -66,13 +78,11 @@ export function QRScannerModal() {
         matched = machines.find((m) => m.sourceOrder === parsed.sourceOrder);
       }
 
-      if (!matched) {
+      if (!matched && parsed.deviceCode) {
         // Fallback: search by device code in name
-        if (parsed.deviceCode) {
-          matched = machines.find((m) =>
-            m.name.toUpperCase().includes(parsed.deviceCode!)
-          );
-        }
+        matched = machines.find((m) =>
+          m.name.toUpperCase().includes(parsed.deviceCode!)
+        );
       }
 
       if (matched) {
@@ -92,17 +102,53 @@ export function QRScannerModal() {
     [machines, stopScanner, handleMachineIdentified]
   );
 
-  const startCamera = useCallback(async () => {
-    setCameraError(null);
-    setScanWarning(null);
-    setIsInitializing(true);
+  // Start camera session
+  const startCamera = useCallback(
+    async (targetCameraId?: string | null) => {
+      const currentSession = ++sessionIdRef.current;
+      shouldStopRef.current = false;
 
-    try {
-      await stopScanner();
+      setCameraError(null);
+      setScanWarning(null);
+      setIsInitializing(true);
 
-      // Ensure container exists
+      // Verify secure context (HTTPS / localhost)
+      if (
+        typeof window !== "undefined" &&
+        !window.isSecureContext &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+      ) {
+        setIsInitializing(false);
+        setCameraError(
+          "Trình duyệt chỉ cho phép mở Camera qua kết nối bảo mật HTTPS. Vui lòng kiểm tra lại liên kết trang web."
+        );
+        return;
+      }
+
+      // Wait if a start is already in flight
+      if (isStartingRef.current) {
+        return;
+      }
+
+      // If already scanning with the same scanner, stop first
+      if (scannerRef.current && isScanningRef.current) {
+        try {
+          await scannerRef.current.stop();
+          isScanningRef.current = false;
+        } catch {
+          // ignore
+        }
+      }
+
+      // Ensure container element is in DOM
       const container = document.getElementById("sh103-qr-reader");
       if (!container) {
+        setIsInitializing(false);
+        return;
+      }
+
+      if (currentSession !== sessionIdRef.current || shouldStopRef.current) {
         setIsInitializing(false);
         return;
       }
@@ -114,70 +160,188 @@ export function QRScannerModal() {
         });
       }
 
-      // Check available cameras
+      isStartingRef.current = true;
+
+      // CRITICAL CONFIGURATION:
+      // Always default strictly to rear/back camera ({ facingMode: "environment" }).
+      // Only use specific device ID when the user explicitly clicks "Đổi camera".
+      const cameraConfig: any = targetCameraId || { facingMode: "environment" };
+
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          setAvailableCameras(devices.map((d) => ({ id: d.id, label: d.label || `Camera ${d.id}` })));
-        }
-      } catch {
-        // Ignore device listing error
-      }
-
-      const cameraIdOrConfig =
-        availableCameras.length > 0
-          ? availableCameras[currentCameraIndex % availableCameras.length].id
-          : { facingMode: "environment" };
-
-      await scannerRef.current.start(
-        cameraIdOrConfig,
-        {
-          fps: 10,
-          qrbox: (w, h) => {
-            const minSize = Math.min(w, h);
-            const size = Math.floor(minSize * 0.72);
-            return { width: Math.max(size, 200), height: Math.max(size, 200) };
+        await scannerRef.current.start(
+          cameraConfig,
+          {
+            fps: 10,
+            qrbox: (w, h) => {
+              const minSize = Math.min(w, h);
+              const size = Math.floor(minSize * 0.72);
+              return { width: Math.max(size, 200), height: Math.max(size, 200) };
+            },
+            aspectRatio: 1.0,
           },
-          aspectRatio: 1.0,
-        },
-        (decodedText) => {
-          handleDecodedText(decodedText);
-        },
-        () => {
-          // Frame failure: ignore to avoid log noise
-        }
-      );
-
-      isRunningRef.current = true;
-      setIsInitializing(false);
-    } catch (err: any) {
-      console.error("[QRScannerModal] startCamera error:", err);
-      setIsInitializing(false);
-      isRunningRef.current = false;
-
-      const errMsg = err?.message || String(err);
-      if (
-        err?.name === "NotAllowedError" ||
-        errMsg.includes("permission") ||
-        errMsg.includes("NotAllowedError")
-      ) {
-        setCameraError(
-          "Quyền truy cập Camera bị từ chối. Vui lòng cho phép Camera trong cài đặt trình duyệt, hoặc tải ảnh chụp mã QR từ máy."
+          (decodedText) => {
+            handleDecodedText(decodedText);
+          },
+          () => {
+            // Frame parse miss: benign, ignore to prevent log spam
+          }
         );
-      } else if (err?.name === "NotFoundError" || errMsg.includes("Requested device not found")) {
-        setCameraError("Không tìm thấy camera trên thiết bị của bạn. Bạn có thể tải ảnh tem QR hoặc chọn máy từ danh sách.");
-      } else {
-        setCameraError("Không thể kết nối camera: " + errMsg);
-      }
-    }
-  }, [availableCameras, currentCameraIndex, handleDecodedText, stopScanner]);
 
-  // Toggle camera
-  const handleSwitchCamera = useCallback(() => {
-    if (availableCameras.length > 1) {
-      setCurrentCameraIndex((prev) => (prev + 1) % availableCameras.length);
+        // Check if aborted while starting
+        if (currentSession !== sessionIdRef.current || shouldStopRef.current) {
+          try {
+            await scannerRef.current.stop();
+          } catch {}
+          isScanningRef.current = false;
+          setIsInitializing(false);
+          return;
+        }
+
+        isScanningRef.current = true;
+        setIsInitializing(false);
+
+        // Lazily enumerate available cameras in background for switch button
+        // without triggering a loop on startCamera
+        try {
+          const devices = await Html5Qrcode.getCameras();
+          if (devices && devices.length > 0) {
+            setAvailableCameras((prev) => {
+              if (prev.length === devices.length) return prev;
+              return devices.map((d) => ({
+                id: d.id,
+                label: d.label || `Camera ${d.id}`,
+              }));
+            });
+          }
+        } catch {
+          // Camera enumeration failure is non-fatal
+        }
+      } catch (err: any) {
+        if (currentSession !== sessionIdRef.current || shouldStopRef.current) {
+          setIsInitializing(false);
+          return;
+        }
+
+        console.error("[QRScannerModal] startCamera error:", err);
+        setIsInitializing(false);
+        isScanningRef.current = false;
+
+        const errMsg = err?.message || String(err);
+        const errName = err?.name || "";
+
+        if (
+          errName === "NotAllowedError" ||
+          errMsg.includes("permission") ||
+          errMsg.includes("NotAllowedError") ||
+          errMsg.includes("Permission denied")
+        ) {
+          setCameraError(
+            "Quyền truy cập Camera bị từ chối. Vui lòng nhấn vào biểu tượng ổ khóa hoặc góc thanh địa chỉ trình duyệt để BẬT quyền Camera, hoặc sử dụng tab 'Tải ảnh QR' / 'Chọn máy'."
+          );
+        } else if (
+          errName === "NotFoundError" ||
+          errMsg.includes("Requested device not found") ||
+          errMsg.includes("DevicesNotFoundError")
+        ) {
+          setCameraError(
+            "Không tìm thấy camera trên thiết bị của bạn. Bạn có thể tải ảnh chụp tem QR hoặc chọn máy nhanh từ danh sách."
+          );
+        } else if (
+          errName === "NotReadableError" ||
+          errName === "TrackStartError" ||
+          errMsg.includes("Could not start video source")
+        ) {
+          setCameraError(
+            "Camera đang bị một ứng dụng khác sử dụng hoặc bị khóa bởi hệ điều hành. Vui lòng tắt các ứng dụng khác và bấm 'Thử lại'."
+          );
+        } else if (errName === "OverconstrainedError") {
+          // Fallback if rear facingMode is not supported on this specific browser
+          try {
+            await scannerRef.current?.start(
+              { facingMode: "user" },
+              { fps: 10, qrbox: 220 },
+              (decoded) => handleDecodedText(decoded),
+              () => {}
+            );
+            isScanningRef.current = true;
+            return;
+          } catch {
+            setCameraError(
+              "Cấu hình camera không tương thích với thiết bị. Vui lòng dùng tab 'Tải ảnh QR' hoặc 'Chọn máy'."
+            );
+          }
+        } else {
+          setCameraError("Không thể kết nối camera: " + (errMsg || "Lỗi không xác định"));
+        }
+      } finally {
+        isStartingRef.current = false;
+      }
+    },
+    [handleDecodedText]
+  );
+
+  // Reset modal state on open
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab("camera");
+      setScanWarning(null);
+      setCameraError(null);
+      setSelectedCameraId(null);
     }
-  }, [availableCameras.length]);
+  }, [isOpen]);
+
+  // Main lifecycle: controls camera start/stop strictly based on modal state and active tab
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
+    if (isOpen && activeTab === "camera") {
+      // Delay 120ms to allow DOM modal animation and #sh103-qr-reader container to be mounted
+      timer = setTimeout(() => {
+        startCamera(selectedCameraId);
+      }, 120);
+    } else {
+      // Releasing camera immediately when modal closed or user switches to "file" or "manual"
+      stopScanner();
+    }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      stopScanner();
+    };
+  }, [isOpen, activeTab, selectedCameraId, startCamera, stopScanner]);
+
+  // Unmount cleanup
+  useEffect(() => {
+    return () => {
+      shouldStopRef.current = true;
+      if (scannerRef.current) {
+        try {
+          if (isScanningRef.current) {
+            scannerRef.current.stop().catch(() => {});
+          }
+          scannerRef.current.clear();
+        } catch {
+          // ignore
+        }
+        scannerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Toggle/Switch Camera safely
+  const handleSwitchCamera = useCallback(() => {
+    if (availableCameras.length <= 1) return;
+
+    const currentIndex = selectedCameraId
+      ? availableCameras.findIndex((c) => c.id === selectedCameraId)
+      : 0;
+
+    const nextIndex = (currentIndex + 1) % availableCameras.length;
+    const nextCamera = availableCameras[nextIndex];
+    if (nextCamera) {
+      setSelectedCameraId(nextCamera.id);
+    }
+  }, [availableCameras, selectedCameraId]);
 
   // Handle file scan
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,24 +371,6 @@ export function QRScannerModal() {
       fileInputRef.current.value = "";
     }
   };
-
-  // Start / stop camera on modal state change
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab("camera");
-      setScanWarning(null);
-      // Wait for DOM
-      const timer = setTimeout(() => {
-        startCamera();
-      }, 150);
-      return () => {
-        clearTimeout(timer);
-        stopScanner();
-      };
-    } else {
-      stopScanner();
-    }
-  }, [isOpen, startCamera, stopScanner]);
 
   // Filtered machines for manual search
   const filteredMachines = machines.filter(
@@ -286,7 +432,6 @@ export function QRScannerModal() {
             type="button"
             onClick={() => {
               setActiveTab("camera");
-              startCamera();
             }}
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl transition ${
               activeTab === "camera"
@@ -301,7 +446,6 @@ export function QRScannerModal() {
           <button
             type="button"
             onClick={() => {
-              stopScanner();
               setActiveTab("file");
             }}
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl transition ${
@@ -317,7 +461,6 @@ export function QRScannerModal() {
           <button
             type="button"
             onClick={() => {
-              stopScanner();
               setActiveTab("manual");
             }}
             className={`flex items-center justify-center gap-1.5 py-2 rounded-xl transition ${
@@ -359,7 +502,7 @@ export function QRScannerModal() {
                 {isInitializing ? (
                   <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center gap-2 text-white p-4 text-center">
                     <RefreshCw className="size-6 text-teal-400 animate-spin" />
-                    <p className="text-xs font-bold">Đang kết nối camera...</p>
+                    <p className="text-xs font-bold">Đang kết nối camera sau...</p>
                   </div>
                 ) : null}
 
@@ -373,7 +516,7 @@ export function QRScannerModal() {
                     <div className="flex flex-wrap gap-2 justify-center pt-1">
                       <button
                         type="button"
-                        onClick={() => startCamera()}
+                        onClick={() => startCamera(selectedCameraId)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition"
                       >
                         <RotateCcw className="size-3.5" />
@@ -395,13 +538,13 @@ export function QRScannerModal() {
               {/* CAMERA CONTROLS */}
               {!cameraError && (
                 <div className="flex items-center justify-between px-2 text-[11px] text-slate-500">
-                  <p className="font-semibold">Hướng camera vào tem QR dán trên máy xét nghiệm</p>
+                  <p className="font-semibold">Mặc định: Camera sau (Hướng vào tem QR dán trên máy)</p>
                   {availableCameras.length > 1 ? (
                     <button
                       type="button"
                       onClick={handleSwitchCamera}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition"
-                      title="Chuyển đổi camera trước/sau"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 transition active:scale-95"
+                      title="Chuyển đổi camera sau / trước"
                     >
                       <RotateCcw className="size-3" />
                       <span>Đổi camera</span>

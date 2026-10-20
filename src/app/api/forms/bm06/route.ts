@@ -109,27 +109,65 @@ export async function POST(request: Request) {
     target_coworker_id: coWorkerUserId,
   });
 
-  // Concurrency resolution for draft saves: if another technician updated another machine concurrently,
-  // retry once with the latest draft lock version if still in DRAFT mode.
+  // Concurrency resolution for draft saves:
+  // If another technician updated the draft concurrently:
+  // 1. Verify the record is still in DRAFT mode (if finalized, do not retry).
+  // 2. Check for human conflicts on the SAME machine: if incoming status contradicts an already recorded status, reject with conflict warning.
+  // 3. Preserve existing note if incoming note is empty/null.
+  // 4. Preserve existing coworker if incoming coworker is null.
   if (error && intent === "draft" && error.message.includes("Record changed or finalized")) {
     const { data: latestOcc } = await supabase
       .from("schedule_occurrences")
-      .select("records:fulfilled_by_record_id(record_state, lock_version)")
+      .select(`
+        records:fulfilled_by_record_id(
+          record_state,
+          lock_version,
+          note,
+          equipment_shift_details(co_worker_id),
+          equipment_shift_statuses(asset_id, status_code)
+        )
+      `)
       .eq("id", occurrenceId)
       .maybeSingle();
 
-    const rec = latestOcc?.records as unknown as { record_state: string; lock_version: number } | null;
+    const rec = latestOcc?.records as any;
     if (rec && rec.record_state === "DRAFT" && typeof rec.lock_version === "number") {
+      // Check for direct status conflicts on the same machine
+      const existingStatuses = (rec.equipment_shift_statuses || []) as Array<{ asset_id: string; status_code: string }>;
+      const existingStatusMap = new Map(existingStatuses.map((s) => [s.asset_id, s.status_code]));
+
+      let hasConflict = false;
+      for (const s of statuses as Array<{ asset_id: string; status: string }>) {
+        const existing = existingStatusMap.get(s.asset_id);
+        if (existing && existing !== s.status) {
+          hasConflict = true;
+          break;
+        }
+      }
+
+      if (hasConflict) {
+        return redirectError(
+          request,
+          areaCode,
+          "Xung đột dữ liệu: Thiết bị này vừa được cập nhật trạng thái khác bởi nhân sự khác trong cùng ca. Vui lòng tải lại trang để đối soát."
+        );
+      }
+
+      // Preserve existing note and coworker if not supplied in this incoming draft slice
+      const resolvedNote = targetNote ? targetNote : (rec.note ?? null);
+      const existingCoworker = rec.equipment_shift_details?.[0]?.co_worker_id || null;
+      const resolvedCoworker = coWorkerUserId ? coWorkerUserId : existingCoworker;
+
       lockVersion = rec.lock_version;
       const retryRes = await supabase.rpc("save_equipment_shift_draft", {
         target_occurrence_id: occurrenceId,
         target_usage: null,
         target_unit: null,
-        target_note: targetNote,
+        target_note: resolvedNote,
         target_statuses: statuses,
         target_finalize: false,
         target_expected_lock: lockVersion,
-        target_coworker_id: coWorkerUserId,
+        target_coworker_id: resolvedCoworker,
       });
       error = retryRes.error;
     }
