@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   ShieldCheck, 
@@ -17,7 +17,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Loader2
+  Loader2,
+  X,
 } from "lucide-react";
 
 export interface FormattedAuditEvent {
@@ -54,12 +55,12 @@ export interface AuditPaginationInfo {
 }
 
 export interface AuditCategoryCounts {
-  ALL: number;
-  BM06: number;
-  TEMPERATURE: number;
-  DECONTAMINATION: number;
-  APPROVAL: number;
-  MASTER: number;
+  ALL: number | null;
+  BM06: number | null;
+  TEMPERATURE: number | null;
+  DECONTAMINATION: number | null;
+  APPROVAL: number | null;
+  MASTER: number | null;
 }
 
 interface AuditLogClientViewProps {
@@ -88,25 +89,6 @@ export function AuditLogClientView({
     { key: "MASTER", label: "Cấu hình danh mục", count: categoryCounts.MASTER, icon: Sliders },
   ];
 
-  // Client-side quick filter on current loaded slice
-  const displayedEvents = useMemo(() => {
-    if (!localSearch.trim()) return events;
-    const q = localSearch.toLowerCase().trim();
-    return events.filter((ev) => {
-      return (
-        ev.actorName.toLowerCase().includes(q) ||
-        ev.actionTitle.toLowerCase().includes(q) ||
-        ev.summary.toLowerCase().includes(q) ||
-        ev.timeStr.includes(q) ||
-        (ev.technicalDetails.locationName &&
-          ev.technicalDetails.locationName.toLowerCase().includes(q)) ||
-        (ev.technicalDetails.assetName &&
-          ev.technicalDetails.assetName.toLowerCase().includes(q)) ||
-        ev.id.toLowerCase().includes(q)
-      );
-    });
-  }, [events, localSearch]);
-
   const navigateTo = (params: { page?: number; category?: string; q?: string }) => {
     const current = new URLSearchParams(searchParams ? searchParams.toString() : "");
     if (params.page !== undefined) {
@@ -126,7 +108,7 @@ export function AuditLogClientView({
       } else {
         current.set("q", params.q.trim());
       }
-      current.set("page", "1");
+      current.set("page", "1"); // Reset về trang 1 khi tìm kiếm
     }
 
     startTransition(() => {
@@ -139,7 +121,12 @@ export function AuditLogClientView({
     navigateTo({ q: localSearch });
   };
 
-  const { page, pageSize, totalCount, totalPages, category } = pagination;
+  const handleClearSearch = () => {
+    setLocalSearch("");
+    navigateTo({ q: "" });
+  };
+
+  const { page, pageSize, totalCount, totalPages, category, query } = pagination;
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const endItem = Math.min(page * pageSize, totalCount);
 
@@ -147,29 +134,71 @@ export function AuditLogClientView({
     <div className="space-y-4">
       {/* THANH TÌM KIẾM VÀ BỘ LỌC PHÂN HỆ */}
       <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs space-y-3">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-3">
+        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row gap-2.5">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm theo tên kỹ thuật viên, bác sĩ, thiết bị, phòng hoặc ngày..."
+              placeholder="Tìm theo người thực hiện, thao tác, thiết bị, phòng, ngày (toàn bộ lịch sử)..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-4 py-2.5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50/60 pl-10 pr-9 py-2.5 text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
             />
-          </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto text-xs font-bold text-slate-500 shrink-0">
-            {isPending ? (
-              <span className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-teal-800 font-bold border border-teal-200/60">
-                <Loader2 className="size-3.5 animate-spin" /> Đang tải...
-              </span>
-            ) : (
-              <span className="rounded-lg bg-teal-50 px-2.5 py-1.5 text-teal-800 font-black border border-teal-200/60">
-                Hiển thị {startItem}–{endItem} / {totalCount} sự kiện
-              </span>
+            {localSearch && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                title="Xóa tìm kiếm"
+              >
+                <X className="size-3.5" />
+              </button>
             )}
           </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-teal-800 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 disabled:opacity-50 cursor-pointer shadow-xs active:scale-95 transition select-none"
+            >
+              {isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Search className="size-3.5" />
+              )}
+              <span>Tìm kiếm</span>
+            </button>
+            <div className="text-xs font-bold text-slate-500 shrink-0">
+              {isPending ? (
+                <span className="flex items-center gap-1.5 rounded-lg bg-teal-50 px-2.5 py-1.5 text-teal-800 font-bold border border-teal-200/60">
+                  <Loader2 className="size-3.5 animate-spin" /> Đang tải...
+                </span>
+              ) : (
+                <span className="rounded-lg bg-teal-50 px-2.5 py-1.5 text-teal-800 font-black border border-teal-200/60">
+                  {query
+                    ? `Tìm thấy ${totalCount} sự kiện (${startItem}–${endItem})`
+                    : `Hiển thị ${startItem}–${endItem} / ${totalCount} sự kiện`}
+                </span>
+              )}
+            </div>
+          </div>
         </form>
+
+        {/* THÔNG BÁO TÌM KIẾM ĐANG ÁP DỤNG */}
+        {query && (
+          <div className="flex items-center justify-between rounded-xl bg-teal-50/70 px-3 py-2 text-xs text-teal-900 border border-teal-200/50">
+            <span>
+              Đang tìm kiếm toàn bộ lịch sử theo: <b>&ldquo;{query}&rdquo;</b> ({totalCount} kết quả)
+            </span>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="font-bold text-teal-800 hover:text-teal-950 underline cursor-pointer"
+            >
+              Xóa bộ lọc tìm kiếm
+            </button>
+          </div>
+        )}
 
         {/* CÁC CHIP PHÂN LOẠI DANH MỤC */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
@@ -194,7 +223,7 @@ export function AuditLogClientView({
                     active ? "bg-teal-950/70 text-white" : "bg-slate-200 text-slate-700"
                   }`}
                 >
-                  {cat.count}
+                  {cat.count === null ? "—" : cat.count}
                 </span>
               </button>
             );
@@ -204,11 +233,33 @@ export function AuditLogClientView({
 
       {/* DANH SÁCH SỰ KIỆN AUDIT */}
       <div className="space-y-3">
-        {displayedEvents.map((item) => (
-          <div
-            key={item.id}
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-teal-300 hover:shadow-sm"
-          >
+        {events.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+            <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-slate-100 text-slate-500">
+              <Search className="size-6" />
+            </div>
+            <h3 className="text-sm font-black text-slate-800">Không tìm thấy sự kiện kiểm toán nào</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              {query
+                ? `Không có sự kiện nào khớp với từ khóa "${query}". Hãy thử tìm kiếm với từ khóa khác.`
+                : "Không có dữ liệu sự kiện nào trong danh mục đã chọn."}
+            </p>
+            {query && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-teal-800 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 cursor-pointer"
+              >
+                Xóa bộ lọc tìm kiếm
+              </button>
+            )}
+          </div>
+        ) : (
+          events.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs transition hover:border-teal-300 hover:shadow-sm"
+            >
             {/* HÀNG TIÊU ĐỀ: TÁC VỤ & THỜI GIAN */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div className="flex items-start sm:items-center gap-2.5">
@@ -313,19 +364,7 @@ export function AuditLogClientView({
               </div>
             </details>
           </div>
-        ))}
-
-        {!displayedEvents.length && (
-          <div className="rounded-2xl border border-dashed border-slate-300 p-12 text-center text-slate-500 bg-white">
-            <ShieldCheck className="mx-auto size-10 text-slate-300" />
-            <p className="mt-2 text-sm font-bold text-slate-700">
-              Không tìm thấy sự kiện kiểm toán nào phù hợp.
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              Thử thay đổi từ khóa tìm kiếm hoặc chọn danh mục khác.
-            </p>
-          </div>
-        )}
+        )))}
       </div>
 
       {/* THANH ĐIỀU HƯỚNG PHÂN TRANG (PAGINATION) */}

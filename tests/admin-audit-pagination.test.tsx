@@ -51,11 +51,11 @@ const mockCategoryCounts: AuditCategoryCounts = {
   BM06: 842,
   TEMPERATURE: 1002,
   DECONTAMINATION: 180,
-  APPROVAL: 109,
+  APPROVAL: 111,
   MASTER: 49,
 };
 
-describe("PERFORMANCE P1: Audit Log Server Pagination & Optimization", () => {
+describe("PERFORMANCE P1: Audit Log Server Pagination & Regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -69,7 +69,7 @@ describe("PERFORMANCE P1: Audit Log Server Pagination & Optimization", () => {
       />
     );
 
-    // Displays summary counter
+    // Displays truthful summary counter
     expect(screen.getByText("Hiển thị 1–25 / 2204 sự kiện")).toBeInTheDocument();
 
     // Renders the pagination footer
@@ -82,7 +82,7 @@ describe("PERFORMANCE P1: Audit Log Server Pagination & Optimization", () => {
     expect(screen.getByText("842")).toBeInTheDocument();
     expect(screen.getByText("1002")).toBeInTheDocument();
     expect(screen.getByText("180")).toBeInTheDocument();
-    expect(screen.getByText("109")).toBeInTheDocument();
+    expect(screen.getByText("111")).toBeInTheDocument();
     expect(screen.getByText("49")).toBeInTheDocument();
   });
 
@@ -148,7 +148,7 @@ describe("PERFORMANCE P1: Audit Log Server Pagination & Optimization", () => {
     expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("page=1"));
   });
 
-  it("5. Quick search filters the displayed slice immediately", () => {
+  it("5. Submitting search form triggers server-side query with q parameter and resets page to 1", () => {
     render(
       <AuditLogClientView
         events={mockEvents}
@@ -157,14 +157,116 @@ describe("PERFORMANCE P1: Audit Log Server Pagination & Optimization", () => {
       />
     );
 
-    const searchInput = screen.getByPlaceholderText(/Tìm theo tên/);
-    fireEvent.change(searchInput, { target: { value: "Kỹ thuật viên 1" } });
+    const searchInput = screen.getByPlaceholderText(/Tìm theo người thực hiện/);
+    fireEvent.change(searchInput, { target: { value: "Bác sĩ Thuận" } });
 
-    // Should match "Kỹ thuật viên 1", "Kỹ thuật viên 10", etc.
-    expect(screen.getByText("Kỹ thuật viên: Kỹ thuật viên 1")).toBeInTheDocument();
+    const searchBtn = screen.getByRole("button", { name: /Tìm kiếm/ });
+    fireEvent.click(searchBtn);
+
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("q=B%C3%A1c+s%C4%A9+Thu%E1%BA%ADn"));
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("page=1"));
   });
 
-  it("6. Technical ISO trace details can be expanded without data loss", () => {
+  it("6. Displays active search filter banner and supports clearing search", () => {
+    const searchPagination: AuditPaginationInfo = {
+      page: 1,
+      pageSize: 25,
+      totalCount: 42,
+      totalPages: 2,
+      category: "ALL",
+      query: "APPROVE",
+    };
+
+    render(
+      <AuditLogClientView
+        events={mockEvents}
+        pagination={searchPagination}
+        categoryCounts={mockCategoryCounts}
+      />
+    );
+
+    expect(screen.getByText(/Đang tìm kiếm toàn bộ lịch sử theo:/)).toBeInTheDocument();
+    expect(screen.getByText(/42 kết quả/)).toBeInTheDocument();
+
+    const clearBtn = screen.getByRole("button", { name: /Xóa bộ lọc tìm kiếm/ });
+    fireEvent.click(clearBtn);
+
+    expect(mockPush).toHaveBeenCalledWith(expect.not.stringContaining("q="));
+  });
+
+  it("7. Search combined with pagination preserves q and navigates between result pages", () => {
+    const searchPagination: AuditPaginationInfo = {
+      page: 1,
+      pageSize: 25,
+      totalCount: 103,
+      totalPages: 5,
+      category: "ALL",
+      query: "APPROVE",
+    };
+
+    render(
+      <AuditLogClientView
+        events={mockEvents}
+        pagination={searchPagination}
+        categoryCounts={mockCategoryCounts}
+      />
+    );
+
+    const nextBtn = screen.getByRole("button", { name: /Sau/ });
+    fireEvent.click(nextBtn);
+
+    expect(mockPush).toHaveBeenCalledWith(expect.stringContaining("page=2"));
+  });
+
+  it("8. Error response handling: does NOT display false zeros when count query fails", () => {
+    const errorCategoryCounts: AuditCategoryCounts = {
+      ALL: 2204,
+      BM06: null, // query error
+      TEMPERATURE: 1002,
+      DECONTAMINATION: null, // query error
+      APPROVAL: 111,
+      MASTER: 49,
+    };
+
+    render(
+      <AuditLogClientView
+        events={mockEvents}
+        pagination={mockPagination}
+        categoryCounts={errorCategoryCounts}
+      />
+    );
+
+    // Categories with errors should display dash (—) instead of false "0"
+    const bm06Btn = screen.getByRole("button", { name: /BM.06 Nhật ký máy/ });
+    expect(bm06Btn).toHaveTextContent("—");
+
+    const deconBtn = screen.getByRole("button", { name: /Khử nhiễm BM.01/ });
+    expect(deconBtn).toHaveTextContent("—");
+  });
+
+  it("9. Handles out-of-bounds page or empty results gracefully", () => {
+    const emptyPagination: AuditPaginationInfo = {
+      page: 999,
+      pageSize: 25,
+      totalCount: 0,
+      totalPages: 1,
+      category: "ALL",
+      query: "nonexistent_term",
+    };
+
+    render(
+      <AuditLogClientView
+        events={[]}
+        pagination={emptyPagination}
+        categoryCounts={mockCategoryCounts}
+      />
+    );
+
+    expect(screen.getByText("Không tìm thấy sự kiện kiểm toán nào")).toBeInTheDocument();
+    expect(screen.getByText(/Không có sự kiện nào khớp với từ khóa/)).toBeInTheDocument();
+  });
+
+  it("10. Technical ISO trace details can be expanded without data loss", () => {
     render(
       <AuditLogClientView
         events={mockEvents.slice(0, 1)}

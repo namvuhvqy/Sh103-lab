@@ -51,6 +51,61 @@ type SearchParams = Promise<{
   q?: string;
 }>;
 
+async function fetchCategoryCounts(supabase: Awaited<ReturnType<typeof createClient>>): Promise<AuditCategoryCounts> {
+  const [
+    totalRes,
+    bm06Res,
+    tempRes,
+    deconRes,
+    approvalRes,
+    masterRes,
+  ] = await Promise.all([
+    supabase.from("audit_events").select("*", { count: "exact", head: true }),
+    supabase
+      .from("audit_events")
+      .select("*", { count: "exact", head: true })
+      .or(
+        "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
+      ),
+    supabase
+      .from("audit_events")
+      .select("*", { count: "exact", head: true })
+      .or("after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"),
+    supabase
+      .from("audit_events")
+      .select("*", { count: "exact", head: true })
+      .or("after_data->>record_type.eq.DECONTAMINATION,before_data->>record_type.eq.DECONTAMINATION"),
+    supabase
+      .from("audit_events")
+      .select("*", { count: "exact", head: true })
+      .in("action", [
+        "MARK_READY",
+        "APPROVE",
+        "APPROVE_PERIOD",
+        "APPROVE_INCOMPLETE",
+        "RETURN",
+        "RETURN_PERIOD",
+        "INTERNAL_CONFIRMATION_CHECK",
+        "INTERNAL_CONFIRMATION_UNCHECK",
+        "CORRECTION_REQUEST",
+        "CORRECTION_APPROVE",
+      ]),
+    supabase
+      .from("audit_events")
+      .select("*", { count: "exact", head: true })
+      .eq("action", "MASTER_DATA_CHANGE"),
+  ]);
+
+  return {
+    ALL: totalRes.error ? null : (totalRes.count ?? null),
+    BM06: bm06Res.error ? null : (bm06Res.count ?? null),
+    TEMPERATURE: tempRes.error ? null : (tempRes.count ?? null),
+    DECONTAMINATION: deconRes.error ? null : (deconRes.count ?? null),
+    APPROVAL: approvalRes.error ? null : (approvalRes.count ?? null),
+    MASTER: masterRes.error ? null : (masterRes.count ?? null),
+  };
+}
+
 export default async function AuditPage({
   searchParams,
 }: {
@@ -78,7 +133,11 @@ export default async function AuditPage({
 
   const supabase = await createClient();
 
-  // 1. Xây dựng truy vấn có phân trang và bộ lọc theo danh mục
+  // 1. Tải metadata tra cứu và bộ đếm danh mục song song với auditQuery
+  const from = (requestedPage - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // 2. Xây dựng truy vấn audit_events có phân trang, bộ lọc danh mục và tìm kiếm server-side
   let auditQuery = supabase
     .from("audit_events")
     .select(
@@ -87,14 +146,19 @@ export default async function AuditPage({
     )
     .order("created_at", { ascending: false });
 
+  // Áp dụng bộ lọc danh mục (hỗ trợ cả after_data, before_data và action codes đầy đủ)
   if (validCategory === "BM06") {
     auditQuery = auditQuery.or(
-      "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE"
+      "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
     );
   } else if (validCategory === "TEMPERATURE") {
-    auditQuery = auditQuery.eq("after_data->>record_type", "MEASUREMENT");
+    auditQuery = auditQuery.or(
+      "after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"
+    );
   } else if (validCategory === "DECONTAMINATION") {
-    auditQuery = auditQuery.eq("after_data->>record_type", "DECONTAMINATION");
+    auditQuery = auditQuery.or(
+      "after_data->>record_type.eq.DECONTAMINATION,before_data->>record_type.eq.DECONTAMINATION"
+    );
   } else if (validCategory === "APPROVAL") {
     auditQuery = auditQuery.in("action", [
       "MARK_READY",
@@ -105,52 +169,113 @@ export default async function AuditPage({
       "RETURN_PERIOD",
       "INTERNAL_CONFIRMATION_CHECK",
       "INTERNAL_CONFIRMATION_UNCHECK",
+      "CORRECTION_REQUEST",
+      "CORRECTION_APPROVE",
     ]);
   } else if (validCategory === "MASTER") {
     auditQuery = auditQuery.eq("action", "MASTER_DATA_CHANGE");
   }
 
-  const from = (requestedPage - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-  auditQuery = auditQuery.range(from, to);
-
-  // 2. Chạy song song truy vấn sự kiện và bộ đếm danh mục thực tế
+  // Tải metadata trước nếu cần tìm kiếm server-side theo tên cán bộ/thiết bị/phòng
   const [
-    { data: events, count, error },
     { data: profiles },
     { data: locations },
     { data: assets },
-    { count: totalCount },
-    { count: bm06Count },
-    { count: tempCount },
-    { count: deconCount },
-    { count: approvalCount },
-    { count: masterCount },
+    categoryCounts,
   ] = await Promise.all([
-    auditQuery,
     supabase.from("profiles").select("user_id,full_name,business_role"),
     supabase.from("locations").select("id,name,code"),
     supabase.from("assets").select("id,display_name,source_name,source_order"),
-    // Đếm độc lập cho từng chip danh mục
-    supabase.from("audit_events").select("*", { count: "exact", head: true }),
-    supabase
+    fetchCategoryCounts(supabase),
+  ]);
+
+  // Áp dụng tìm kiếm phía server nếu có 'q'
+  if (searchQuery) {
+    const qLower = searchQuery.toLowerCase();
+    const matchingActorIds = (profiles ?? [])
+      .filter((p) => p.full_name?.toLowerCase().includes(qLower))
+      .map((p) => p.user_id);
+
+    const matchingAssetIds = (assets ?? [])
+      .filter((a) => (a.display_name || a.source_name || "").toLowerCase().includes(qLower))
+      .map((a) => a.id);
+
+    const matchingLocationIds = (locations ?? [])
+      .filter((l) => (l.name || l.code || "").toLowerCase().includes(qLower))
+      .map((l) => l.id);
+
+    const orClauses: string[] = [
+      `action.ilike.%${searchQuery}%`,
+      `entity_type.ilike.%${searchQuery}%`,
+      `request_id.ilike.%${searchQuery}%`,
+      `after_data->>record_type.ilike.%${searchQuery}%`,
+      `before_data->>record_type.ilike.%${searchQuery}%`,
+    ];
+
+    if (matchingActorIds.length > 0) {
+      orClauses.push(`actor_user_id.in.(${matchingActorIds.join(",")})`);
+    }
+    if (matchingAssetIds.length > 0) {
+      orClauses.push(`entity_id.in.(${matchingAssetIds.join(",")})`);
+      orClauses.push(`after_data->>asset_id.in.(${matchingAssetIds.join(",")})`);
+      orClauses.push(`before_data->>asset_id.in.(${matchingAssetIds.join(",")})`);
+    }
+    if (matchingLocationIds.length > 0) {
+      orClauses.push(`after_data->>location_id.in.(${matchingLocationIds.join(",")})`);
+      orClauses.push(`before_data->>location_id.in.(${matchingLocationIds.join(",")})`);
+    }
+    if (/^\d{4}/.test(searchQuery)) {
+      orClauses.push(`after_data->>business_date.ilike.%${searchQuery}%`);
+      orClauses.push(`before_data->>business_date.ilike.%${searchQuery}%`);
+    }
+
+    auditQuery = auditQuery.or(orClauses.join(","));
+  }
+
+  // 3. Quản lý phân trang & truy vấn dữ liệu chính
+  auditQuery = auditQuery.range(from, to);
+
+  // Thực thi truy vấn sự kiện chính
+  const { data: events, count, error } = await auditQuery;
+
+  if (error) {
+    throw new Error(`Không tải được nhật ký kiểm toán: ${error.message}`);
+  }
+
+  const totalFilteredCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCount / PAGE_SIZE));
+
+  // Xử lý trường hợp trang vượt quá giới hạn (out-of-bounds page)
+  let effectivePage = requestedPage;
+  let eventItems = events ?? [];
+
+  if (requestedPage > totalPages && totalFilteredCount > 0) {
+    // Tải lại trang cuối cùng thực tế để người dùng thấy dữ liệu hợp lệ
+    effectivePage = totalPages;
+    const lastFrom = (totalPages - 1) * PAGE_SIZE;
+    const lastTo = lastFrom + PAGE_SIZE - 1;
+
+    let fallbackQuery = supabase
       .from("audit_events")
-      .select("*", { count: "exact", head: true })
-      .or(
-        "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE"
-      ),
-    supabase
-      .from("audit_events")
-      .select("*", { count: "exact", head: true })
-      .eq("after_data->>record_type", "MEASUREMENT"),
-    supabase
-      .from("audit_events")
-      .select("*", { count: "exact", head: true })
-      .eq("after_data->>record_type", "DECONTAMINATION"),
-    supabase
-      .from("audit_events")
-      .select("*", { count: "exact", head: true })
-      .in("action", [
+      .select(
+        "id,created_at,actor_user_id,action,entity_type,entity_id,before_data,after_data,request_id"
+      )
+      .order("created_at", { ascending: false });
+
+    if (validCategory === "BM06") {
+      fallbackQuery = fallbackQuery.or(
+        "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
+      );
+    } else if (validCategory === "TEMPERATURE") {
+      fallbackQuery = fallbackQuery.or(
+        "after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"
+      );
+    } else if (validCategory === "DECONTAMINATION") {
+      fallbackQuery = fallbackQuery.or(
+        "after_data->>record_type.eq.DECONTAMINATION,before_data->>record_type.eq.DECONTAMINATION"
+      );
+    } else if (validCategory === "APPROVAL") {
+      fallbackQuery = fallbackQuery.in("action", [
         "MARK_READY",
         "APPROVE",
         "APPROVE_PERIOD",
@@ -159,19 +284,58 @@ export default async function AuditPage({
         "RETURN_PERIOD",
         "INTERNAL_CONFIRMATION_CHECK",
         "INTERNAL_CONFIRMATION_UNCHECK",
-      ]),
-    supabase
-      .from("audit_events")
-      .select("*", { count: "exact", head: true })
-      .eq("action", "MASTER_DATA_CHANGE"),
-  ]);
+        "CORRECTION_REQUEST",
+        "CORRECTION_APPROVE",
+      ]);
+    } else if (validCategory === "MASTER") {
+      fallbackQuery = fallbackQuery.eq("action", "MASTER_DATA_CHANGE");
+    }
 
-  if (error) {
-    throw new Error(`Không tải được nhật ký kiểm toán: ${error.message}`);
+    if (searchQuery) {
+      const qLower = searchQuery.toLowerCase();
+      const matchingActorIds = (profiles ?? [])
+        .filter((p) => p.full_name?.toLowerCase().includes(qLower))
+        .map((p) => p.user_id);
+
+      const matchingAssetIds = (assets ?? [])
+        .filter((a) => (a.display_name || a.source_name || "").toLowerCase().includes(qLower))
+        .map((a) => a.id);
+
+      const matchingLocationIds = (locations ?? [])
+        .filter((l) => (l.name || l.code || "").toLowerCase().includes(qLower))
+        .map((l) => l.id);
+
+      const orClauses: string[] = [
+        `action.ilike.%${searchQuery}%`,
+        `entity_type.ilike.%${searchQuery}%`,
+        `request_id.ilike.%${searchQuery}%`,
+        `after_data->>record_type.ilike.%${searchQuery}%`,
+        `before_data->>record_type.ilike.%${searchQuery}%`,
+      ];
+
+      if (matchingActorIds.length > 0) {
+        orClauses.push(`actor_user_id.in.(${matchingActorIds.join(",")})`);
+      }
+      if (matchingAssetIds.length > 0) {
+        orClauses.push(`entity_id.in.(${matchingAssetIds.join(",")})`);
+        orClauses.push(`after_data->>asset_id.in.(${matchingAssetIds.join(",")})`);
+        orClauses.push(`before_data->>asset_id.in.(${matchingAssetIds.join(",")})`);
+      }
+      if (matchingLocationIds.length > 0) {
+        orClauses.push(`after_data->>location_id.in.(${matchingLocationIds.join(",")})`);
+        orClauses.push(`before_data->>location_id.in.(${matchingLocationIds.join(",")})`);
+      }
+      if (/^\d{4}/.test(searchQuery)) {
+        orClauses.push(`after_data->>business_date.ilike.%${searchQuery}%`);
+        orClauses.push(`before_data->>business_date.ilike.%${searchQuery}%`);
+      }
+
+      fallbackQuery = fallbackQuery.or(orClauses.join(","));
+    }
+
+    const { data: fallbackEvents } = await fallbackQuery.range(lastFrom, lastTo);
+    eventItems = fallbackEvents ?? [];
   }
-
-  // 3. Tối ưu hoá truy vấn Sổ kỳ: Chỉ tra cứu những ID kỳ thực tế xuất hiện trong 25 bản ghi
-  const eventItems = events ?? [];
   const referencedPeriodIds = Array.from(
     new Set(
       eventItems
@@ -431,25 +595,13 @@ export default async function AuditPage({
     };
   });
 
-  const totalFilteredCount = count ?? 0;
-  const totalPages = Math.ceil(totalFilteredCount / PAGE_SIZE) || 1;
-
   const pagination: AuditPaginationInfo = {
-    page: requestedPage,
+    page: effectivePage,
     pageSize: PAGE_SIZE,
     totalCount: totalFilteredCount,
     totalPages,
     category: validCategory,
     query: searchQuery,
-  };
-
-  const categoryCounts: AuditCategoryCounts = {
-    ALL: totalCount ?? 0,
-    BM06: bm06Count ?? 0,
-    TEMPERATURE: tempCount ?? 0,
-    DECONTAMINATION: deconCount ?? 0,
-    APPROVAL: approvalCount ?? 0,
-    MASTER: masterCount ?? 0,
   };
 
   return (
