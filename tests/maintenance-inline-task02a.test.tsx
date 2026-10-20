@@ -70,11 +70,15 @@ describe("TASK 02A.1: Inline Editing & Live Updates for Maintenance (/maintenanc
     mockRefresh.mockReset();
   });
 
-  it("1. Expands inline form on clicking 'Ghi nhận bảo dưỡng' and collapses on toggle", () => {
+  it("1. Expands inline form on clicking 'Ghi nhận bảo dưỡng' and collapses on toggle; has NO external link button", () => {
     render(<MaintenanceWorkspace data={testData} />);
 
     // Initially, no form should be displayed in the document
     expect(screen.queryByLabelText(/Ngày giờ thực hiện/)).toBeNull();
+
+    // Verify external link button has been completely removed from machine card
+    expect(screen.queryByTitle(/Mở màn hình riêng/)).toBeNull();
+    expect(screen.queryByLabelText(/Trang riêng/)).toBeNull();
 
     // Click "Ghi nhận bảo dưỡng" for the first machine
     const toggleButtons = screen.getAllByRole("button", { name: /Ghi nhận bảo dưỡng/ });
@@ -109,10 +113,12 @@ describe("TASK 02A.1: Inline Editing & Live Updates for Maintenance (/maintenanc
     expect(screen.getByRole("button", { name: /Lưu bảo dưỡng/ })).toBeInTheDocument();
   });
 
-  it("3. Saves inline successfully, updates machine status and counter without redirect", async () => {
+  it("3. Saves inline successfully with real server recordId, updates machine status and counter without fake 'saved' ID or redirect", async () => {
     const mockSave = vi.mocked(saveMaintenanceAction);
     mockSave.mockResolvedValueOnce({
       success: true,
+      recordId: "rec-real-au480-1",
+      status: "COMPLETED",
       redirectUrl: "/maintenance?saved=occ-au480",
     });
 
@@ -196,9 +202,49 @@ describe("TASK 02A.1: Inline Editing & Live Updates for Maintenance (/maintenanc
     expect(screen.getByRole("button", { name: /Thử lưu lại/ })).toBeInTheDocument();
   });
 
-  it("5. Allows reviewing and editing existing completed records inline", async () => {
+  it("5. Strict confirmation: Handles abnormal/null server response without falsely claiming success", async () => {
     const mockSave = vi.mocked(saveMaintenanceAction);
-    mockSave.mockResolvedValueOnce({ success: true, redirectUrl: "/maintenance?saved=occ-done" });
+    // Server returns abnormal null/undefined response
+    mockSave.mockResolvedValueOnce(null as any);
+
+    render(<MaintenanceWorkspace data={testData} />);
+
+    // Expand
+    const toggleButtons = screen.getAllByRole("button", { name: /Ghi nhận bảo dưỡng/ });
+    fireEvent.click(toggleButtons[0]);
+
+    // Fill data
+    const passRadio = screen.getByLabelText(/Đạt \(PASS\)/);
+    fireEvent.click(passRadio);
+
+    const noteInput = screen.getByPlaceholderText(/Ghi chú các hạng mục/);
+    fireEvent.change(noteInput, { target: { value: "Thử lưu với lỗi phản hồi bất thường" } });
+
+    // Submit
+    const saveBtn = screen.getByRole("button", { name: /Lưu bảo dưỡng/ });
+    fireEvent.click(saveBtn);
+
+    // Must show error alert and NOT claim success
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByText(/Máy chủ phản hồi bất thường hoặc không xác nhận lưu/)).toBeInTheDocument();
+    });
+
+    // Content is still preserved
+    expect((noteInput as HTMLTextAreaElement).value).toBe("Thử lưu với lỗi phản hồi bất thường");
+
+    // Progress must NOT falsely increment
+    expect(screen.getByText("0/2 máy đã bảo dưỡng")).toBeInTheDocument();
+  });
+
+  it("6. Allows reviewing and editing existing completed records inline", async () => {
+    const mockSave = vi.mocked(saveMaintenanceAction);
+    mockSave.mockResolvedValueOnce({
+      success: true,
+      recordId: "rec-done-1",
+      status: "COMPLETED",
+      redirectUrl: "/maintenance?saved=occ-done",
+    });
 
     const completedData: MaintenanceWorkspaceData = {
       businessDate: "2026-10-20",
@@ -267,7 +313,7 @@ describe("TASK 02A.1: Inline Editing & Live Updates for Maintenance (/maintenanc
     });
   });
 
-  it("6. Restores unsaved draft automatically when form is closed and reopened", () => {
+  it("7. Restores unsaved draft automatically when form is closed and reopened", () => {
     render(<MaintenanceWorkspace data={testData} />);
 
     // Open first machine

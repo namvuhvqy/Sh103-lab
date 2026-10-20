@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Wrench,
@@ -15,7 +14,6 @@ import {
   Search,
   Check,
   AlertTriangle,
-  ExternalLink,
 } from "lucide-react";
 import type { MaintenanceOccurrenceItem, MaintenanceWorkspaceData } from "@/lib/maintenance/queries";
 import { MaintenanceForm } from "@/components/forms/MaintenanceForm";
@@ -72,17 +70,25 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
   // Handle inline save success without navigating away
   const handleInlineSaveSuccess = (
     itemId: string,
-    savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }
+    savedData: {
+      performedAt: string;
+      result: "PASS" | "FAIL";
+      note?: string;
+      recordId?: string | null;
+      status?: string;
+    }
   ) => {
     setItems((prev) =>
       prev.map((it) => {
         if (it.id === itemId) {
+          const finalRecordId = savedData.recordId ?? it.fulfilledByRecordId ?? null;
+          const finalStatus = savedData.status ?? (finalRecordId ? "COMPLETED" : it.status);
           return {
             ...it,
-            status: "COMPLETED",
-            fulfilledByRecordId: it.fulfilledByRecordId || "saved",
+            status: finalStatus,
+            fulfilledByRecordId: finalRecordId,
             record: {
-              id: it.record?.id || "saved",
+              id: finalRecordId ?? (it.record?.id ?? ""),
               performedAt: savedData.performedAt,
               result: savedData.result,
               note: savedData.note ?? null,
@@ -128,8 +134,8 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
     return true;
   });
 
-  // Dynamic counts reflecting current live state
-  const completedCount = items.filter((i) => i.status === "COMPLETED" || Boolean(i.fulfilledByRecordId) || Boolean(i.record)).length;
+  // Dynamic counts reflecting truthful Supabase-backed state
+  const completedCount = items.filter((i) => i.status === "COMPLETED" || Boolean(i.fulfilledByRecordId)).length;
   const totalCount = items.length;
   const dailyCount = items.filter((i) => i.cadence === "DAILY").length;
   const weeklyCount = items.filter((i) => i.cadence === "WEEKLY").length;
@@ -384,7 +390,13 @@ function MaintenanceCard({
   item: MaintenanceOccurrenceItem;
   isExpanded: boolean;
   onToggle: () => void;
-  onSaveSuccess: (savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }) => void;
+  onSaveSuccess: (savedData: {
+    performedAt: string;
+    result: "PASS" | "FAIL";
+    note?: string;
+    recordId?: string | null;
+    status?: string;
+  }) => void;
 }) {
   const isCompleted = item.status === "COMPLETED" || Boolean(item.fulfilledByRecordId);
   const result = item.record?.result;
@@ -455,34 +467,22 @@ function MaintenanceCard({
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-3">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onToggle}
-            className={`flex-1 flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs font-black transition cursor-pointer select-none active:scale-[0.99] ${
-              isExpanded
-                ? "bg-teal-950 text-white shadow-xs"
-                : isCompleted
-                ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
-                : "bg-teal-800 text-white hover:bg-teal-900 shadow-xs"
-            }`}
-          >
-            <span>
-              {isExpanded ? "Đóng form" : isCompleted ? "Xem / Sửa kết quả" : "Ghi nhận bảo dưỡng"}
-            </span>
-            {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-          </button>
-
-          {/* Fallback legacy deep link */}
-          <Link
-            href={`/maintenance/${item.id}`}
-            title="Mở màn hình riêng (Link cũ)"
-            className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-300 hover:text-teal-800 transition shrink-0"
-            aria-label={`Trang riêng ${item.assetName}`}
-          >
-            <ExternalLink className="size-3.5" />
-          </Link>
-        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`w-full flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs font-black transition cursor-pointer select-none active:scale-[0.99] ${
+            isExpanded
+              ? "bg-teal-950 text-white shadow-xs"
+              : isCompleted
+              ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
+              : "bg-teal-800 text-white hover:bg-teal-900 shadow-xs"
+          }`}
+        >
+          <span>
+            {isExpanded ? "Đóng form" : isCompleted ? "Xem / Sửa kết quả" : "Ghi nhận bảo dưỡng"}
+          </span>
+          {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+        </button>
 
         {/* INLINE FORM EXPANSION */}
         {isExpanded && (

@@ -25,7 +25,13 @@ export interface MaintenanceFormProps {
   initialError?: string;
   initialRecord?: InitialMaintenanceRecord;
   isInline?: boolean;
-  onSuccess?: (savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }) => void;
+  onSuccess?: (savedData: {
+    performedAt: string;
+    result: "PASS" | "FAIL";
+    note?: string;
+    recordId?: string | null;
+    status?: string;
+  }) => void;
   onCancel?: () => void;
 }
 
@@ -158,9 +164,12 @@ export function MaintenanceForm({
 
     try {
       const res = await saveMaintenanceAction(formData);
-      if (res && !res.success) {
+      if (!res || res.success !== true) {
         setSaveStatus("error");
-        setErrorMessage(res.error || "Không thể lưu bảo dưỡng. Vui lòng thử lại.");
+        setErrorMessage(
+          (res && res.error) ||
+            "Máy chủ phản hồi bất thường hoặc không xác nhận lưu. Dữ liệu đang nhập vẫn được giữ nguyên."
+        );
       } else {
         setSaveStatus("saved");
         setErrorMessage(null);
@@ -169,9 +178,15 @@ export function MaintenanceForm({
         } catch {}
 
         if (onSuccess) {
-          onSuccess({ performedAt, result: result as "PASS" | "FAIL", note });
+          onSuccess({
+            performedAt,
+            result: result as "PASS" | "FAIL",
+            note,
+            recordId: (res as any)?.recordId ?? null,
+            status: (res as any)?.status ?? "COMPLETED",
+          });
         } else {
-          const targetUrl = res?.redirectUrl || `/maintenance?saved=${encodeURIComponent(occurrenceId)}`;
+          const targetUrl = (res as any)?.redirectUrl || `/maintenance?saved=${encodeURIComponent(occurrenceId)}`;
           if (router) {
             router.push(targetUrl);
           } else if (typeof window !== "undefined") {

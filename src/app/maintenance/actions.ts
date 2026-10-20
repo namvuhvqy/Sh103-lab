@@ -101,6 +101,16 @@ export async function saveMaintenanceAction(form: FormData) {
     }
   }
 
+  // Query updated occurrence state from Supabase to provide truthful status and record ID
+  const { data: updatedOcc } = await supabase
+    .from("schedule_occurrences")
+    .select("id, status, fulfilled_by_record_id")
+    .eq("id", id)
+    .single();
+
+  const confirmedRecordId = updatedOcc?.fulfilled_by_record_id ?? occurrence.fulfilled_by_record_id ?? null;
+  const confirmedStatus = updatedOcc?.status ?? "COMPLETED";
+
   try {
     revalidatePath("/maintenance");
     revalidatePath(`/maintenance/${id}`);
@@ -112,6 +122,13 @@ export async function saveMaintenanceAction(form: FormData) {
   }
 
   const redirectUrl = `/maintenance?saved=${encodeURIComponent(id)}`;
-  if (isAjax) return { success: true, redirectUrl };
+  if (isAjax) {
+    return {
+      success: true,
+      recordId: confirmedRecordId,
+      status: confirmedStatus,
+      redirectUrl,
+    };
+  }
   redirect(redirectUrl);
 }

@@ -110,8 +110,7 @@ describe("HOTFIX P1: Maintenance 404 & Flow Integrity", () => {
       expect(screen.getByText("Khu Sinh Hóa")).toBeInTheDocument();
       expect(screen.getByText("Chưa ghi")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Ghi nhận bảo dưỡng/ })).toBeInTheDocument();
-      const fallbackLink = screen.getByRole("link", { name: /Trang riêng/ });
-      expect(fallbackLink).toHaveAttribute("href", "/maintenance/occ-single-1");
+      expect(screen.queryByRole("link", { name: /Trang riêng/ })).toBeNull();
     });
 
     it("handles multiple occurrences across DAILY, WEEKLY, and MONTHLY with accurate filtering", () => {
