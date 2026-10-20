@@ -79,6 +79,8 @@ describe("TASK 01: QR BM06 Concurrency, Offline Queue, and UI Truthfulness", () 
     const statuses = JSON.parse(statusesRaw);
     expect(statuses).toEqual([{ asset_id: "dev-01-uuid", status: "BT" }]);
     expect(capturedBody!.get("lockVersion")).toBe("2");
+    // Verify note is decoupled and not sent in single-machine save to prevent overwriting shift note
+    expect(capturedBody!.get("note")).toBeNull();
 
     // Check UI feedback: Confirms save on Supabase
     await waitFor(() => {

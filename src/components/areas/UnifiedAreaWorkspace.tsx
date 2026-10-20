@@ -236,7 +236,7 @@ export function UnifiedAreaWorkspace({
       formData.append("lockVersion", String(currentLockVersion));
       formData.append("statuses", JSON.stringify(statusesPayload));
       formData.append("areaCode", currentArea.code);
-      formData.append("note", bm06Note);
+      // Note is intentionally not appended here to preserve server note during offline machine sync
       formData.append("intent", "draft");
 
       const res = await fetch("/api/forms/bm06", {
@@ -286,7 +286,7 @@ export function UnifiedAreaWorkspace({
     } finally {
       setIsSyncingOffline(false);
     }
-  }, [bm06OccurrenceId, isSyncingOffline, currentLockVersion, currentArea.code, bm06Note, statuses]);
+  }, [bm06OccurrenceId, isSyncingOffline, currentLockVersion, currentArea.code, statuses]);
 
   // Auto trigger sync when network recovers
   useEffect(() => {
@@ -318,7 +318,7 @@ export function UnifiedAreaWorkspace({
     formData.append("lockVersion", String(currentLockVersion));
     formData.append("statuses", JSON.stringify(statusesPayload));
     formData.append("areaCode", currentArea.code);
-    formData.append("note", bm06Note);
+    // Note is intentionally not appended here to preserve shift note during single-machine scan
     formData.append("intent", "draft");
 
     try {

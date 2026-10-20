@@ -210,8 +210,10 @@ export async function POST(request: Request) {
 
       let hasConflict = false;
       for (const s of filteredStatuses) {
-        const existingCode = currentStatusMap.get(s.asset_id);
-        if (existingCode && existingCode !== s.status) {
+        const initialStatus = existingStatusMap.get(s.asset_id)?.status_code;
+        const currentCode = currentStatusMap.get(s.asset_id);
+        const wasTouchedConcurrently = currentCode !== initialStatus;
+        if (wasTouchedConcurrently && currentCode !== undefined && currentCode !== s.status) {
           hasConflict = true;
           break;
         }
