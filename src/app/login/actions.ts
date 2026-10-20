@@ -42,5 +42,7 @@ export async function loginAction(_previous: { ok: boolean; message?: string }, 
     await supabase.auth.signOut();
     return { ok: false, message: "Tài khoản bị khóa hoặc chưa được kích hoạt." };
   }
-  redirect("/");
+  const nextParam = String(formData.get("next") ?? "").trim();
+  const targetPath = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
+  redirect(targetPath);
 }

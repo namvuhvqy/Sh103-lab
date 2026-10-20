@@ -3,9 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronLeft, ShieldCheck } from "lucide-react";
+import { Bell, ChevronLeft, ShieldCheck, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
+import { useQRScanner } from "@/components/qr/QRScannerContext";
 
 interface MobileHeaderProps {
   title?: string;
@@ -21,6 +22,7 @@ export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAct
   const pathname = usePathname();
   const isSubpage = Boolean(pathname && pathname !== "/");
   const displaySubtitle = subtitle ?? "Hệ thống quản lý biểu mẫu ISO 15189";
+  const { openScanner } = useQRScanner();
 
   return (
     <header data-app-chrome className={cn("safe-top sticky top-0 z-30 border-b border-teal-100/80 bg-white/95 backdrop-blur-xl md:hidden shadow-xs", className)}>
@@ -59,9 +61,19 @@ export function MobileHeader({ title = "Khoa Sinh Hóa BV103", subtitle, leftAct
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           {rightAction ?? (
             <>
+              {/* NÚT QUÉT QR TRÊN MOBILE */}
+              <button
+                type="button"
+                onClick={openScanner}
+                className="grid size-9 place-items-center rounded-xl bg-teal-50 border border-teal-200/90 text-teal-800 hover:bg-teal-100 transition active:scale-95 shadow-2xs"
+                title="Quét QR nhận diện thiết bị xét nghiệm"
+                aria-label="Quét QR thiết bị"
+              >
+                <QrCode className="size-4.5" />
+              </button>
               {isAdmin ? (
                 <Link
                   href="/admin/audit"

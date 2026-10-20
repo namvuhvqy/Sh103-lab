@@ -63,7 +63,10 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  if (!user) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(request.nextUrl.pathname)}`, request.url));
+  if (!user) {
+    const fullTarget = request.nextUrl.pathname + request.nextUrl.search;
+    return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(fullTarget)}`, request.url));
+  }
 
   // Fast path for standard authenticated routes: session is valid, defer granular profile to getCurrentAccess()
   // Only query profiles in middleware for admin routes to guard /admin/*

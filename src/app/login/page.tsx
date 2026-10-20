@@ -4,7 +4,13 @@ import { HospitalLogo } from "@/components/ui/HospitalLogo";
 import { loginAction } from "./actions";
 import { ShieldCheck, Award, HeartPulse } from "lucide-react";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ next?: string; error?: string }>;
+}) {
+  const query = (await searchParams) ?? {};
+
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center">
       <div className="grid min-h-screen lg:grid-cols-12">
@@ -111,7 +117,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <LoginForm action={loginAction} />
+            <LoginForm action={loginAction} next={query.next} />
           </div>
         </section>
       </div>

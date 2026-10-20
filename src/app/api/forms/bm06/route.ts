@@ -97,16 +97,43 @@ export async function POST(request: Request) {
   }
 
   const targetNote = String(data.get("note") || "").trim() || null;
-  const { error } = await supabase.rpc("save_equipment_shift_draft", {
+  let lockVersion = Number(data.get("lockVersion") || 1);
+  let { error } = await supabase.rpc("save_equipment_shift_draft", {
     target_occurrence_id: occurrenceId,
     target_usage: null,
     target_unit: null,
     target_note: targetNote,
     target_statuses: statuses,
     target_finalize: intent === "finalize",
-    target_expected_lock: Number(data.get("lockVersion") || 1),
+    target_expected_lock: lockVersion,
     target_coworker_id: coWorkerUserId,
   });
+
+  // Concurrency resolution for draft saves: if another technician updated another machine concurrently,
+  // retry once with the latest draft lock version if still in DRAFT mode.
+  if (error && intent === "draft" && error.message.includes("Record changed or finalized")) {
+    const { data: latestOcc } = await supabase
+      .from("schedule_occurrences")
+      .select("records:fulfilled_by_record_id(record_state, lock_version)")
+      .eq("id", occurrenceId)
+      .maybeSingle();
+
+    const rec = latestOcc?.records as unknown as { record_state: string; lock_version: number } | null;
+    if (rec && rec.record_state === "DRAFT" && typeof rec.lock_version === "number") {
+      lockVersion = rec.lock_version;
+      const retryRes = await supabase.rpc("save_equipment_shift_draft", {
+        target_occurrence_id: occurrenceId,
+        target_usage: null,
+        target_unit: null,
+        target_note: targetNote,
+        target_statuses: statuses,
+        target_finalize: false,
+        target_expected_lock: lockVersion,
+        target_coworker_id: coWorkerUserId,
+      });
+      error = retryRes.error;
+    }
+  }
 
   if (error) {
     return redirectError(request, areaCode, translateBm06Error(error.message));
@@ -149,7 +176,14 @@ export async function POST(request: Request) {
 
   const wantsJson = request.headers.get("accept")?.includes("application/json");
   if (wantsJson) {
-    return NextResponse.json({ success: true, saved: "1", intent });
+    // Fetch latest lockVersion to send back to client
+    const { data: latestRec } = await supabase
+      .from("schedule_occurrences")
+      .select("records:fulfilled_by_record_id(lock_version)")
+      .eq("id", occurrenceId)
+      .maybeSingle();
+    const currentLock = (latestRec?.records as any)?.lock_version ?? (lockVersion + 1);
+    return NextResponse.json({ success: true, saved: "1", intent, lockVersion: currentLock });
   }
   return NextResponse.redirect(resultUrl(request, areaCode, { saved: "1", intent }), 303);
 }

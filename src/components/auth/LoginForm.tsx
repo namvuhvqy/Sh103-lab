@@ -8,13 +8,14 @@ type LoginAction = (previous: LoginResult, formData: FormData) => Promise<LoginR
 
 const initialState: LoginResult = { ok: false };
 
-export function LoginForm({ action }: { action: LoginAction }) {
+export function LoginForm({ action, next }: { action: LoginAction; next?: string }) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const [showPassword, setShowPassword] = useState(false);
   const isOnline = useOnlineStatus();
 
   return (
     <form action={formAction} className="space-y-5" aria-describedby={state.message ? "login-status" : undefined}>
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-teal-700">SH103-Lab</p>
         <h1 className="mt-2 text-2xl font-bold text-zinc-950">Đăng nhập</h1>

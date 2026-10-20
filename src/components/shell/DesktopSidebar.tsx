@@ -3,10 +3,10 @@ import Link from "next/link";
 import { AREAS } from "@/constants/areas";
 import { cn } from "@/lib/utils";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
+import { useQRScanner } from "@/components/qr/QRScannerContext";
 import {
   Home,
   Layers,
-
   BookOpen,
   History,
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
   Bell,
   CircleAlert,
   Megaphone,
+  QrCode,
 } from "lucide-react";
 
 interface DesktopSidebarProps {
@@ -32,6 +33,7 @@ export function DesktopSidebar({
   isAdmin = false,
   unreadCount = 0,
 }: DesktopSidebarProps) {
+  const { openScanner } = useQRScanner();
   const dailyTasks = [
     { label: "Trang chủ", href: "/", icon: Home },
     { label: "Phiên làm việc (Nhập nhanh)", href: "/quick-duty", icon: ShieldCheck },
@@ -62,7 +64,7 @@ export function DesktopSidebar({
         className
       )}
     >
-      <div className="flex items-center gap-3 px-2 py-3 mb-4 rounded-2xl bg-teal-50/70 border border-teal-100/80">
+      <div className="flex items-center gap-3 px-2 py-3 mb-3 rounded-2xl bg-teal-50/70 border border-teal-100/80">
         <HospitalLogo size="md" />
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 truncate">BV Quân y 103</p>
@@ -70,6 +72,16 @@ export function DesktopSidebar({
           <p className="text-[10px] font-semibold text-teal-700 truncate">Hệ thống biểu mẫu PXN</p>
         </div>
       </div>
+
+      {/* QUICK SCANNER TRIGGER */}
+      <button
+        type="button"
+        onClick={openScanner}
+        className="w-full mb-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-800 to-teal-700 hover:from-teal-700 hover:to-teal-600 px-3 py-2.5 text-xs font-bold text-white shadow-xs transition active:scale-95"
+      >
+        <QrCode className="size-4 text-teal-200" />
+        <span>Quét QR Thiết Bị</span>
+      </button>
 
       <nav className="flex-1 space-y-6 overflow-y-auto pr-1 text-xs">
         <div>

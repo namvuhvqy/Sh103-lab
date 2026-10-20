@@ -4,6 +4,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { KpiCard } from "@/components/p5/KpiCard";
 import { StatusDistribution } from "@/components/p5/OperationalChart";
 import { ShiftRegisterForm } from "@/components/forms/ShiftRegisterForm";
+import { EquipmentQRScanButton } from "@/components/equipment/EquipmentQRScanButton";
 import { getBm06ByDateShift } from "@/lib/forms/context";
 import { getEquipmentOverview } from "@/lib/p5/operational-queries";
 import { getUnreadNotificationCount } from "@/lib/p5/queries";
@@ -89,7 +90,7 @@ export default async function EquipmentPage({
     >
       <div className="space-y-6">
         {/* Header & Feature banner */}
-        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-teal-900 via-cyan-900 to-slate-900 p-6 sm:p-8 text-white shadow-lg">
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-r from-teal-900 via-cyan-900 to-slate-900 p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="relative z-10 max-w-2xl space-y-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-bold text-teal-300 border border-teal-400/30">
               <Sparkles className="size-3.5" />
@@ -102,6 +103,9 @@ export default async function EquipmentPage({
               Theo dõi vận hành 4 ca trực liên tục: 20 thiết bị xét nghiệm theo biểu mẫu chuẩn ISO 15189 (BM.06/QL.TRTB.01).
             </p>
           </div>
+          <div className="relative z-10 self-start sm:self-auto shrink-0">
+            <EquipmentQRScanButton />
+          </div>
         </div>
 
         {/* Date & Shift Filter Form */}
@@ -113,18 +117,21 @@ export default async function EquipmentPage({
               <p className="text-sm font-black text-slate-900">{data.shift.label} ({selectedDate.split("-").reverse().join("/")})</p>
             </div>
           </div>
-          <form method="GET" action="/equipment" className="flex flex-wrap items-center gap-2">
-            <input
-              type="date"
-              name="date"
-              defaultValue={selectedDate}
-              className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none focus:border-teal-600"
-            />
-            <input type="hidden" name="shift" value={data.shift.code} />
-            <button type="submit" className="min-h-10 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition">
-              Xem
-            </button>
-          </form>
+          <div className="flex flex-wrap items-center gap-2">
+            <form method="GET" action="/equipment" className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                name="date"
+                defaultValue={selectedDate}
+                className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none focus:border-teal-600"
+              />
+              <input type="hidden" name="shift" value={data.shift.code} />
+              <button type="submit" className="min-h-10 rounded-xl bg-teal-800 px-4 text-xs font-bold text-white hover:bg-teal-900 transition">
+                Xem
+              </button>
+            </form>
+            <EquipmentQRScanButton variant="compact" />
+          </div>
         </div>
 
         {/* 4 Ca trực Switcher */}
