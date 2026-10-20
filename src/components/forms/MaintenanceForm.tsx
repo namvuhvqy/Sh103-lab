@@ -18,6 +18,17 @@ export interface InitialMaintenanceRecord {
   isCompleted?: boolean;
 }
 
+export interface MaintenanceFormProps {
+  occurrenceId: string;
+  cadence: keyof typeof labels;
+  assetName: string;
+  initialError?: string;
+  initialRecord?: InitialMaintenanceRecord;
+  isInline?: boolean;
+  onSuccess?: (savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }) => void;
+  onCancel?: () => void;
+}
+
 function toDatetimeLocal(isoStr?: string): string {
   if (!isoStr) return "";
   try {
@@ -41,13 +52,10 @@ export function MaintenanceForm({
   assetName,
   initialError,
   initialRecord,
-}: {
-  occurrenceId: string;
-  cadence: keyof typeof labels;
-  assetName: string;
-  initialError?: string;
-  initialRecord?: InitialMaintenanceRecord;
-}) {
+  isInline,
+  onSuccess,
+  onCancel,
+}: MaintenanceFormProps) {
   const router = useRouter();
   const [performedAt, setPerformedAt] = useState<string>("");
   const [result, setResult] = useState<"PASS" | "FAIL" | "">("");
@@ -159,11 +167,16 @@ export function MaintenanceForm({
         try {
           localStorage.removeItem(`lab103_maintenance_draft_${occurrenceId}`);
         } catch {}
-        const targetUrl = res?.redirectUrl || `/maintenance?saved=${encodeURIComponent(occurrenceId)}`;
-        if (router) {
-          router.push(targetUrl);
-        } else if (typeof window !== "undefined") {
-          window.location.href = targetUrl;
+
+        if (onSuccess) {
+          onSuccess({ performedAt, result: result as "PASS" | "FAIL", note });
+        } else {
+          const targetUrl = res?.redirectUrl || `/maintenance?saved=${encodeURIComponent(occurrenceId)}`;
+          if (router) {
+            router.push(targetUrl);
+          } else if (typeof window !== "undefined") {
+            window.location.href = targetUrl;
+          }
         }
       }
     } catch (err: any) {
@@ -175,14 +188,20 @@ export function MaintenanceForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-4 rounded-3xl border transition shadow-sm ${
+        isInline ? "border-teal-200 bg-slate-50/70 p-3.5 sm:p-4" : "border-slate-200 bg-white p-5"
+      }`}
+    >
       <input type="hidden" name="occurrenceId" value={occurrenceId} />
       <input type="hidden" name="cadence" value={cadence} />
 
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-teal-800">{labels[cadence]}</p>
-          <h2 className="text-xl font-black text-slate-900">{assetName}</h2>
+          {!isInline && <h2 className="text-xl font-black text-slate-900">{assetName}</h2>}
+          {isInline && <p className="text-xs font-semibold text-slate-600">Nhập kết quả kiểm tra định kỳ</p>}
         </div>
         <div>
           {saveStatus === "saving" ? (
@@ -298,13 +317,24 @@ export function MaintenanceForm({
         />
       </label>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="min-h-12 w-full rounded-2xl bg-teal-800 px-4 text-sm font-black text-white shadow-sm transition hover:bg-teal-900 active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
-      >
-        {isSubmitting ? "Đang lưu lên hệ thống…" : "Lưu bảo dưỡng"}
-      </button>
+      <div className="flex items-center gap-2 pt-1">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-11 rounded-2xl border border-slate-300 bg-white px-4 text-xs font-bold text-slate-700 hover:bg-slate-100 transition active:scale-[0.99]"
+          >
+            Đóng
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="min-h-11 flex-1 rounded-2xl bg-teal-800 px-4 text-xs sm:text-sm font-black text-white shadow-sm transition hover:bg-teal-900 active:scale-[0.99] disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600"
+        >
+          {isSubmitting ? "Đang lưu lên hệ thống…" : "Lưu bảo dưỡng"}
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,21 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Wrench,
   CheckCircle2,
   CircleAlert,
-  ArrowRight,
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Search,
   Check,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import type { MaintenanceOccurrenceItem, MaintenanceWorkspaceData } from "@/lib/maintenance/queries";
+import { MaintenanceForm } from "@/components/forms/MaintenanceForm";
 
 interface Props {
   data: MaintenanceWorkspaceData;
@@ -31,14 +34,28 @@ const CADENCE_LABELS: Record<string, string> = {
 
 export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: Props) {
   const router = useRouter();
+  const [items, setItems] = useState<MaintenanceOccurrenceItem[]>(data.items);
   const [activeCadence, setActiveCadence] = useState<string>(initialCadence);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dismissSaved, setDismissSaved] = useState(false);
+  const [lastInlineSaved, setLastInlineSaved] = useState<{
+    id: string;
+    assetName: string;
+    cadence: string;
+    result: "PASS" | "FAIL";
+  } | null>(null);
+
+  // Sync items when data from server changes (e.g. date change)
+  useEffect(() => {
+    setItems(data.items);
+  }, [data.items]);
 
   const businessDate = data.businessDate;
 
   // Handle date change
   const navigateDate = (newDate: string) => {
+    setExpandedId(null);
     router.push(`/maintenance?date=${newDate}&cadence=${activeCadence}`);
   };
 
@@ -52,8 +69,52 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
 
   const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
 
+  // Handle inline save success without navigating away
+  const handleInlineSaveSuccess = (
+    itemId: string,
+    savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }
+  ) => {
+    setItems((prev) =>
+      prev.map((it) => {
+        if (it.id === itemId) {
+          return {
+            ...it,
+            status: "COMPLETED",
+            fulfilledByRecordId: it.fulfilledByRecordId || "saved",
+            record: {
+              id: it.record?.id || "saved",
+              performedAt: savedData.performedAt,
+              result: savedData.result,
+              note: savedData.note ?? null,
+            },
+          };
+        }
+        return it;
+      })
+    );
+
+    const savedTarget = items.find((i) => i.id === itemId);
+    if (savedTarget) {
+      setLastInlineSaved({
+        id: itemId,
+        assetName: savedTarget.assetName,
+        cadence: savedTarget.cadence,
+        result: savedData.result,
+      });
+    }
+
+    try {
+      router.refresh();
+    } catch {}
+  };
+
+  // Toggle inline form expansion (only one open at a time)
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   // Filter items
-  const filteredItems = data.items.filter((item) => {
+  const filteredItems = items.filter((item) => {
     if (activeCadence !== "ALL" && item.cadence !== activeCadence) {
       return false;
     }
@@ -67,7 +128,14 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
     return true;
   });
 
-  const savedItem = savedId ? data.items.find((i) => i.id === savedId) : null;
+  // Dynamic counts reflecting current live state
+  const completedCount = items.filter((i) => i.status === "COMPLETED" || Boolean(i.fulfilledByRecordId) || Boolean(i.record)).length;
+  const totalCount = items.length;
+  const dailyCount = items.filter((i) => i.cadence === "DAILY").length;
+  const weeklyCount = items.filter((i) => i.cadence === "WEEKLY").length;
+  const monthlyCount = items.filter((i) => i.cadence === "MONTHLY").length;
+
+  const urlSavedItem = savedId ? items.find((i) => i.id === savedId) : null;
 
   return (
     <div className="space-y-5">
@@ -131,22 +199,22 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
           <div className="flex items-center justify-between text-xs font-bold text-cyan-100">
             <span>Tiến độ thực hiện ngày {businessDate}</span>
             <span>
-              {data.counts.completed}/{data.counts.total} máy đã bảo dưỡng
+              {completedCount}/{totalCount} máy đã bảo dưỡng
             </span>
           </div>
           <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/20">
             <div
               className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-500"
               style={{
-                width: data.counts.total > 0 ? `${(data.counts.completed / data.counts.total) * 100}%` : "0%",
+                width: totalCount > 0 ? `${(completedCount / totalCount) * 100}%` : "0%",
               }}
             />
           </div>
         </div>
       </section>
 
-      {/* Saved Notification Banner */}
-      {savedId && !dismissSaved && (
+      {/* Inline Saved Notification Banner */}
+      {lastInlineSaved && (
         <div
           role="status"
           className="flex items-center justify-between rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-xs"
@@ -157,10 +225,38 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
             </span>
             <div>
               <p className="text-sm font-black">Đã lưu kết quả bảo dưỡng thành công!</p>
-              {savedItem && (
+              <p className="text-xs text-emerald-800">
+                {lastInlineSaved.assetName} · Chu kỳ: {CADENCE_LABELS[lastInlineSaved.cadence]} · Kết quả:{" "}
+                {lastInlineSaved.result === "FAIL" ? "Không đạt" : "Đạt"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastInlineSaved(null)}
+            className="rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {/* URL Saved Notification Banner (legacy fallback) */}
+      {!lastInlineSaved && savedId && !dismissSaved && (
+        <div
+          role="status"
+          className="flex items-center justify-between rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-xs"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid size-8 place-items-center rounded-xl bg-emerald-600 text-white">
+              <Check className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-black">Đã lưu kết quả bảo dưỡng thành công!</p>
+              {urlSavedItem && (
                 <p className="text-xs text-emerald-800">
-                  {savedItem.assetName} · Chu kỳ: {CADENCE_LABELS[savedItem.cadence]} · Kết quả:{" "}
-                  {savedItem.record?.result === "FAIL" ? "Không đạt" : "Đạt"}
+                  {urlSavedItem.assetName} · Chu kỳ: {CADENCE_LABELS[urlSavedItem.cadence]} · Kết quả:{" "}
+                  {urlSavedItem.record?.result === "FAIL" ? "Không đạt" : "Đạt"}
                 </p>
               )}
             </div>
@@ -188,7 +284,7 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Tất cả ({data.counts.total})
+            Tất cả ({totalCount})
           </button>
           <button
             type="button"
@@ -199,7 +295,7 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Hằng ngày ({data.counts.daily})
+            Hằng ngày ({dailyCount})
           </button>
           <button
             type="button"
@@ -210,7 +306,7 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Hằng tuần ({data.counts.weekly})
+            Hằng tuần ({weeklyCount})
           </button>
           <button
             type="button"
@@ -221,7 +317,7 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Hằng tháng ({data.counts.monthly})
+            Hằng tháng ({monthlyCount})
           </button>
         </div>
 
@@ -243,16 +339,16 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
         <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
           <Wrench className="mx-auto size-10 text-slate-400" />
           <h3 className="mt-2 text-base font-black text-slate-800">
-            {data.items.length === 0
+            {totalCount === 0
               ? "Chưa có lịch bảo dưỡng cho ngày này"
               : "Không tìm thấy thiết bị phù hợp với bộ lọc"}
           </h3>
           <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
-            {data.items.length === 0
+            {totalCount === 0
               ? "Vui lòng chọn ngày khác hoặc quay lại ngày hôm nay để thực hiện bảo dưỡng."
               : "Thử tìm kiếm với từ khóa khác hoặc chuyển sang tab chu kỳ khác."}
           </p>
-          {data.items.length === 0 && businessDate !== todayStr && (
+          {totalCount === 0 && businessDate !== todayStr && (
             <button
               type="button"
               onClick={() => navigateDate(todayStr)}
@@ -263,9 +359,15 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
           )}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 items-start">
           {filteredItems.map((item) => (
-            <MaintenanceCard key={item.id} item={item} />
+            <MaintenanceCard
+              key={item.id}
+              item={item}
+              isExpanded={expandedId === item.id}
+              onToggle={() => toggleExpand(item.id)}
+              onSaveSuccess={(savedData) => handleInlineSaveSuccess(item.id, savedData)}
+            />
           ))}
         </div>
       )}
@@ -273,7 +375,17 @@ export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: 
   );
 }
 
-function MaintenanceCard({ item }: { item: MaintenanceOccurrenceItem }) {
+function MaintenanceCard({
+  item,
+  isExpanded,
+  onToggle,
+  onSaveSuccess,
+}: {
+  item: MaintenanceOccurrenceItem;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onSaveSuccess: (savedData: { performedAt: string; result: "PASS" | "FAIL"; note?: string }) => void;
+}) {
   const isCompleted = item.status === "COMPLETED" || Boolean(item.fulfilledByRecordId);
   const result = item.record?.result;
   const isFail = result === "FAIL";
@@ -281,7 +393,9 @@ function MaintenanceCard({ item }: { item: MaintenanceOccurrenceItem }) {
   return (
     <div
       className={`flex flex-col justify-between rounded-3xl border p-4 sm:p-5 transition shadow-xs ${
-        isCompleted
+        isExpanded
+          ? "border-teal-500 bg-white ring-2 ring-teal-500/20 shadow-md sm:col-span-2 lg:col-span-3"
+          : isCompleted
           ? isFail
             ? "border-rose-200 bg-rose-50/30 hover:border-rose-300"
             : "border-emerald-200 bg-emerald-50/20 hover:border-emerald-300"
@@ -341,17 +455,58 @@ function MaintenanceCard({ item }: { item: MaintenanceOccurrenceItem }) {
       </div>
 
       <div className="mt-4 border-t border-slate-100 pt-3">
-        <Link
-          href={`/maintenance/${item.id}`}
-          className={`flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition ${
-            isCompleted
-              ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
-              : "bg-teal-800 text-white hover:bg-teal-900 shadow-xs"
-          }`}
-        >
-          <span>{isCompleted ? "Xem / Sửa kết quả" : "Ghi nhận bảo dưỡng"}</span>
-          <ArrowRight className="size-3.5" />
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            className={`flex-1 flex items-center justify-between rounded-2xl px-3.5 py-2.5 text-xs font-black transition cursor-pointer select-none active:scale-[0.99] ${
+              isExpanded
+                ? "bg-teal-950 text-white shadow-xs"
+                : isCompleted
+                ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                : "bg-teal-800 text-white hover:bg-teal-900 shadow-xs"
+            }`}
+          >
+            <span>
+              {isExpanded ? "Đóng form" : isCompleted ? "Xem / Sửa kết quả" : "Ghi nhận bảo dưỡng"}
+            </span>
+            {isExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+          </button>
+
+          {/* Fallback legacy deep link */}
+          <Link
+            href={`/maintenance/${item.id}`}
+            title="Mở màn hình riêng (Link cũ)"
+            className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 hover:border-teal-300 hover:text-teal-800 transition shrink-0"
+            aria-label={`Trang riêng ${item.assetName}`}
+          >
+            <ExternalLink className="size-3.5" />
+          </Link>
+        </div>
+
+        {/* INLINE FORM EXPANSION */}
+        {isExpanded && (
+          <div className="mt-3.5 border-t border-slate-200/80 pt-3">
+            <MaintenanceForm
+              occurrenceId={item.id}
+              cadence={item.cadence}
+              assetName={item.assetName}
+              isInline={true}
+              onSuccess={onSaveSuccess}
+              onCancel={onToggle}
+              initialRecord={
+                item.record
+                  ? {
+                      performedAt: item.record.performedAt,
+                      result: item.record.result,
+                      note: item.record.note ?? "",
+                      isCompleted: isCompleted,
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        )}
       </div>
     </div>
   );
