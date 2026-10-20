@@ -1,0 +1,358 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  Wrench,
+  CheckCircle2,
+  CircleAlert,
+  ArrowRight,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
+import type { MaintenanceOccurrenceItem, MaintenanceWorkspaceData } from "@/lib/maintenance/queries";
+
+interface Props {
+  data: MaintenanceWorkspaceData;
+  initialCadence?: string;
+  savedId?: string;
+}
+
+const CADENCE_LABELS: Record<string, string> = {
+  DAILY: "Hằng ngày",
+  WEEKLY: "Hằng tuần",
+  MONTHLY: "Hằng tháng",
+};
+
+export function MaintenanceWorkspace({ data, initialCadence = "ALL", savedId }: Props) {
+  const router = useRouter();
+  const [activeCadence, setActiveCadence] = useState<string>(initialCadence);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [dismissSaved, setDismissSaved] = useState(false);
+
+  const businessDate = data.businessDate;
+
+  // Handle date change
+  const navigateDate = (newDate: string) => {
+    router.push(`/maintenance?date=${newDate}&cadence=${activeCadence}`);
+  };
+
+  const shiftDay = (days: number) => {
+    const [y, m, d] = businessDate.split("-").map(Number);
+    const dateObj = new Date(Date.UTC(y, m - 1, d + days));
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const nextDate = `${dateObj.getUTCFullYear()}-${pad(dateObj.getUTCMonth() + 1)}-${pad(dateObj.getUTCDate())}`;
+    navigateDate(nextDate);
+  };
+
+  const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+
+  // Filter items
+  const filteredItems = data.items.filter((item) => {
+    if (activeCadence !== "ALL" && item.cadence !== activeCadence) {
+      return false;
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      const matchName = item.assetName.toLowerCase().includes(q);
+      const matchCode = item.assetCode?.toLowerCase().includes(q) ?? false;
+      const matchLoc = item.locationName?.toLowerCase().includes(q) ?? false;
+      if (!matchName && !matchCode && !matchLoc) return false;
+    }
+    return true;
+  });
+
+  const savedItem = savedId ? data.items.find((i) => i.id === savedId) : null;
+
+  return (
+    <div className="space-y-5">
+      {/* Date Navigation & Summary Banner */}
+      <section className="overflow-hidden rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-950 via-teal-900 to-cyan-900 p-5 text-white shadow-sm sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/10">
+              <Wrench className="size-5 text-teal-200" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan-200">BM.02/QL.TRTB.01</p>
+              <h1 className="mt-0.5 text-2xl font-black tracking-tight sm:text-3xl">Bảo dưỡng trang thiết bị</h1>
+              <p className="mt-1 text-sm font-semibold text-cyan-100">
+                Theo dõi và kiểm tra tình trạng máy định kỳ theo chuẩn ISO 15189
+              </p>
+            </div>
+          </div>
+
+          {/* Date Picker Buttons */}
+          <div className="flex items-center gap-1.5 self-start rounded-2xl border border-white/20 bg-white/10 p-1.5 sm:self-auto">
+            <button
+              type="button"
+              onClick={() => shiftDay(-1)}
+              className="grid size-9 place-items-center rounded-xl text-white transition hover:bg-white/20 active:scale-95"
+              aria-label="Ngày trước"
+            >
+              <ChevronLeft className="size-5" />
+            </button>
+            <div className="flex items-center gap-1.5 px-2">
+              <Calendar className="size-4 text-cyan-200" />
+              <input
+                type="date"
+                value={businessDate}
+                onChange={(e) => e.target.value && navigateDate(e.target.value)}
+                className="bg-transparent text-sm font-bold text-white focus:outline-none cursor-pointer"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => shiftDay(1)}
+              className="grid size-9 place-items-center rounded-xl text-white transition hover:bg-white/20 active:scale-95"
+              aria-label="Ngày sau"
+            >
+              <ChevronRight className="size-5" />
+            </button>
+            {businessDate !== todayStr && (
+              <button
+                type="button"
+                onClick={() => navigateDate(todayStr)}
+                className="ml-1 rounded-xl bg-teal-500/30 px-2.5 py-1 text-xs font-bold text-cyan-100 hover:bg-teal-500/50"
+              >
+                Hôm nay
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-5 border-t border-white/15 pt-4">
+          <div className="flex items-center justify-between text-xs font-bold text-cyan-100">
+            <span>Tiến độ thực hiện ngày {businessDate}</span>
+            <span>
+              {data.counts.completed}/{data.counts.total} máy đã bảo dưỡng
+            </span>
+          </div>
+          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-white/20">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-500"
+              style={{
+                width: data.counts.total > 0 ? `${(data.counts.completed / data.counts.total) * 100}%` : "0%",
+              }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Saved Notification Banner */}
+      {savedId && !dismissSaved && (
+        <div
+          role="status"
+          className="flex items-center justify-between rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-950 shadow-xs"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid size-8 place-items-center rounded-xl bg-emerald-600 text-white">
+              <Check className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-black">Đã lưu kết quả bảo dưỡng thành công!</p>
+              {savedItem && (
+                <p className="text-xs text-emerald-800">
+                  {savedItem.assetName} · Chu kỳ: {CADENCE_LABELS[savedItem.cadence]} · Kết quả:{" "}
+                  {savedItem.record?.result === "FAIL" ? "Không đạt" : "Đạt"}
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissSaved(true)}
+            className="rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-800 hover:bg-emerald-100"
+          >
+            Đóng
+          </button>
+        </div>
+      )}
+
+      {/* Filters & Search Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/* Cadence Tabs */}
+        <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-200 bg-slate-100/80 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveCadence("ALL")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${
+              activeCadence === "ALL"
+                ? "bg-white text-teal-950 shadow-xs ring-1 ring-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Tất cả ({data.counts.total})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCadence("DAILY")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${
+              activeCadence === "DAILY"
+                ? "bg-white text-teal-950 shadow-xs ring-1 ring-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Hằng ngày ({data.counts.daily})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCadence("WEEKLY")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${
+              activeCadence === "WEEKLY"
+                ? "bg-white text-teal-950 shadow-xs ring-1 ring-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Hằng tuần ({data.counts.weekly})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCadence("MONTHLY")}
+            className={`rounded-xl px-3 py-1.5 text-xs font-black transition ${
+              activeCadence === "MONTHLY"
+                ? "bg-white text-teal-950 shadow-xs ring-1 ring-slate-200"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Hằng tháng ({data.counts.monthly})
+          </button>
+        </div>
+
+        {/* Search input */}
+        <div className="relative min-w-56">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Tìm tên máy, mã máy…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-white py-1.5 pl-9 pr-3 text-xs font-bold text-slate-800 placeholder-slate-400 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+          />
+        </div>
+      </div>
+
+      {/* Occurrences List */}
+      {filteredItems.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center">
+          <Wrench className="mx-auto size-10 text-slate-400" />
+          <h3 className="mt-2 text-base font-black text-slate-800">
+            {data.items.length === 0
+              ? "Chưa có lịch bảo dưỡng cho ngày này"
+              : "Không tìm thấy thiết bị phù hợp với bộ lọc"}
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
+            {data.items.length === 0
+              ? "Vui lòng chọn ngày khác hoặc quay lại ngày hôm nay để thực hiện bảo dưỡng."
+              : "Thử tìm kiếm với từ khóa khác hoặc chuyển sang tab chu kỳ khác."}
+          </p>
+          {data.items.length === 0 && businessDate !== todayStr && (
+            <button
+              type="button"
+              onClick={() => navigateDate(todayStr)}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-2xl bg-teal-800 px-4 py-2 text-xs font-black text-white hover:bg-teal-900"
+            >
+              Về ngày hôm nay ({todayStr})
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredItems.map((item) => (
+            <MaintenanceCard key={item.id} item={item} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MaintenanceCard({ item }: { item: MaintenanceOccurrenceItem }) {
+  const isCompleted = item.status === "COMPLETED" || Boolean(item.fulfilledByRecordId);
+  const result = item.record?.result;
+  const isFail = result === "FAIL";
+
+  return (
+    <div
+      className={`flex flex-col justify-between rounded-3xl border p-4 sm:p-5 transition shadow-xs ${
+        isCompleted
+          ? isFail
+            ? "border-rose-200 bg-rose-50/30 hover:border-rose-300"
+            : "border-emerald-200 bg-emerald-50/20 hover:border-emerald-300"
+          : "border-slate-200 bg-white hover:border-teal-300"
+      }`}
+    >
+      <div>
+        <div className="flex items-start justify-between gap-2">
+          <span className="rounded-md border border-teal-100 bg-teal-50 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-teal-800">
+            {CADENCE_LABELS[item.cadence]}
+          </span>
+          {isCompleted ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black border ${
+                isFail
+                  ? "border-rose-200 bg-rose-100/80 text-rose-800"
+                  : "border-emerald-200 bg-emerald-100/80 text-emerald-800"
+              }`}
+            >
+              {isFail ? <AlertTriangle className="size-3" /> : <CheckCircle2 className="size-3" />}
+              {isFail ? "Không đạt (FAIL)" : "Đạt (PASS)"}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
+              <CircleAlert className="size-3" />
+              Chưa ghi
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-3 text-base font-black text-slate-900 leading-snug line-clamp-2">
+          {item.assetName}
+        </h3>
+
+        {item.locationName && (
+          <p className="mt-0.5 text-xs font-semibold text-slate-500">{item.locationName}</p>
+        )}
+
+        {isCompleted && item.record?.performedAt && (
+          <p className="mt-2 text-[11px] text-slate-500 font-medium">
+            Đã ghi nhận lúc:{" "}
+            {new Intl.DateTimeFormat("vi-VN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              day: "2-digit",
+              month: "2-digit",
+              timeZone: "Asia/Ho_Chi_Minh",
+            }).format(new Date(item.record.performedAt))}
+          </p>
+        )}
+
+        {isCompleted && item.record?.note && (
+          <p className="mt-1 text-xs italic text-slate-600 line-clamp-1">
+            &ldquo;{item.record.note}&rdquo;
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <Link
+          href={`/maintenance/${item.id}`}
+          className={`flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black transition ${
+            isCompleted
+              ? "bg-slate-100 text-slate-800 hover:bg-slate-200"
+              : "bg-teal-800 text-white hover:bg-teal-900 shadow-xs"
+          }`}
+        >
+          <span>{isCompleted ? "Xem / Sửa kết quả" : "Ghi nhận bảo dưỡng"}</span>
+          <ArrowRight className="size-3.5" />
+        </Link>
+      </div>
+    </div>
+  );
+}
