@@ -42,9 +42,11 @@ export function WorkSessionSectionCard({
     ? "border-amber-200 bg-white hover:border-amber-400"
     : "border-slate-200 bg-white hover:border-teal-300";
 
+  const safeHref = href && href !== "/maintenance/" && href !== "/tasks/" ? href : "/quick-duty";
+
   return (
     <Link
-      href={href}
+      href={safeHref}
       className={`group flex flex-col justify-between rounded-3xl border p-4 sm:p-5 shadow-xs transition hover:bg-teal-50/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 min-h-36 ${cardBorder}`}
     >
       <div className="flex items-start gap-3.5">

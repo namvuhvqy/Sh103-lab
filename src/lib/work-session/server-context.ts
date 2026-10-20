@@ -136,7 +136,11 @@ export async function getWorkSessionData(
       )
     `)
     .eq("business_date", businessDate)
-    .in("slot_code", [slotCode, slotCode === "SHIFT_1" ? "MORNING" : slotCode === "SHIFT_3" ? "AFTERNOON" : slotCode]);
+    .in("slot_code", [
+      slotCode,
+      slotCode === "SHIFT_1" ? "MORNING" : slotCode === "SHIFT_3" ? "AFTERNOON" : slotCode,
+      "DAILY",
+    ]);
 
   const occurrences = ((occs ?? []) as unknown as RawWorkSessionOccurrence[]).map((o) => {
     const template = o.register_periods?.form_template_versions?.form_templates;

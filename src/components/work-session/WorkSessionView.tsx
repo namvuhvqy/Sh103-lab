@@ -86,8 +86,11 @@ export function WorkSessionView({ sessionData }: Props) {
     {
       code: "BM.02/QL.TRTB.01",
       title: "Bảo dưỡng trang thiết bị",
-      description: "Mở đúng occurrence cần thực hiện",
-      href: `/maintenance/${getOccurrencesForForm("BM.02/QL.TRTB.01")[0]?.id ?? ""}`,
+      description: "Kiểm tra và bảo dưỡng thiết bị theo ca",
+      href:
+        getOccurrencesForForm("BM.02/QL.TRTB.01").length === 1
+          ? `/maintenance/${getOccurrencesForForm("BM.02/QL.TRTB.01")[0].id}`
+          : `/maintenance?date=${businessDate}&cadence=DAILY`,
       icon: Wrench,
       occurrences: getOccurrencesForForm("BM.02/QL.TRTB.01"),
     },

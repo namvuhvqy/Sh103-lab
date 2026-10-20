@@ -11,6 +11,8 @@ describe("P3 navigation route contract", () => {
     ["approval queue", "approvals/page.tsx"],
     ["period review", "periods/[periodId]/review/page.tsx"],
     ["record correction", "records/[recordId]/correction/page.tsx"],
+    ["maintenance hub", "maintenance/page.tsx"],
+    ["maintenance detail", "maintenance/[occurrenceId]/page.tsx"],
   ])("has a real page for %s links", (_label, relativePath) => {
     expect(existsSync(join(app, relativePath))).toBe(true);
   });

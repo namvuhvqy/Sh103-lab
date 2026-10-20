@@ -11,16 +11,42 @@ const labels = {
   MONTHLY: "Hằng tháng",
 } as const;
 
+export interface InitialMaintenanceRecord {
+  performedAt: string;
+  result: "PASS" | "FAIL";
+  note?: string;
+  isCompleted?: boolean;
+}
+
+function toDatetimeLocal(isoStr?: string): string {
+  if (!isoStr) return "";
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const y = d.getFullYear();
+    const m = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const h = pad(d.getHours());
+    const min = pad(d.getMinutes());
+    return `${y}-${m}-${day}T${h}:${min}`;
+  } catch {
+    return "";
+  }
+}
+
 export function MaintenanceForm({
   occurrenceId,
   cadence,
   assetName,
   initialError,
+  initialRecord,
 }: {
   occurrenceId: string;
   cadence: keyof typeof labels;
   assetName: string;
   initialError?: string;
+  initialRecord?: InitialMaintenanceRecord;
 }) {
   const router = useRouter();
   const [performedAt, setPerformedAt] = useState<string>("");
@@ -32,7 +58,7 @@ export function MaintenanceForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(initialError ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Restore draft or set default datetime
+  // Restore draft or initial record or set default datetime
   useEffect(() => {
     try {
       const draftKey = `lab103_maintenance_draft_${occurrenceId}`;
@@ -47,12 +73,25 @@ export function MaintenanceForm({
       }
     } catch {}
 
+    if (initialRecord) {
+      if (initialRecord.performedAt) {
+        setPerformedAt(toDatetimeLocal(initialRecord.performedAt));
+      }
+      if (initialRecord.result) {
+        setResult(initialRecord.result);
+      }
+      if (typeof initialRecord.note === "string") {
+        setNote(initialRecord.note);
+      }
+      return;
+    }
+
     // Default to current local time in YYYY-MM-DDTHH:mm
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const localIso = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
     setPerformedAt(localIso);
-  }, [occurrenceId]);
+  }, [occurrenceId, initialRecord]);
 
   const saveToDraft = (next: { performedAt: string; result: string; note: string }) => {
     try {
@@ -120,10 +159,11 @@ export function MaintenanceForm({
         try {
           localStorage.removeItem(`lab103_maintenance_draft_${occurrenceId}`);
         } catch {}
+        const targetUrl = res?.redirectUrl || `/maintenance?saved=${encodeURIComponent(occurrenceId)}`;
         if (router) {
-          router.push(res?.redirectUrl || "/tasks?saved=maintenance");
+          router.push(targetUrl);
         } else if (typeof window !== "undefined") {
-          window.location.href = res?.redirectUrl || "/tasks?saved=maintenance";
+          window.location.href = targetUrl;
         }
       }
     } catch (err: any) {
@@ -159,6 +199,11 @@ export function MaintenanceForm({
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
               <Clock className="size-3 text-amber-600" />
               Chưa lưu: Có thay đổi chưa gửi
+            </span>
+          ) : initialRecord?.isCompleted ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+              <CheckCircle2 className="size-3 text-emerald-600" />
+              Đã hoàn thành ({initialRecord.result === "FAIL" ? "Không đạt" : "Đạt"})
             </span>
           ) : (
             <span className="text-xs font-semibold text-slate-500">Sẵn sàng</span>
@@ -219,6 +264,7 @@ export function MaintenanceForm({
             />
             <span>Đạt (PASS)</span>
           </label>
+
           <label
             className={`flex min-h-12 items-center gap-2 rounded-2xl border p-3 cursor-pointer select-none transition ${
               result === "FAIL"
