@@ -282,4 +282,49 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     expect(fetchSpy).toHaveBeenCalledWith("/api/equipment/active");
     fetchSpy.mockRestore();
   });
+
+  it("Task On-Demand: Renders error and supports retry when fetching machines fails", async () => {
+    let callCount = 0;
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        throw new Error("Lỗi kết nối máy chủ");
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          machines: [{ id: "dev-retry", sourceOrder: 1, name: "Máy AU5800", locationCode: "SINH_HOA" }],
+        }),
+      } as any;
+    });
+
+    render(
+      <QRScannerProvider>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    // Open scanner - first fetch fails
+    await act(async () => {
+      fireEvent.click(screen.getByText("Mở Trình Quét"));
+    });
+
+    // Switch to manual tab
+    fireEvent.click(screen.getByText(/Chọn máy/));
+
+    // Verify error message and retry button are displayed
+    expect(screen.getByText(/Lỗi kết nối máy chủ/)).toBeDefined();
+    const retryBtn = screen.getByRole("button", { name: /Thử lại/i });
+    expect(retryBtn).toBeDefined();
+
+    // Click retry
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
+
+    // After retry succeeds, machine is displayed
+    expect(screen.getByText("Máy AU5800")).toBeDefined();
+    fetchSpy.mockRestore();
+  });
 });
