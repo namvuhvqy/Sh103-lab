@@ -1,15 +1,26 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { MobileHeader } from "./MobileHeader";
 import { BottomNav } from "./BottomNav";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { InAppAlertBanner } from "./InAppAlertBanner";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
-import { QRScannerProvider } from "@/components/qr/QRScannerContext";
-import { QRScannerModal } from "@/components/qr/QRScannerModal";
+import { QRScannerProvider, useQRScanner } from "@/components/qr/QRScannerContext";
 import { cn } from "@/lib/utils";
+
+const QRScannerModal = dynamic(
+  () => import("@/components/qr/QRScannerModal").then((mod) => mod.QRScannerModal),
+  { ssr: false }
+);
+
+function OnDemandQRScannerModal() {
+  const { isOpen } = useQRScanner();
+  if (!isOpen) return null;
+  return <QRScannerModal />;
+}
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -59,7 +70,7 @@ export function AppShell({
           <BottomNav />
         </div>
       </div>
-      <QRScannerModal />
+      <OnDemandQRScannerModal />
     </QRScannerProvider>
   );
 }
