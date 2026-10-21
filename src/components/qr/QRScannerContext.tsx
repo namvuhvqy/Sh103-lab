@@ -17,6 +17,7 @@ interface QRScannerContextType {
   machines: ScannerMachine[];
   handleMachineIdentified: (machine: ScannerMachine) => void;
   isLoadingMachines: boolean;
+  isLoadedMachines: boolean;
   machinesError: string | null;
   reloadMachines: () => Promise<void>;
 }
@@ -32,6 +33,7 @@ export function QRScannerProvider({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [machines, setMachines] = useState<ScannerMachine[]>(initialMachines);
+  const [isLoaded, setIsLoaded] = useState(initialMachines.length > 0);
   const [isLoadingMachines, setIsLoadingMachines] = useState(false);
   const [machinesError, setMachinesError] = useState<string | null>(null);
 
@@ -64,6 +66,7 @@ export function QRScannerProvider({
       const data = await res.json();
       if (data?.success && Array.isArray(data.machines)) {
         setMachines(data.machines);
+        setIsLoaded(true);
       } else {
         setMachinesError(data?.error || "Không thể tải danh sách thiết bị");
       }
@@ -77,17 +80,22 @@ export function QRScannerProvider({
 
   const openScanner = useCallback(() => {
     setIsOpen(true);
-    if (machines.length === 0 && !isLoadingMachines) {
+    if (!isLoaded && !isLoadingMachines) {
       fetchMachines();
     }
-  }, [machines.length, isLoadingMachines, fetchMachines]);
+  }, [isLoaded, isLoadingMachines, fetchMachines]);
 
   // If scanner opened directly (e.g. by state change), ensure machines are loaded
   useEffect(() => {
-    if (isOpen && machines.length === 0 && !isLoadingMachines && !machinesError) {
+    if (isOpen && !isLoaded && !isLoadingMachines && !machinesError) {
       fetchMachines();
     }
-  }, [isOpen, machines.length, isLoadingMachines, machinesError, fetchMachines]);
+  }, [isOpen, isLoaded, isLoadingMachines, machinesError, fetchMachines]);
+
+  const reloadMachines = useCallback(async () => {
+    setIsLoaded(false);
+    return fetchMachines();
+  }, [fetchMachines]);
 
   const closeScanner = useCallback(() => {
     setIsOpen(false);
@@ -130,8 +138,9 @@ export function QRScannerProvider({
         machines,
         handleMachineIdentified,
         isLoadingMachines,
+        isLoadedMachines: isLoaded,
         machinesError,
-        reloadMachines: fetchMachines,
+        reloadMachines,
       }}
     >
       {children}
@@ -149,6 +158,7 @@ export function useQRScanner() {
       machines: [],
       handleMachineIdentified: () => {},
       isLoadingMachines: false,
+      isLoadedMachines: false,
       machinesError: null,
       reloadMachines: async () => {},
     };

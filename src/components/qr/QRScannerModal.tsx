@@ -25,6 +25,7 @@ export function QRScannerModal() {
     machines,
     handleMachineIdentified,
     isLoadingMachines,
+    isLoadedMachines,
     machinesError,
     reloadMachines,
   } = useQRScanner();
@@ -86,6 +87,12 @@ export function QRScannerModal() {
         return;
       }
 
+      // If machines are still loading, do NOT falsely report equipment not found
+      if (isLoadingMachines || (!isLoadedMachines && !machinesError)) {
+        setScanWarning("Đang nạp danh mục thiết bị xét nghiệm, vui lòng giữ yên camera...");
+        return;
+      }
+
       // Match against machines
       let matched: ScannerMachine | undefined;
       if (parsed.assetId) {
@@ -115,7 +122,7 @@ export function QRScannerModal() {
         }
       }
     },
-    [machines, stopScanner, handleMachineIdentified]
+    [isLoadingMachines, isLoadedMachines, machinesError, machines, stopScanner, handleMachineIdentified]
   );
 
   // Start camera session

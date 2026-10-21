@@ -327,4 +327,105 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     expect(screen.getByText("Máy AU5800")).toBeDefined();
     fetchSpy.mockRestore();
   });
+
+  it("Task On-Demand: Does NOT loop fetch infinitely when /api/equipment/active returns empty machines array []", async () => {
+    let fetchCount = 0;
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(async () => {
+      fetchCount++;
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          machines: [],
+        }),
+      } as any;
+    });
+
+    render(
+      <QRScannerProvider>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    // Initial state: closed, 0 fetches
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // Open scanner
+    await act(async () => {
+      fireEvent.click(screen.getByText("Mở Trình Quét"));
+    });
+
+    // Advance timers and simulate multiple ticks/re-renders
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    // Verify fetch was called exactly once, no infinite loop
+    expect(fetchCount).toBe(1);
+
+    // Re-clicking while open must not trigger another fetch
+    fireEvent.click(screen.getByText("Mở Trình Quét"));
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+
+    expect(fetchCount).toBe(1);
+    fetchSpy.mockRestore();
+  });
+
+  it("Task On-Demand: Does NOT falsely report equipment not found when scanning immediately during machine loading", async () => {
+    let resolveFetch: (val: any) => void;
+    const fetchPromise = new Promise((resolve) => {
+      resolveFetch = resolve;
+    });
+
+    const fetchSpy = vi.spyOn(global, "fetch").mockImplementation(() => fetchPromise as any);
+
+    render(
+      <QRScannerProvider>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    // Open scanner -> triggers fetch (still pending)
+    await act(async () => {
+      fireEvent.click(screen.getByText("Mở Trình Quét"));
+    });
+
+    // Camera starts up
+    await act(async () => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(mockStart).toHaveBeenCalled();
+    const onScanSuccess = mockStart.mock.calls[0][2];
+
+    // Scan a valid QR while machines are still loading
+    await act(async () => {
+      onScanSuccess("DEV_01");
+    });
+
+    // Must show friendly loading message, not "Không tìm thấy thiết bị"
+    expect(
+      screen.getByText("Đang nạp danh mục thiết bị xét nghiệm, vui lòng giữ yên camera...")
+    ).toBeDefined();
+    expect(
+      screen.queryByText(/Không tìm thấy thiết bị xét nghiệm tương ứng/)
+    ).toBeNull();
+
+    // Now resolve the fetch with the machine
+    await act(async () => {
+      resolveFetch({
+        ok: true,
+        json: async () => ({
+          success: true,
+          machines: [
+            { id: "dev-01", sourceOrder: 1, name: "Máy Sinh Hóa AU5800 - Số 1", locationCode: "SINH_HOA" },
+          ],
+        }),
+      });
+    });
+
+    fetchSpy.mockRestore();
+  });
 });
