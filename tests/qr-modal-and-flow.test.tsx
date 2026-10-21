@@ -243,4 +243,43 @@ describe("QRScannerModal Component & Lifecycle Tests", () => {
     expect(screen.getByText("Máy Miễn Dịch DxI 800 - Số 1")).toBeDefined();
     expect(screen.queryByText("Máy Sinh Hóa AU5800 - Số 1")).toBeNull();
   });
+
+  it("Task On-Demand: Does NOT fetch /api/equipment/active on provider mount when closed", () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    render(
+      <QRScannerProvider>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
+  });
+
+  it("Task On-Demand: Fetches /api/equipment/active ONLY when scanner is opened", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        machines: [
+          { id: "dev-99", sourceOrder: 99, name: "Máy Mới Test", locationCode: "SINH_HOA" },
+        ],
+      }),
+    } as any);
+
+    render(
+      <QRScannerProvider>
+        <TestHarness />
+      </QRScannerProvider>
+    );
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Mở Trình Quét"));
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/equipment/active");
+    fetchSpy.mockRestore();
+  });
 });

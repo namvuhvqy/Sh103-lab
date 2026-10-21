@@ -19,7 +19,15 @@ import { useQRScanner, type ScannerMachine } from "./QRScannerContext";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 
 export function QRScannerModal() {
-  const { isOpen, closeScanner, machines, handleMachineIdentified } = useQRScanner();
+  const {
+    isOpen,
+    closeScanner,
+    machines,
+    handleMachineIdentified,
+    isLoadingMachines,
+    machinesError,
+    reloadMachines,
+  } = useQRScanner();
   const isOnline = useOnlineStatus();
 
   const [activeTab, setActiveTab] = useState<"camera" | "file" | "manual">("camera");
@@ -511,7 +519,7 @@ export function QRScannerModal() {
             }`}
           >
             <ListFilter className="size-3.5" />
-            <span>Chọn máy ({machines.length})</span>
+            <span>Chọn máy ({isLoadingMachines ? "..." : machines.length})</span>
           </button>
         </div>
 
@@ -684,7 +692,24 @@ export function QRScannerModal() {
               </div>
 
               <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white">
-                {filteredMachines.length > 0 ? (
+                {isLoadingMachines ? (
+                  <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+                    <RefreshCw className="size-4 animate-spin text-teal-600" />
+                    <span>Đang tải danh sách thiết bị...</span>
+                  </div>
+                ) : machinesError ? (
+                  <div className="p-4 text-center text-xs text-rose-600 space-y-2">
+                    <p>{machinesError}</p>
+                    <button
+                      type="button"
+                      onClick={() => reloadMachines()}
+                      className="px-3 py-1 rounded-lg bg-teal-50 text-teal-700 font-bold hover:bg-teal-100 transition inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="size-3" />
+                      <span>Thử lại</span>
+                    </button>
+                  </div>
+                ) : filteredMachines.length > 0 ? (
                   filteredMachines.map((m) => (
                     <button
                       key={m.id}
