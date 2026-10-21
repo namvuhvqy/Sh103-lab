@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-function sanitizeAuditSearchQuery(raw: string): string {
-  if (!raw) return "";
-  let q = raw.trim().slice(0, 80);
-  q = q.replace(/[,()"'%_\\;]/g, " ").replace(/\s+/g, " ").trim();
-  return q;
-}
+import { sanitizeAuditSearchQuery } from "@/app/admin/audit/page";
 
 describe("sanitizeAuditSearchQuery edge cases", () => {
   it("preserves normal text and Vietnamese diacritics", () => {
@@ -34,6 +28,8 @@ describe("sanitizeAuditSearchQuery edge cases", () => {
   it("handles empty or purely symbol inputs gracefully", () => {
     expect(sanitizeAuditSearchQuery("")).toBe("");
     expect(sanitizeAuditSearchQuery("    ")).toBe("");
+    expect(sanitizeAuditSearchQuery("%%%")).toBe("");
     expect(sanitizeAuditSearchQuery(",,,,,%%%((()))")).toBe("");
+    expect(sanitizeAuditSearchQuery("   %_%   ")).toBe("");
   });
 });

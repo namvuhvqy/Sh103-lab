@@ -280,4 +280,32 @@ describe("PERFORMANCE P1: Audit Log Server Pagination & Regression", () => {
     expect(screen.getByText("Máy xét nghiệm AU480")).toBeInTheDocument();
     expect(screen.getByText("Sổ kỳ tháng 10/2026")).toBeInTheDocument();
   });
+
+  it("11. Displays invalid keyword notice and does NOT claim to search entire history when query sanitizes to empty", () => {
+    const paginationWithInvalidQuery: AuditPaginationInfo = {
+      page: 1,
+      pageSize: 25,
+      totalCount: 2204,
+      totalPages: 89,
+      category: "ALL",
+      query: "",
+      invalidQueryNotice: true,
+    };
+    render(
+      <AuditLogClientView
+        events={mockEvents}
+        pagination={paginationWithInvalidQuery}
+        categoryCounts={mockCategoryCounts}
+      />
+    );
+
+    // Must NOT claim searching for %%%
+    expect(screen.queryByText(/Đang tìm kiếm toàn bộ lịch sử theo/i)).toBeNull();
+    // Must display clear notice
+    expect(
+      screen.getByText(/Từ khóa tìm kiếm chỉ chứa ký tự đặc biệt hoặc không hợp lệ/i)
+    ).toBeInTheDocument();
+    // Must show standard pagination label, NOT "Tìm thấy 2204 sự kiện"
+    expect(screen.getByText(/Hiển thị 1–25 \/ 2204 sự kiện/i)).toBeInTheDocument();
+  });
 });

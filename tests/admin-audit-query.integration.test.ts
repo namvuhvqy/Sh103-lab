@@ -28,15 +28,18 @@ import {
   applyAuditFilters,
 } from "@/app/admin/audit/page";
 
-describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
+const hasDb = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+describe.skipIf(!hasDb)("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   let supabase: ReturnType<typeof createClient>;
   let profiles: { user_id: string; full_name: string | null }[] = [];
   let assets: { id: string; display_name: string | null; source_name: string | null }[] = [];
   let locations: { id: string; name: string | null; code: string | null }[] = [];
-  const hasDb = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   beforeAll(async () => {
-    if (!hasDb) return;
+    if (!hasDb) {
+      throw new Error("Môi trường kiểm thử thiếu NEXT_PUBLIC_SUPABASE_URL hoặc SUPABASE_SERVICE_ROLE_KEY");
+    }
     supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -52,8 +55,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("1. Multi-page navigation: returns distinct slices of 25 records with truthful count", async () => {
-    if (!hasDb) return;
-
     // Page 1
     let q1 = supabase
       .from("audit_events")
@@ -91,8 +92,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("2. Search by actor: finds events performed by resolved profile names", async () => {
-    if (!hasDb) return;
-
     let q = supabase
       .from("audit_events")
       .select("id,action,actor_user_id,created_at", { count: "exact" })
@@ -107,8 +106,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("3. Search by equipment: finds events referencing device", async () => {
-    if (!hasDb) return;
-
     let q = supabase
       .from("audit_events")
       .select("id,action,after_data,entity_type,entity_id", { count: "exact" })
@@ -123,8 +120,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("4. Category filter combined with search: correctly intersects conditions", async () => {
-    if (!hasDb) return;
-
     let q = supabase
       .from("audit_events")
       .select("id,action,after_data", { count: "exact" })
@@ -149,8 +144,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("5. Special characters and injection safety: does not crash or throw 400 Bad Request", async () => {
-    if (!hasDb) return;
-
     const dangerousQueries = [
       "BM06,DUTY_ROSTER",
       "test) OR (1=1",
@@ -177,8 +170,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("6. Out-of-bounds page handling: catches PGRST103 and successfully falls back to last page", async () => {
-    if (!hasDb) return;
-
     let q = supabase
       .from("audit_events")
       .select("id,action", { count: "exact" })
@@ -220,8 +211,6 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
   });
 
   it("7. Query error handling: surfaces real DB error and prevents misleading zero count", async () => {
-    if (!hasDb) return;
-
     // Simulate query failure with invalid column name
     const q = supabase
       .from("audit_events")
@@ -232,5 +221,19 @@ describe("INTEGRATION: Supabase Audit Log Query Pipeline (Read-Only)", () => {
     expect(error).toBeDefined();
     expect(error?.message).toMatch(/column|does not exist|failed/i);
     expect(data).toBeNull();
+  });
+
+  it("8. Empty sanitized search: does not inject broken or empty or-clauses into query", async () => {
+    let q = supabase
+      .from("audit_events")
+      .select("id,action", { count: "exact" })
+      .order("created_at", { ascending: false });
+
+    q = applyAuditFilters(q, "ALL", "%%%", profiles, assets, locations);
+    const { data, count, error } = await q.range(0, 24);
+
+    expect(error).toBeNull();
+    expect(count).toBeGreaterThanOrEqual(2200);
+    expect(data!.length).toBe(25);
   });
 });

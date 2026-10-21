@@ -52,6 +52,7 @@ export interface AuditPaginationInfo {
   totalPages: number;
   category: string;
   query?: string;
+  invalidQueryNotice?: boolean;
 }
 
 export interface AuditCategoryCounts {
@@ -183,6 +184,22 @@ export function AuditLogClientView({
             </div>
           </div>
         </form>
+
+        {/* CẢNH BÁO TỪ KHÓA TÌM KIẾM CHỈ CHỨA KÝ TỰ ĐẶC BIỆT */}
+        {pagination.invalidQueryNotice && (
+          <div className="flex items-center justify-between rounded-xl bg-amber-50/90 px-3 py-2 text-xs text-amber-900 border border-amber-200/80">
+            <span>
+              Từ khóa tìm kiếm chỉ chứa ký tự đặc biệt hoặc không hợp lệ. Đang hiển thị danh sách đầy đủ (không lọc).
+            </span>
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+            >
+              Xóa từ khóa
+            </button>
+          </div>
+        )}
 
         {/* THÔNG BÁO TÌM KIẾM ĐANG ÁP DỤNG */}
         {query && (

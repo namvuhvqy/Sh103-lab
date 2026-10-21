@@ -222,6 +222,7 @@ export default async function AuditPage({
     ? selectedCategory
     : "ALL";
   const searchQuery = (params.q || "").trim();
+  const cleanSearch = sanitizeAuditSearchQuery(searchQuery);
 
   const supabase = await createClient();
 
@@ -608,7 +609,8 @@ export default async function AuditPage({
     totalCount: totalFilteredCount,
     totalPages,
     category: validCategory,
-    query: searchQuery,
+    query: cleanSearch,
+    invalidQueryNotice: Boolean(searchQuery && !cleanSearch),
   };
 
   return (
