@@ -9,15 +9,16 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { subscription, userAgent, userId } = body;
 
-    if (!subscription || !subscription.endpoint || !subscription.keys) {
-      return NextResponse.json({ error: "Invalid subscription format" }, { status: 400 });
+    const endpoint = subscription?.endpoint;
+    const p256dh = subscription?.keys?.p256dh || subscription?.p256dh;
+    const auth = subscription?.keys?.auth || subscription?.auth;
+
+    if (!endpoint) {
+      return NextResponse.json({ error: "Thiếu endpoint của Push Subscription" }, { status: 400 });
     }
 
-    const { endpoint, keys } = subscription;
-    const { p256dh, auth } = keys;
-
     if (!p256dh || !auth) {
-      return NextResponse.json({ error: "Missing p256dh or auth keys" }, { status: 400 });
+      return NextResponse.json({ error: "Thiếu p256dh hoặc auth keys của Push Subscription" }, { status: 400 });
     }
 
     const targetUserId = user?.id || userId || null;

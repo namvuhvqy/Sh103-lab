@@ -4,13 +4,13 @@
   "hospital": "Bệnh viện Quân y 103 - Học viện Quân y",
   "department": "Bộ môn - Khoa Sinh Hóa",
   "standard": "ISO 15189:2022",
-  "generatedAt": "2026-10-28T06:59:32.825Z",
+  "generatedAt": "2026-10-28T08:00:53.870Z",
   "verdict": "APPROVED",
   "git": {
     "branch": "master",
-    "commitHash": "32ce69033a2e1d545fe0893880e64de08bdea83d",
-    "commitShort": "32ce690",
-    "commitMessage": "fix(push): auto-sync push token when permission granted and trigger direct device notification on test",
+    "commitHash": "4efcad91b19de10daa77f0db1a59de319045a355",
+    "commitShort": "4efcad9",
+    "commitMessage": "fix(push): use admin client to bypass RLS on subscriptions, support force resubscribe and add ColorOS optimization guidance",
     "commitAuthor": "namfive",
     "isClean": false
   },
@@ -23,7 +23,7 @@
     "totalGates": 6,
     "passedGates": 6,
     "failedGates": 0,
-    "durationTotalSeconds": 47.3
+    "durationTotalSeconds": 38.9
   },
   "gates": [
     {
@@ -32,7 +32,7 @@
       "description": "Verify zero lint errors and conformance with Next.js/React standards",
       "command": "pnpm run lint",
       "status": "PASSED",
-      "durationSeconds": 11.8
+      "durationSeconds": 9.4
     },
     {
       "level": "L1",
@@ -48,7 +48,7 @@
       "description": "Verify authentication boundary, deduplication, credential hygiene and route contracts",
       "command": "pnpm exec vitest run tests/credential-hygiene.test.ts tests/login-security-contract.test.ts tests/nav-perf-and-auth.test.ts tests/quick-save-route.test.ts tests/admin-staff-routes.test.ts tests/p5-route-contract.test.ts tests/p3-route-contract.test.ts",
       "status": "PASSED",
-      "durationSeconds": 1.7
+      "durationSeconds": 1.6
     },
     {
       "level": "L3",
@@ -56,7 +56,7 @@
       "description": "Verify 5-state lifecycle, duplicate submission prevention, offline queue, and BM01-BM06 fidelity",
       "command": "pnpm exec vitest run tests/bm06-save-reliability.test.tsx tests/bm06-save-and-stats.test.ts tests/bm06-canonical-template.test.ts tests/inline-temperature-save-reliability.test.tsx tests/decontamination-inline-workflow.test.ts tests/qr-modal-and-flow.test.tsx",
       "status": "PASSED",
-      "durationSeconds": 1.9
+      "durationSeconds": 2.2
     },
     {
       "level": "L1",
@@ -64,7 +64,7 @@
       "description": "All tests passing (78 test files, 346 tests)",
       "command": "pnpm exec vitest run",
       "status": "PASSED",
-      "durationSeconds": 15.9,
+      "durationSeconds": 16.8,
       "details": {
         "testFilesPassed": 78,
         "totalPassed": 346
@@ -76,7 +76,7 @@
       "description": "Verify Next.js production bundle compilation and static page generation",
       "command": "pnpm run build",
       "status": "PASSED",
-      "durationSeconds": 14.2
+      "durationSeconds": 7.2
     }
   ]
 }

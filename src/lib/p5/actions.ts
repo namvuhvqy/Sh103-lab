@@ -91,8 +91,34 @@ export async function publishAnnouncementAction(announcementId: string): Promise
       target_announcement_id: announcementId,
     });
     if (error) throw error;
+
+    // Tự động phát thông báo đẩy Web Push tới tất cả điện thoại và máy tính đã đăng ký
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server");
+      const admin = createAdminClient();
+      const { data: announcement } = await admin
+        .from("announcements")
+        .select("title, body, severity")
+        .eq("id", announcementId)
+        .maybeSingle();
+
+      if (announcement) {
+        const { sendPushToAllSubscriptions } = await import("@/lib/notifications/web-push");
+        await sendPushToAllSubscriptions({
+          title: `📢 ${announcement.title}`,
+          body: announcement.body,
+          url: "/announcements",
+          tag: `announcement-${announcementId}`,
+        });
+      }
+    } catch (pushErr) {
+      console.error("Lỗi gửi Web Push khi phát hành announcement:", pushErr);
+    }
+
     revalidatePath("/admin/announcements");
     revalidatePath("/notifications");
+    revalidatePath("/announcements");
+    revalidatePath("/");
     return { success: true };
   } catch (err: unknown) {
     return { success: false, error: errorMessage(err, "Không thể phát hành thông báo") };

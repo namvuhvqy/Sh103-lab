@@ -68,12 +68,27 @@ export function MobilePushSubscriptionCard({ userId }: { userId?: string }) {
       }
 
       if (sub) {
+        // Trích xuất an toàn token và cặp khóa p256dh, auth cho mọi trình duyệt
+        const subJson = sub.toJSON ? sub.toJSON() : {};
+        const rawKey = (sub as any).getKey ? (sub as any).getKey("p256dh") : null;
+        const rawAuth = (sub as any).getKey ? (sub as any).getKey("auth") : null;
+        const p256dh = rawKey ? btoa(String.fromCharCode(...new Uint8Array(rawKey))) : subJson?.keys?.p256dh;
+        const auth = rawAuth ? btoa(String.fromCharCode(...new Uint8Array(rawAuth))) : subJson?.keys?.auth;
+
+        const subPayload = {
+          endpoint: sub.endpoint || subJson.endpoint,
+          keys: {
+            p256dh,
+            auth,
+          },
+        };
+
         const res = await fetch("/api/notifications/subscribe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            subscription: sub,
+            subscription: subPayload,
             userAgent: navigator.userAgent,
             userId: userId || undefined,
           }),
@@ -83,12 +98,15 @@ export function MobilePushSubscriptionCard({ userId }: { userId?: string }) {
           setIsSubscribedOnServer(true);
           return true;
         } else {
-          console.warn("Lưu subscription lên máy chủ không thành công:", data.error);
+          const errMsg = data.error || `Lỗi máy chủ (${res.status})`;
+          console.warn("Lưu subscription lên máy chủ không thành công:", errMsg);
+          setStatusMessage(`Chưa kết nối được máy chủ: ${errMsg}`);
         }
       }
       return false;
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Lỗi đồng bộ push token trên thiết bị:", err);
+      setStatusMessage(`Lỗi đăng ký thiết bị: ${err?.message || String(err)}`);
       return false;
     }
   }, [userId]);
@@ -314,22 +332,33 @@ export function MobilePushSubscriptionCard({ userId }: { userId?: string }) {
             </p>
           )}
 
-          {/* Hướng dẫn tối ưu cho điện thoại Android / Oppo ColorOS */}
-          <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50/50 p-3 text-[11px] text-teal-950 space-y-1.5">
+          {/* Hướng dẫn tối ưu cho điện thoại Android / Oppo ColorOS & iPhone iOS */}
+          <div className="mt-4 rounded-2xl border border-teal-100 bg-teal-50/50 p-3 text-[11px] text-teal-950 space-y-2">
             <p className="font-bold flex items-center gap-1.5 text-teal-900">
-              <span>📱</span> Hướng dẫn tối ưu trên Android &amp; Oppo (ColorOS):
+              <span>📱</span> Hướng dẫn kích hoạt thông báo trên điện thoại:
             </p>
-            <ul className="list-disc list-inside space-y-1 text-slate-700">
-              <li>
-                <b>Hiện tên app SH103 Lab:</b> Bấm dấu 3 chấm <span className="font-mono">⋮</span> của Chrome &rarr; Chọn <b>"Cài đặt ứng dụng"</b> (hoặc <i>"Thêm vào Màn hình chính"</i>).
-              </li>
-              <li>
-                <b>Nhận thông báo khi tắt màn hình:</b> Vào <i>Cài đặt máy &rarr; Ứng dụng &rarr; Quản lý ứng dụng &rarr; Chrome (hoặc SH103 Lab) &rarr; Quản lý thông báo</i> &rarr; Bật <b>"Màn hình khóa"</b> và <b>"Biểu ngữ"</b>.
-              </li>
-              <li>
-                <b>Không gây chậm máy:</b> Hệ thống sử dụng Web Push Event ngủ đông hoàn toàn, không chạy ngầm liên tục, 0% CPU và không làm hao pin hay lag điện thoại.
-              </li>
-            </ul>
+            <div className="grid gap-2 sm:grid-cols-2 text-slate-700">
+              <div className="rounded-xl bg-white/70 p-2 border border-teal-100/60">
+                <p className="font-bold text-slate-900 mb-1">🍎 Dành cho iPhone (iOS 16.4+):</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
+                  <li>Mở web trên <b>Safari</b> &rarr; Bấm nút <b>Chia sẻ</b> (biểu tượng ⎋).</li>
+                  <li>Chọn <b>"Thêm vào Màn hình chính"</b>.</li>
+                  <li>Mở app <b>SH103 Lab</b> từ Màn hình chính &rarr; Bấm <b>"Bật thông báo"</b> &rarr; Chọn <b>Cho phép</b>.</li>
+                </ol>
+              </div>
+
+              <div className="rounded-xl bg-white/70 p-2 border border-teal-100/60">
+                <p className="font-bold text-slate-900 mb-1">🤖 Dành cho Android (Oppo, Xiaomi, Samsung):</p>
+                <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
+                  <li>Bấm dấu 3 chấm <span className="font-mono">⋮</span> của Chrome &rarr; Chọn <b>"Cài đặt ứng dụng"</b>.</li>
+                  <li>Vào <i>Cài đặt máy &rarr; Ứng dụng &rarr; Quản lý thông báo</i> &rarr; Bật <b>Màn hình khóa</b> và <b>Biểu ngữ</b>.</li>
+                  <li>Tiết kiệm pin: Cho phép app <b>"Hoạt động dưới nền"</b>.</li>
+                </ol>
+              </div>
+            </div>
+            <p className="text-[10px] text-teal-800 italic">
+              ⚡ Web Push sử dụng cơ chế sự kiện (Push Event) ngủ đông hoàn toàn, không ngốn RAM, không hao pin và không gây giật lag máy.
+            </p>
           </div>
         </div>
       </div>
