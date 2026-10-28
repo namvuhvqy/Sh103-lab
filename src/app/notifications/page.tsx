@@ -5,6 +5,7 @@ import { getNotifications, getUnreadNotificationCount, getNotificationInteractio
 import { markAllNotificationsReadAction } from "@/lib/p5/actions";
 import { NotificationInteractiveFeed } from "@/components/notifications/NotificationInteractiveFeed";
 import { ActiveAnnouncementsBanner } from "@/components/p5/ActiveAnnouncementsBanner";
+import { MobilePushSubscriptionCard } from "@/components/notifications/MobilePushSubscriptionCard";
 import { createClient } from "@/lib/supabase/server";
 import { Bell } from "lucide-react";
 
@@ -83,6 +84,9 @@ export default async function NotificationsPage({
 
         {/* Thông báo chỉ đạo nội bộ khoa (Announcements) */}
         <ActiveAnnouncementsBanner announcements={activeAnnouncements} />
+
+        {/* Thiết lập Thông báo đẩy ra màn hình điện thoại */}
+        <MobilePushSubscriptionCard />
 
         {/* Filter Segmented Control */}
         <SegmentedControl
