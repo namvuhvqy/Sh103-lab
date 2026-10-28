@@ -4,13 +4,13 @@
   "hospital": "Bệnh viện Quân y 103 - Học viện Quân y",
   "department": "Bộ môn - Khoa Sinh Hóa",
   "standard": "ISO 15189:2022",
-  "generatedAt": "2026-10-28T09:09:52.002Z",
+  "generatedAt": "2026-10-28T09:23:14.562Z",
   "verdict": "APPROVED",
   "git": {
     "branch": "master",
-    "commitHash": "42f915e0a130bec6b9e7b85f5bb918e2ad314410",
-    "commitShort": "42f915e",
-    "commitMessage": "fix(announcements): broadcast web push on publish and support resilient subscription keys across iOS/Android",
+    "commitHash": "d6a6fde912f95f3a625cc5d3239ec2635ef1ef46",
+    "commitShort": "d6a6fde",
+    "commitMessage": "feat(push): add GlobalPushSync to RootLayout for zero-touch background push synchronization",
     "commitAuthor": "namfive",
     "isClean": false
   },
@@ -23,7 +23,7 @@
     "totalGates": 6,
     "passedGates": 6,
     "failedGates": 0,
-    "durationTotalSeconds": 46.5
+    "durationTotalSeconds": 38
   },
   "gates": [
     {
@@ -32,7 +32,7 @@
       "description": "Verify zero lint errors and conformance with Next.js/React standards",
       "command": "pnpm run lint",
       "status": "PASSED",
-      "durationSeconds": 13.3
+      "durationSeconds": 9.1
     },
     {
       "level": "L1",
@@ -40,7 +40,7 @@
       "description": "Verify zero TypeScript compile errors with strict typechecking",
       "command": "pnpm run typecheck",
       "status": "PASSED",
-      "durationSeconds": 2
+      "durationSeconds": 1.7
     },
     {
       "level": "L2",
@@ -48,7 +48,7 @@
       "description": "Verify authentication boundary, deduplication, credential hygiene and route contracts",
       "command": "pnpm exec vitest run tests/credential-hygiene.test.ts tests/login-security-contract.test.ts tests/nav-perf-and-auth.test.ts tests/quick-save-route.test.ts tests/admin-staff-routes.test.ts tests/p5-route-contract.test.ts tests/p3-route-contract.test.ts",
       "status": "PASSED",
-      "durationSeconds": 2.1
+      "durationSeconds": 1.6
     },
     {
       "level": "L3",
@@ -64,7 +64,7 @@
       "description": "All tests passing (78 test files, 346 tests)",
       "command": "pnpm exec vitest run",
       "status": "PASSED",
-      "durationSeconds": 17.9,
+      "durationSeconds": 18.6,
       "details": {
         "testFilesPassed": 78,
         "totalPassed": 346
@@ -76,7 +76,7 @@
       "description": "Verify Next.js production bundle compilation and static page generation",
       "command": "pnpm run build",
       "status": "PASSED",
-      "durationSeconds": 9.2
+      "durationSeconds": 4.8
     }
   ]
 }

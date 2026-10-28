@@ -36,25 +36,31 @@ export function GlobalPushSync() {
           return;
         }
 
-        hasSyncedRef.current = true;
-
-        // Đảm bảo Service Worker đã sẵn sàng
-        let reg: ServiceWorkerRegistration;
-        try {
-          reg = await navigator.serviceWorker.ready;
-        } catch {
-          reg = await navigator.serviceWorker.register("/sw.js");
-          await navigator.serviceWorker.ready;
-        }
-
-        if (!reg || !reg.pushManager) return;
-
         const vapidPublicKey =
           process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
           "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
 
-        let sub = await reg.pushManager.getSubscription();
+        // 1. Đăng ký trực tiếp Service Worker (không await .ready vô hạn)
+        let reg: ServiceWorkerRegistration | undefined = await navigator.serviceWorker.register("/sw.js");
+        if (!reg || !reg.pushManager) {
+          reg = await navigator.serviceWorker.getRegistration();
+        }
+        if (!reg || !reg.pushManager) return;
 
+        // 2. Chờ service worker kích hoạt tối đa 1.5 giây
+        if (reg.installing) {
+          await new Promise<void>((resolve) => {
+            const worker = reg.installing;
+            if (!worker) return resolve();
+            worker.addEventListener("statechange", function () {
+              if (this.state === "activated") resolve();
+            });
+            setTimeout(resolve, 1500);
+          });
+        }
+
+        // 3. Lấy hoặc tạo mới PushSubscription
+        let sub = await reg.pushManager.getSubscription();
         if (!sub) {
           try {
             sub = await reg.pushManager.subscribe({
@@ -62,11 +68,12 @@ export function GlobalPushSync() {
               applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
             });
           } catch (subErr) {
-            console.debug("[GlobalPushSync] Subscription prompt skipped or failed:", subErr);
+            console.debug("[GlobalPushSync] Subscription subscribe attempt:", subErr);
             return;
           }
         }
 
+        // 4. Trích xuất an toàn token và cặp khóa p256dh, auth cho mọi trình duyệt
         if (sub) {
           const subJson = sub.toJSON ? sub.toJSON() : {};
           const rawKey = (sub as any).getKey ? (sub as any).getKey("p256dh") : null;
@@ -76,7 +83,7 @@ export function GlobalPushSync() {
 
           const endpoint = sub.endpoint || subJson.endpoint;
           if (endpoint && (p256dh || subJson?.keys?.p256dh)) {
-            await fetch("/api/notifications/subscribe", {
+            const res = await fetch("/api/notifications/subscribe", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               credentials: "include",
@@ -91,18 +98,23 @@ export function GlobalPushSync() {
                 userAgent: navigator.userAgent,
               }),
             });
+
+            if (res.ok) {
+              hasSyncedRef.current = true;
+            }
           }
         }
       } catch (err) {
-        // Chạy ngầm im lặng, không làm phiền người dùng
-        console.debug("[GlobalPushSync] Silent background push sync:", err);
+        console.debug("[GlobalPushSync] Silent background push sync error:", err);
       }
     }
 
-    if (document.readyState === "complete") {
-      autoSync();
+    if (document.readyState === "loading") {
+      window.addEventListener("DOMContentLoaded", autoSync, { once: true });
     } else {
-      window.addEventListener("load", autoSync, { once: true });
+      // Chạy ngay sau một tick nhỏ để không chặn render
+      const timer = setTimeout(autoSync, 300);
+      return () => clearTimeout(timer);
     }
   }, []);
 
