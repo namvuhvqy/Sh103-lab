@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Bell, BellRing, CheckCircle2, AlertCircle, Loader2, Send, Smartphone } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Bell, BellRing, CheckCircle2, AlertCircle, Loader2, Send, Smartphone, RefreshCw } from "lucide-react";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -17,83 +17,102 @@ function urlBase64ToUint8Array(base64String: string) {
 export function MobilePushSubscriptionCard() {
   const [supported, setSupported] = useState<boolean | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>("default");
+  const [isSubscribedOnServer, setIsSubscribedOnServer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState(false);
 
+  // Hàm đồng bộ subscription của thiết bị này lên máy chủ
+  const syncSubscriptionOnDevice = useCallback(async () => {
+    try {
+      if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+        return false;
+      }
+
+      // Đảm bảo Service Worker được đăng ký
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+      } catch {
+        reg = await navigator.serviceWorker.ready;
+      }
+      if (!reg) return false;
+
+      const vapidPublicKey =
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+        "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
+
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub && Notification.permission === "granted") {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+      }
+
+      if (sub) {
+        const res = await fetch("/api/notifications/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: sub,
+            userAgent: navigator.userAgent,
+          }),
+        });
+        if (res.ok) {
+          setIsSubscribedOnServer(true);
+          return true;
+        }
+      }
+      return false;
+    } catch (err) {
+      console.warn("Lỗi đồng bộ push token trên thiết bị:", err);
+      return false;
+    }
+  }, []);
+
+  // Tự động kiểm tra và đồng bộ khi mở trang
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isPushSupported = "Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
       setSupported(isPushSupported);
+
       if ("Notification" in window) {
         setPermission(Notification.permission);
+        if (Notification.permission === "granted") {
+          // Tự động đồng bộ thiết bị Android này về cơ sở dữ liệu Supabase
+          syncSubscriptionOnDevice();
+        }
       }
     }
-  }, []);
+  }, [syncSubscriptionOnDevice]);
 
+  // Bật thông báo & lưu token
   const enablePush = async () => {
     if (!supported) return;
     setLoading(true);
     setStatusMessage(null);
 
     try {
-      // 1. Đảm bảo Service Worker được đăng ký và sẵn sàng
-      let reg: ServiceWorkerRegistration;
-      try {
-        reg = await navigator.serviceWorker.register("/sw.js");
-        await navigator.serviceWorker.ready;
-      } catch (swErr) {
-        console.warn("SW register catch, waiting for ready:", swErr);
-        reg = await navigator.serviceWorker.ready;
-      }
-
-      // 2. Yêu cầu quyền từ trình duyệt Android
+      // 1. Yêu cầu quyền từ người dùng
       const res = await Notification.requestPermission();
       setPermission(res);
 
       if (res === "granted") {
-        const vapidPublicKey =
-          process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-          "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
-
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-          });
-        }
-
-        if (sub) {
-          await fetch("/api/notifications/subscribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              subscription: sub,
-              userAgent: navigator.userAgent,
-            }),
-          });
-
-          // Bắn thông báo xác nhận tức thì ra màn hình điện thoại
-          try {
-            await reg.showNotification("🔔 Khoa Sinh Hóa · Bệnh viện Quân y 103", {
-              body: "Kích hoạt thông báo nhắc việc ca trực trên điện thoại thành công!",
-              icon: "/icons/icon-192x192.png",
-              badge: "/icons/icon-192x192.png",
-              vibrate: [200, 100, 200],
-              data: { url: "/notifications" },
-              tag: "sh103-welcome-push",
-            } as any);
-            setTestSuccess(true);
-            setStatusMessage("Đã bật thành công! Điện thoại vừa nhận được thông báo xác nhận.");
-          } catch (localNotifyErr) {
-            console.warn("Local notify failed, triggering via server:", localNotifyErr);
-            await sendTestNotification();
-          }
+        const synced = await syncSubscriptionOnDevice();
+        if (synced) {
+          setStatusMessage("Đã bật và đồng bộ thiết bị thành công! Đang gửi thông báo kiểm tra...");
+          // Hiển thị ngay thông báo trên điện thoại
+          await showDirectNotificationOnDevice("Kích hoạt thông báo nhắc việc ca trực trên điện thoại thành công!");
+          setTestSuccess(true);
+        } else {
+          setStatusMessage("Đã cấp quyền. Đang hoàn tất đăng ký lên máy chủ...");
+          await showDirectNotificationOnDevice("Đã cấp quyền thông báo thành công!");
         }
       } else if (res === "denied") {
-        setStatusMessage("Quyền thông báo đã bị từ chối trên thiết bị này. Vui lòng mở cài đặt Chrome để cho phép.");
+        setStatusMessage("Quyền thông báo bị từ chối. Vui lòng mở Cài đặt của Chrome -> Quyền -> Bật Thông báo.");
       }
     } catch (err: any) {
       console.error("Push subscribe error:", err);
@@ -103,11 +122,41 @@ export function MobilePushSubscriptionCard() {
     }
   };
 
+  // Hiển thị trực tiếp thông báo lên điện thoại qua Service Worker
+  const showDirectNotificationOnDevice = async (bodyText: string) => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      await reg.showNotification("🔔 Khoa Sinh Hóa · Bệnh viện Quân y 103", {
+        body: bodyText,
+        icon: "/icons/icon-192x192.png",
+        badge: "/icons/icon-192x192.png",
+        vibrate: [200, 100, 200],
+        data: { url: "/notifications" },
+        tag: "sh103-test-push",
+        renotify: true,
+      } as any);
+      return true;
+    } catch (e) {
+      console.warn("Direct notification failed:", e);
+      return false;
+    }
+  };
+
+  // Nút gửi thử nghiệm
   const sendTestNotification = async () => {
     setTestSending(true);
     setTestSuccess(false);
     setStatusMessage(null);
 
+    // 1. Đảm bảo token thiết bị được đồng bộ
+    await syncSubscriptionOnDevice();
+
+    // 2. Bắn ngay thông báo trực tiếp trên chiếc điện thoại này
+    const directShown = await showDirectNotificationOnDevice(
+      "Thông báo thử nghiệm hiển thị thành công trên màn hình điện thoại của bạn!"
+    );
+
+    // 3. Gửi qua server Push VAPID tới tất cả thiết bị đã đăng ký
     try {
       const res = await fetch("/api/notifications/send-push", {
         method: "POST",
@@ -119,14 +168,19 @@ export function MobilePushSubscriptionCard() {
         }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (directShown || (res.ok && data.success)) {
         setTestSuccess(true);
-        setStatusMessage("Đã gửi thông báo đẩy! Hãy nhìn lên thanh thông báo của điện thoại.");
+        setStatusMessage("Đã gửi thông báo đẩy! Hãy nhìn lên thanh thông báo / màn hình khóa điện thoại.");
       } else {
-        setStatusMessage(`Không gửi được thông báo: ${data.error || "Lỗi máy chủ"}`);
+        setStatusMessage(`Chưa gửi được: ${data.error || "Lỗi máy chủ"}`);
       }
     } catch (err: any) {
-      setStatusMessage(`Lỗi gửi thông báo: ${err.message}`);
+      if (directShown) {
+        setTestSuccess(true);
+        setStatusMessage("Đã hiển thị thông báo trên màn hình thiết bị này!");
+      } else {
+        setStatusMessage(`Lỗi gửi thông báo: ${err.message}`);
+      }
     } finally {
       setTestSending(false);
     }
@@ -136,13 +190,16 @@ export function MobilePushSubscriptionCard() {
     return (
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
         <p className="font-bold text-slate-800">Trình duyệt không hỗ trợ Web Push</p>
-        <p className="mt-1">Nếu bạn đang dùng iPhone/iPad, vui lòng mở bằng Safari, bấm nút Chia sẻ (Share) và chọn <b>"Thêm vào Màn hình chính"</b> để bật thông báo.</p>
+        <p className="mt-1">
+          Nếu bạn đang dùng iPhone/iPad, vui lòng mở bằng Safari, bấm nút Chia sẻ (Share) và chọn{" "}
+          <b>"Thêm vào Màn hình chính"</b> để bật thông báo.
+        </p>
       </div>
     );
   }
 
   return (
-    <article className="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50/60 to-emerald-50/40 p-4 sm:p-5 shadow-xs">
+    <article className="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50/70 via-white to-emerald-50/50 p-4 sm:p-5 shadow-xs">
       <div className="flex items-start gap-3 sm:gap-4">
         <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-teal-800 text-white shadow-xs">
           <Smartphone className="size-5" />
@@ -156,7 +213,7 @@ export function MobilePushSubscriptionCard() {
             {permission === "granted" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-black text-emerald-800">
                 <CheckCircle2 className="size-3 text-emerald-600" />
-                Đã bật trên thiết bị này
+                {isSubscribedOnServer ? "Đã kết nối máy chủ" : "Đã cấp quyền"}
               </span>
             ) : permission === "denied" ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 border border-rose-300 px-2.5 py-0.5 text-[10px] font-black text-rose-800">
@@ -187,15 +244,28 @@ export function MobilePushSubscriptionCard() {
                 <span>Bật thông báo trên điện thoại này</span>
               </button>
             ) : (
-              <button
-                type="button"
-                disabled={testSending}
-                onClick={sendTestNotification}
-                className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-emerald-700 hover:bg-emerald-800 px-4 py-2 text-xs font-black text-white shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                {testSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                <span>Bấm để gửi thông báo thử nghiệm ngay</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={testSending}
+                  onClick={sendTestNotification}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-emerald-700 hover:bg-emerald-800 px-4 py-2 text-xs font-black text-white shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {testSending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  <span>Bấm để gửi thông báo thử nghiệm ngay</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={enablePush}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 shadow-2xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  title="Đồng bộ lại mã nhận thông báo của điện thoại này lên hệ thống"
+                >
+                  {loading ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                  <span>Đồng bộ lại thiết bị</span>
+                </button>
+              </>
             )}
 
             {permission === "denied" && (

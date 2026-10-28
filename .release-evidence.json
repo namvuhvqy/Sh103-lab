@@ -4,13 +4,13 @@
   "hospital": "Bệnh viện Quân y 103 - Học viện Quân y",
   "department": "Bộ môn - Khoa Sinh Hóa",
   "standard": "ISO 15189:2022",
-  "generatedAt": "2026-10-28T02:44:14.742Z",
+  "generatedAt": "2026-10-28T04:10:53.231Z",
   "verdict": "APPROVED",
   "git": {
     "branch": "master",
-    "commitHash": "563a8816bb27aacd3126d136e4110d61362959a8",
-    "commitShort": "563a881",
-    "commitMessage": "feat(push): add dedicated MobilePushSubscriptionCard to notifications and account pages",
+    "commitHash": "04627e8f318c8ee39f67aba433f12daad8e8a332",
+    "commitShort": "04627e8",
+    "commitMessage": "fix(push): reliably register service worker, fix icon paths and add immediate welcome push on enable",
     "commitAuthor": "namfive",
     "isClean": false
   },
@@ -23,7 +23,7 @@
     "totalGates": 6,
     "passedGates": 6,
     "failedGates": 0,
-    "durationTotalSeconds": 41
+    "durationTotalSeconds": 44
   },
   "gates": [
     {
@@ -32,7 +32,7 @@
       "description": "Verify zero lint errors and conformance with Next.js/React standards",
       "command": "pnpm run lint",
       "status": "PASSED",
-      "durationSeconds": 12.9
+      "durationSeconds": 10.1
     },
     {
       "level": "L1",
@@ -40,7 +40,7 @@
       "description": "Verify zero TypeScript compile errors with strict typechecking",
       "command": "pnpm run typecheck",
       "status": "PASSED",
-      "durationSeconds": 1.9
+      "durationSeconds": 2
     },
     {
       "level": "L2",
@@ -48,7 +48,7 @@
       "description": "Verify authentication boundary, deduplication, credential hygiene and route contracts",
       "command": "pnpm exec vitest run tests/credential-hygiene.test.ts tests/login-security-contract.test.ts tests/nav-perf-and-auth.test.ts tests/quick-save-route.test.ts tests/admin-staff-routes.test.ts tests/p5-route-contract.test.ts tests/p3-route-contract.test.ts",
       "status": "PASSED",
-      "durationSeconds": 1.8
+      "durationSeconds": 4.7
     },
     {
       "level": "L3",
@@ -56,7 +56,7 @@
       "description": "Verify 5-state lifecycle, duplicate submission prevention, offline queue, and BM01-BM06 fidelity",
       "command": "pnpm exec vitest run tests/bm06-save-reliability.test.tsx tests/bm06-save-and-stats.test.ts tests/bm06-canonical-template.test.ts tests/inline-temperature-save-reliability.test.tsx tests/decontamination-inline-workflow.test.ts tests/qr-modal-and-flow.test.tsx",
       "status": "PASSED",
-      "durationSeconds": 2.5
+      "durationSeconds": 2.1
     },
     {
       "level": "L1",
@@ -64,7 +64,7 @@
       "description": "All tests passing (78 test files, 346 tests)",
       "command": "pnpm exec vitest run",
       "status": "PASSED",
-      "durationSeconds": 16.7,
+      "durationSeconds": 19.1,
       "details": {
         "testFilesPassed": 78,
         "totalPassed": 346
@@ -76,7 +76,7 @@
       "description": "Verify Next.js production bundle compilation and static page generation",
       "command": "pnpm run build",
       "status": "PASSED",
-      "durationSeconds": 5.2
+      "durationSeconds": 6
     }
   ]
 }
