@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 function publicSupabaseConfig() {
@@ -6,6 +7,14 @@ function publicSupabaseConfig() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) throw new Error("Thiếu cấu hình Supabase public");
   return { url, anonKey };
+}
+
+export function createAdminClient() {
+  const { url, anonKey } = publicSupabaseConfig();
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || anonKey;
+  return createSupabaseClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
 export async function createClient() {

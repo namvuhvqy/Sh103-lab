@@ -14,7 +14,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-4 py-8 space-y-6">
       <h1 className="text-2xl font-bold">Tài khoản cá nhân</h1>
-      <MobilePushSubscriptionCard />
+      <MobilePushSubscriptionCard userId={user.id} />
       <dl className="grid gap-4 rounded-2xl border bg-white p-5 sm:grid-cols-2">
         <div><dt className="text-sm text-zinc-500">Họ tên</dt><dd className="font-semibold">{profile.full_name}</dd></div>
         <div><dt className="text-sm text-zinc-500">Email</dt><dd className="font-semibold">{user.email}</dd></div>

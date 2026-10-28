@@ -86,7 +86,7 @@ export default async function NotificationsPage({
         <ActiveAnnouncementsBanner announcements={activeAnnouncements} />
 
         {/* Thiết lập Thông báo đẩy ra màn hình điện thoại */}
-        <MobilePushSubscriptionCard />
+        <MobilePushSubscriptionCard userId={user?.id} />
 
         {/* Filter Segmented Control */}
         <SegmentedControl

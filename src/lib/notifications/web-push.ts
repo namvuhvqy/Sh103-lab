@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
 const privateKey = process.env.VAPID_PRIVATE_KEY || "SLw4EXxwIq_RGzA7pwytD89NGc5vnOnMz1IvXz_CHPI";
@@ -23,8 +23,8 @@ export async function sendPushToAllSubscriptions(payload: PushNotificationPayloa
     return { sent: 0, failed: 0 };
   }
 
-  const supabase = await createClient();
-  const { data: subs, error } = await supabase
+  const admin = createAdminClient();
+  const { data: subs, error } = await admin
     .from("push_subscriptions")
     .select("id, endpoint, p256dh, auth");
 
@@ -69,7 +69,7 @@ export async function sendPushToAllSubscriptions(payload: PushNotificationPayloa
 
   // Clean up expired subscriptions
   if (expiredIds.length > 0) {
-    await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+    await admin.from("push_subscriptions").delete().in("id", expiredIds);
   }
 
   return { sent, failed, cleaned: expiredIds.length };

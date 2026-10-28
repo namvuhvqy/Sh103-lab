@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   try {
@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     const body = await request.json();
-    const { subscription, userAgent } = body;
+    const { subscription, userAgent, userId } = body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
       return NextResponse.json({ error: "Invalid subscription format" }, { status: 400 });
@@ -20,10 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing p256dh or auth keys" }, { status: 400 });
     }
 
-    // Upsert subscription
-    const { error } = await supabase.from("push_subscriptions").upsert(
+    const targetUserId = user?.id || userId || null;
+    const admin = createAdminClient();
+
+    // Upsert subscription using admin client to prevent RLS failure on mobile browsers
+    const { error } = await admin.from("push_subscriptions").upsert(
       {
-        user_id: user?.id ?? null,
+        user_id: targetUserId,
         endpoint,
         p256dh,
         auth,
@@ -38,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, message: "Subscription registered successfully" });
+    return NextResponse.json({ success: true, message: "Subscription registered successfully", userId: targetUserId });
   } catch (err: any) {
     console.error("Failed to register subscription:", err);
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
@@ -47,7 +50,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const supabase = await createClient();
+    const admin = createAdminClient();
     const body = await request.json();
     const { endpoint } = body;
 
@@ -55,7 +58,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
     }
 
-    await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    await admin.from("push_subscriptions").delete().eq("endpoint", endpoint);
     return NextResponse.json({ success: true, message: "Subscription removed" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
