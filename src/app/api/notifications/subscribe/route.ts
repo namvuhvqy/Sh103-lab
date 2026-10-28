@@ -1,13 +1,63 @@
 import { NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
+export async function GET(request: Request) {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized: Vui lòng đăng nhập" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const endpoint = searchParams.get("endpoint");
+    const admin = createAdminClient();
+
+    if (endpoint) {
+      const { data, error } = await admin
+        .from("push_subscriptions")
+        .select("id, user_id, updated_at")
+        .eq("endpoint", endpoint)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        subscribed: !!data,
+        isCurrentUser: data?.user_id === user.id,
+        subscriptionId: data?.id || null,
+      });
+    }
+
+    const { count, error } = await admin
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ count: count || 0 });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized: Vui lòng đăng nhập để đăng ký thông báo" }, { status: 401 });
+    }
 
     const body = await request.json();
-    const { subscription, userAgent, userId } = body;
+    const { subscription, userAgent } = body;
 
     const endpoint = subscription?.endpoint;
     const p256dh = subscription?.keys?.p256dh || subscription?.p256dh;
@@ -21,10 +71,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Thiếu p256dh hoặc auth keys của Push Subscription" }, { status: 400 });
     }
 
-    const targetUserId = user?.id || userId || null;
+    // Bảo mật: Luôn gắn với user.id đã xác thực từ session, cấm giả mạo userId từ client
+    const targetUserId = user.id;
     const admin = createAdminClient();
 
-    // Upsert subscription using admin client to prevent RLS failure on mobile browsers
     const { error } = await admin.from("push_subscriptions").upsert(
       {
         user_id: targetUserId,
@@ -51,7 +101,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const admin = createAdminClient();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized: Vui lòng đăng nhập" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { endpoint } = body;
 
@@ -59,7 +115,17 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
     }
 
-    await admin.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    const admin = createAdminClient();
+    // Bảo mật quyền sở hữu: Chỉ cho phép xóa subscription của chính user đang đăng nhập
+    const { error } = await admin
+      .from("push_subscriptions")
+      .delete()
+      .match({ endpoint, user_id: user.id });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
     return NextResponse.json({ success: true, message: "Subscription removed" });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
