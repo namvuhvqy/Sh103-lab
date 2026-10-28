@@ -40,7 +40,7 @@ export async function sendPushToAllSubscriptions(payload: PushNotificationPayloa
     title: payload.title,
     body: payload.body,
     url: payload.url || "/notifications",
-    icon: payload.icon || "/icon-192.png",
+    icon: payload.icon || "/icons/icon-192x192.png",
     tag: payload.tag || "sh103-shift-reminder",
   });
 

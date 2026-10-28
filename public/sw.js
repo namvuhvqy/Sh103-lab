@@ -1,10 +1,12 @@
-const CACHE_NAME = "sh103-static-v1";
+const CACHE_NAME = "sh103-static-v2";
 const OFFLINE_URL = "/offline";
 
 const STATIC_ASSETS = [
   "/offline",
   "/manifest.json",
   "/favicon.ico",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
 ];
 
 // Patterns that MUST NEVER be cached by service worker
@@ -98,8 +100,8 @@ self.addEventListener("push", (event) => {
   let payload = {
     title: "Khoa Sinh Hóa · Bệnh viện Quân y 103",
     body: "Bạn có thông báo mới từ ca trực xét nghiệm.",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icons/icon-192x192.png",
+    badge: "/icons/icon-192x192.png",
     data: { url: "/notifications" },
   };
 
@@ -108,17 +110,18 @@ self.addEventListener("push", (event) => {
       const parsed = event.data.json();
       payload = { ...payload, ...parsed };
       if (!payload.data) payload.data = { url: parsed.url || "/notifications" };
+      if (parsed.message && !parsed.body) payload.body = parsed.message;
     } catch {
       payload.body = event.data.text();
     }
   }
 
   const notificationOptions = {
-    body: payload.body,
-    icon: payload.icon || "/icon-192.png",
-    badge: payload.badge || "/icon-192.png",
+    body: payload.body || "Thông báo nhắc việc ca trực Khoa Sinh Hóa BV103.",
+    icon: payload.icon || "/icons/icon-192x192.png",
+    badge: payload.badge || "/icons/icon-192x192.png",
     vibrate: [200, 100, 200],
-    data: payload.data || { url: "/notifications" },
+    data: payload.data || { url: payload.url || "/notifications" },
     tag: payload.tag || "sh103-notification",
     renotify: true,
   };
@@ -134,12 +137,14 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Focus existing tab if open
+      // Focus and navigate existing tab if open
       for (const client of clientList) {
         if ("focus" in client) {
-          if (client.url.includes(targetUrl)) {
-            return client.focus();
+          client.focus();
+          if ("navigate" in client) {
+            return client.navigate(targetUrl);
           }
+          return;
         }
       }
       // Otherwise open new window

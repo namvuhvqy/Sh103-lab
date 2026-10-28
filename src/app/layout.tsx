@@ -49,12 +49,17 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if ('serviceWorker' in navigator && window.location.protocol === 'https:' || window.location.hostname === 'localhost') {
-                window.addEventListener('load', function() {
+              if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+                function registerSW() {
                   navigator.serviceWorker.register('/sw.js').catch(function(err) {
                     console.error('Service Worker registration failed:', err);
                   });
-                });
+                }
+                if (document.readyState === 'complete') {
+                  registerSW();
+                } else {
+                  window.addEventListener('load', registerSW);
+                }
               }
             `,
           }}

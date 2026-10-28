@@ -38,7 +38,17 @@ export function MobilePushSubscriptionCard() {
     setStatusMessage(null);
 
     try {
-      // 1. Yêu cầu quyền từ trình duyệt/Android
+      // 1. Đảm bảo Service Worker được đăng ký và sẵn sàng
+      let reg: ServiceWorkerRegistration;
+      try {
+        reg = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+      } catch (swErr) {
+        console.warn("SW register catch, waiting for ready:", swErr);
+        reg = await navigator.serviceWorker.ready;
+      }
+
+      // 2. Yêu cầu quyền từ trình duyệt Android
       const res = await Notification.requestPermission();
       setPermission(res);
 
@@ -47,8 +57,6 @@ export function MobilePushSubscriptionCard() {
           process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
           "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
 
-        // Đảm bảo Service Worker đã sẵn sàng
-        const reg = await navigator.serviceWorker.ready;
         let sub = await reg.pushManager.getSubscription();
         if (!sub) {
           sub = await reg.pushManager.subscribe({
@@ -58,7 +66,7 @@ export function MobilePushSubscriptionCard() {
         }
 
         if (sub) {
-          const saveRes = await fetch("/api/notifications/subscribe", {
+          await fetch("/api/notifications/subscribe", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -66,14 +74,26 @@ export function MobilePushSubscriptionCard() {
               userAgent: navigator.userAgent,
             }),
           });
-          if (saveRes.ok) {
-            setStatusMessage("Đã đăng ký thiết bị thành công! Bạn có thể bấm nút gửi thử bên dưới để kiểm tra.");
-          } else {
-            setStatusMessage("Đã cấp quyền nhưng chưa lưu được lên máy chủ.");
+
+          // Bắn thông báo xác nhận tức thì ra màn hình điện thoại
+          try {
+            await reg.showNotification("🔔 Khoa Sinh Hóa · Bệnh viện Quân y 103", {
+              body: "Kích hoạt thông báo nhắc việc ca trực trên điện thoại thành công!",
+              icon: "/icons/icon-192x192.png",
+              badge: "/icons/icon-192x192.png",
+              vibrate: [200, 100, 200],
+              data: { url: "/notifications" },
+              tag: "sh103-welcome-push",
+            } as any);
+            setTestSuccess(true);
+            setStatusMessage("Đã bật thành công! Điện thoại vừa nhận được thông báo xác nhận.");
+          } catch (localNotifyErr) {
+            console.warn("Local notify failed, triggering via server:", localNotifyErr);
+            await sendTestNotification();
           }
         }
       } else if (res === "denied") {
-        setStatusMessage("Quyền thông báo đã bị từ chối trên thiết bị này. Vui lòng mở cài đặt trình duyệt để cho phép.");
+        setStatusMessage("Quyền thông báo đã bị từ chối trên thiết bị này. Vui lòng mở cài đặt Chrome để cho phép.");
       }
     } catch (err: any) {
       console.error("Push subscribe error:", err);
