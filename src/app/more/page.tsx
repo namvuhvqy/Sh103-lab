@@ -30,6 +30,7 @@ const generalLinks = [
   { href: "/periods", label: "Lịch sử kỳ", description: "Tra cứu kỳ và bản ghi", icon: History },
   { href: "/approvals", label: "Trung tâm phê duyệt", description: "Duyệt theo kỳ / sổ", icon: ClipboardCheck },
   { href: "/notifications", label: "Trung tâm thông báo", description: "Thông báo chưa đọc và cảnh báo", icon: Bell },
+  { href: "/announcements", label: "Thông báo nội bộ khoa", description: "Xem các chỉ đạo, chuyển đổi xét nghiệm và thông báo", icon: Megaphone },
   { href: "/incidents", label: "Báo cáo sự cố", description: "Tạo và theo dõi sự cố thủ công", icon: CircleAlert },
   { href: "/account", label: "Tài khoản cá nhân", description: "Vai trò và trạng thái tài khoản", icon: UserRound },
 ];

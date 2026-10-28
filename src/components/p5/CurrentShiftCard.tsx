@@ -20,7 +20,7 @@ interface CurrentShiftCardProps {
   };
 }
 
-export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
+function LiveClock() {
   const [currentTime, setCurrentTime] = useState<string>("");
 
   useEffect(() => {
@@ -40,6 +40,17 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
     return () => clearInterval(interval);
   }, []);
 
+  if (!currentTime) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-black/20 backdrop-blur-xs px-2.5 py-0.5 text-xs font-mono font-medium opacity-90 border border-white/10">
+      <Clock className="size-3" />
+      {currentTime}
+    </span>
+  );
+}
+
+export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
   const is24h = shift.dutyType === "DUTY_24H" || shift.isWeekend;
   const isNightDuty = shift.code === "SHIFT_4";
   const isNoonDuty = shift.code === "SHIFT_2";
@@ -81,17 +92,7 @@ export function CurrentShiftCard({ shift }: CurrentShiftCardProps) {
                 : `Đang trong ${shift.name}`}
             </span>
 
-            {currentTime ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md",
-                  isDuty ? "text-slate-300 bg-white/10" : "text-slate-600 bg-slate-100"
-                )}
-              >
-                <Clock className="size-3" />
-                {currentTime} (Asia/Ho_Chi_Minh)
-              </span>
-            ) : null}
+            <LiveClock />
           </div>
 
           <div className="flex items-baseline gap-2">

@@ -1,0 +1,82 @@
+{
+  "schemaVersion": "1.0.0",
+  "system": "SH103-Lab Clinical Information Management",
+  "hospital": "Bệnh viện Quân y 103 - Học viện Quân y",
+  "department": "Bộ môn - Khoa Sinh Hóa",
+  "standard": "ISO 15189:2022",
+  "generatedAt": "2026-10-28T01:44:11.481Z",
+  "verdict": "APPROVED",
+  "git": {
+    "branch": "master",
+    "commitHash": "b19fc0a2031675d598204eb7c9f07d98fcd88c3c",
+    "commitShort": "b19fc0a",
+    "commitMessage": "Merge pull request #14 from namvuhvqy/perf/on-demand-qr-scanner",
+    "commitAuthor": "namvuhvqy",
+    "isClean": false
+  },
+  "environment": {
+    "nodeVersion": "v22.23.1",
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "summary": {
+    "totalGates": 6,
+    "passedGates": 6,
+    "failedGates": 0,
+    "durationTotalSeconds": 44.5
+  },
+  "gates": [
+    {
+      "level": "L1",
+      "name": "L1.1 ESLint & Code Hygiene",
+      "description": "Verify zero lint errors and conformance with Next.js/React standards",
+      "command": "pnpm run lint",
+      "status": "PASSED",
+      "durationSeconds": 10
+    },
+    {
+      "level": "L1",
+      "name": "L1.2 TypeScript Static Type Safety",
+      "description": "Verify zero TypeScript compile errors with strict typechecking",
+      "command": "pnpm run typecheck",
+      "status": "PASSED",
+      "durationSeconds": 2.1
+    },
+    {
+      "level": "L2",
+      "name": "L2 Integration & Route Security Gate",
+      "description": "Verify authentication boundary, deduplication, credential hygiene and route contracts",
+      "command": "pnpm exec vitest run tests/credential-hygiene.test.ts tests/login-security-contract.test.ts tests/nav-perf-and-auth.test.ts tests/quick-save-route.test.ts tests/admin-staff-routes.test.ts tests/p5-route-contract.test.ts tests/p3-route-contract.test.ts",
+      "status": "PASSED",
+      "durationSeconds": 1.7
+    },
+    {
+      "level": "L3",
+      "name": "L3 Clinical Form Save Reliability & Data Integrity Gate",
+      "description": "Verify 5-state lifecycle, duplicate submission prevention, offline queue, and BM01-BM06 fidelity",
+      "command": "pnpm exec vitest run tests/bm06-save-reliability.test.tsx tests/bm06-save-and-stats.test.ts tests/bm06-canonical-template.test.ts tests/inline-temperature-save-reliability.test.tsx tests/decontamination-inline-workflow.test.ts tests/qr-modal-and-flow.test.tsx",
+      "status": "PASSED",
+      "durationSeconds": 2.3
+    },
+    {
+      "level": "L1",
+      "name": "L1.3 Complete Test Suite Coverage",
+      "description": "All tests passing (78 test files, 346 tests)",
+      "command": "pnpm exec vitest run",
+      "status": "PASSED",
+      "durationSeconds": 22.3,
+      "details": {
+        "testFilesPassed": 78,
+        "totalPassed": 346
+      }
+    },
+    {
+      "level": "L4",
+      "name": "L4 Production Build Gate",
+      "description": "Verify Next.js production bundle compilation and static page generation",
+      "command": "pnpm run build",
+      "status": "PASSED",
+      "durationSeconds": 6.1
+    }
+  ]
+}

@@ -65,12 +65,12 @@ async function fetchCategoryCounts(supabase: Awaited<ReturnType<typeof createCli
       .from("audit_events")
       .select("*", { count: "exact", head: true })
       .or(
-        "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
+        "action.eq.BM06_SAVE_SHIFT,action.eq.BM06_FINALIZE_SHIFT,action.eq.BM06_ENTRY_ERROR,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
       ),
     supabase
       .from("audit_events")
       .select("*", { count: "exact", head: true })
-      .or("after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"),
+      .or("action.eq.MEASUREMENT_ENTRY_ERROR,after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"),
     supabase
       .from("audit_events")
       .select("*", { count: "exact", head: true })
@@ -125,11 +125,11 @@ export function applyAuditFilters<T>(
 
   if (category === "BM06") {
     q = q.or(
-      "action.eq.BM06_SAVE_SHIFT,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
+      "action.eq.BM06_SAVE_SHIFT,action.eq.BM06_FINALIZE_SHIFT,action.eq.BM06_ENTRY_ERROR,action.eq.DUTY_ROSTER_SAVE,after_data->>record_type.eq.EQUIPMENT_SHIFT,before_data->>record_type.eq.EQUIPMENT_SHIFT,after_data->>record_type.eq.MAINTENANCE,before_data->>record_type.eq.MAINTENANCE"
     );
   } else if (category === "TEMPERATURE") {
     q = q.or(
-      "after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"
+      "action.eq.MEASUREMENT_ENTRY_ERROR,after_data->>record_type.eq.MEASUREMENT,before_data->>record_type.eq.MEASUREMENT"
     );
   } else if (category === "DECONTAMINATION") {
     q = q.or(
@@ -560,6 +560,32 @@ export default async function AuditPage({
       badgeLabel = "Truy cập";
       badgeColor = "bg-slate-100 text-slate-700 border-slate-200";
       summary = `Đăng nhập thành công vào hệ thống quản lý ISO 15189 Khoa Sinh Hóa.`;
+    } else if (action === "BM06_ENTRY_ERROR") {
+      category = "BM06";
+      actionTitle = "Cảnh báo lỗi nhập liệu / hoàn tất BM.06";
+      badgeLabel = "Lỗi nhập liệu";
+      badgeColor = "bg-rose-100 text-rose-800 border-rose-300 font-bold";
+      const err = (after.error as string) || "Lỗi kiểm tra dữ liệu";
+      summary = `[Cảnh báo ISO 15189]: Kỹ thuật viên gặp lỗi khi nhập liệu BM.06 (${after.area_code || "Khu vực"}). Chi tiết: "${err}".`;
+    } else if (action === "MEASUREMENT_ENTRY_ERROR") {
+      category = "TEMPERATURE";
+      actionTitle = "Cảnh báo lỗi số đo nhiệt độ / độ ẩm";
+      badgeLabel = "Lỗi nhập liệu";
+      badgeColor = "bg-rose-100 text-rose-800 border-rose-300 font-bold";
+      const err = (after.error as string) || "Giá trị đo không hợp lệ";
+      summary = `[Cảnh báo ISO 15189]: Lỗi nhập liệu số đo nhiệt độ/độ ẩm. Chi tiết: "${err}".`;
+    } else if (action === "BM06_FINALIZE_SHIFT") {
+      category = "BM06";
+      actionTitle = "Hoàn tất ca thiết bị BM.06 (Chốt ca)";
+      badgeLabel = "Hoàn tất BM.06";
+      badgeColor = "bg-emerald-100 text-emerald-800 border-emerald-300 font-bold";
+      summary = `Kỹ thuật viên đã kiểm tra đủ 20/20 thiết bị và ký chốt hoàn tất ca trực ${slotName ? `[${slotName}]` : ""} ngày ${targetDate ?? ""}.`;
+    } else if (action === "BM06_SAVE_SHIFT") {
+      category = "BM06";
+      actionTitle = "Lưu nháp trạng thái thiết bị BM.06";
+      badgeLabel = "Lưu nháp";
+      badgeColor = "bg-indigo-50 text-indigo-800 border-indigo-200";
+      summary = `Đã cập nhật trạng thái thiết bị (${after.statuses_count ?? ""} máy) tại ${after.area_code || "toàn khoa"}.`;
     } else if (action === "EXPORT_REPORT") {
       category = "OTHER";
       actionTitle = "Xuất biểu mẫu báo cáo chuẩn ISO (Excel/PDF)";

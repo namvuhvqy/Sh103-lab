@@ -18,8 +18,8 @@ async function handleShiftReminder(request: Request) {
     const authHeader = request.headers.get("authorization") || "";
     const apiKey = url.searchParams.get("key") || authHeader.replace("Bearer ", "");
 
-    // Optional secret key check (can be configured in N8N_WEBHOOK_SECRET)
-    const expectedSecret = process.env.N8N_WEBHOOK_SECRET;
+    // Optional secret key check (supported for both Vercel Cron and n8n webhook)
+    const expectedSecret = process.env.CRON_SECRET || process.env.N8N_WEBHOOK_SECRET;
     if (expectedSecret && apiKey !== expectedSecret) {
       return NextResponse.json({ error: "Unauthorized webhook access" }, { status: 401 });
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   TestTube2,
@@ -288,17 +288,22 @@ export function UnifiedAreaWorkspace({
     }
   }, [bm06OccurrenceId, isSyncingOffline, currentLockVersion, currentArea.code, statuses]);
 
+  const syncRef = useRef(handleSyncOfflineQueue);
+  useEffect(() => {
+    syncRef.current = handleSyncOfflineQueue;
+  });
+
   // Auto trigger sync when network recovers
   useEffect(() => {
     const onOnline = () => {
       const q = getOfflineQueue().filter((item) => item.occurrenceId === bm06OccurrenceId);
       if (q.length > 0) {
-        handleSyncOfflineQueue();
+        syncRef.current();
       }
     };
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
-  }, [bm06OccurrenceId, handleSyncOfflineQueue]);
+  }, [bm06OccurrenceId]);
 
   // Save single machine status directly from Action Sheet to BM.06
   const handleSaveMachineStatus = async (nextAction: "close" | "scan_next" = "close") => {

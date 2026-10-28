@@ -1,3 +1,21 @@
 {
-  "regions": ["syd1"]
+  "regions": ["syd1"],
+  "crons": [
+    {
+      "path": "/api/webhooks/n8n/shift-reminder",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/webhooks/n8n/shift-reminder",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/webhooks/n8n/shift-reminder",
+      "schedule": "45 8 * * *"
+    },
+    {
+      "path": "/api/webhooks/n8n/shift-reminder",
+      "schedule": "0 14 * * *"
+    }
+  ]
 }

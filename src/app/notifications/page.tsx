@@ -1,9 +1,10 @@
 import { AppShell } from "@/components/shell/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/p5/SegmentedControl";
-import { getNotifications, getUnreadNotificationCount, getNotificationInteractions } from "@/lib/p5/queries";
+import { getNotifications, getUnreadNotificationCount, getNotificationInteractions, getActiveAnnouncements } from "@/lib/p5/queries";
 import { markAllNotificationsReadAction } from "@/lib/p5/actions";
 import { NotificationInteractiveFeed } from "@/components/notifications/NotificationInteractiveFeed";
+import { ActiveAnnouncementsBanner } from "@/components/p5/ActiveAnnouncementsBanner";
 import { createClient } from "@/lib/supabase/server";
 import { Bell } from "lucide-react";
 
@@ -18,10 +19,11 @@ export default async function NotificationsPage({
   const filter = query.filter === "unread" || query.filter === "critical" ? query.filter : "all";
 
   const supabase = await createClient();
-  const [{ data: { user } }, items, unread] = await Promise.all([
+  const [{ data: { user } }, items, unread, activeAnnouncements] = await Promise.all([
     supabase.auth.getUser(),
     getNotifications(filter),
     getUnreadNotificationCount(),
+    getActiveAnnouncements(),
   ]);
 
   let currentUserName = "Bạn";
@@ -78,6 +80,9 @@ export default async function NotificationsPage({
             </form>
           ) : null}
         </section>
+
+        {/* Thông báo chỉ đạo nội bộ khoa (Announcements) */}
+        <ActiveAnnouncementsBanner announcements={activeAnnouncements} />
 
         {/* Filter Segmented Control */}
         <SegmentedControl

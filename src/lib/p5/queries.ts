@@ -136,6 +136,29 @@ export async function getAdminAnnouncements(): Promise<AnnouncementItem[]> {
   return (data ?? []) as AnnouncementItem[];
 }
 
+export async function getActiveAnnouncements(): Promise<AnnouncementItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("announcements")
+    .select("*, creator_profile:profiles!announcements_created_by_fkey(full_name)")
+    .eq("active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("active", true)
+      .order("created_at", { ascending: false });
+    if (fallbackError) {
+      console.error("Không tải được danh sách thông báo active:", fallbackError);
+      return [];
+    }
+    return (fallbackData ?? []) as AnnouncementItem[];
+  }
+  return (data ?? []) as AnnouncementItem[];
+}
+
 export async function getIncidentCategories(): Promise<IncidentCategory[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

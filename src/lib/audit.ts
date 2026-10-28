@@ -24,7 +24,7 @@ export async function logAuditEvent(params: LogAuditEventParams): Promise<void> 
       target_before: params.beforeData ?? null,
       target_after: params.afterData ?? null,
     });
-    if (rpcError) {
+    if (rpcError && typeof supabase.from === "function") {
       const { error: insertError } = await supabase.from("audit_events").insert({
         action: params.action,
         entity_type: params.entityType,

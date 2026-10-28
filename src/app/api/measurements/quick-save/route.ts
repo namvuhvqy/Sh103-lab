@@ -32,6 +32,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Nhiệt độ là bắt buộc" }, { status: 400 });
     }
     if (temperature < -100 || temperature > 100 || (humidity !== null && (humidity < 0 || humidity > 100))) {
+      try {
+        const { logAuditEvent } = await import("@/lib/audit");
+        await logAuditEvent({
+          action: "MEASUREMENT_ENTRY_ERROR",
+          entityType: "schedule_occurrences",
+          entityId: occurrenceId,
+          actorUserId: user.id,
+          afterData: {
+            action_label: "Lỗi nhập số đo nhiệt độ/độ ẩm",
+            error: "Giá trị đo ngoài miền hợp lệ",
+            temperature,
+            humidity,
+          },
+        });
+      } catch {}
       return NextResponse.json({ success: false, error: "Giá trị đo ngoài miền hợp lệ" }, { status: 400 });
     }
 
@@ -50,8 +65,27 @@ export async function POST(request: Request) {
       const denied = /scope denied|authentication required|permission denied/i.test(message);
       const conflict = /already fulfilled|not writable/i.test(message);
       const invalid = /required measurement values missing|not a measurement form/i.test(message);
+      const userFacingError = denied ? "Không có quyền ghi số đo" : conflict ? "Điểm đo đã được ghi" : invalid ? "Thiếu giá trị đo bắt buộc" : "Không thể lưu số đo";
+
+      try {
+        const { logAuditEvent } = await import("@/lib/audit");
+        await logAuditEvent({
+          action: "MEASUREMENT_ENTRY_ERROR",
+          entityType: "schedule_occurrences",
+          entityId: occurrenceId,
+          actorUserId: user.id,
+          afterData: {
+            action_label: "Lỗi lưu số đo nhiệt độ/độ ẩm",
+            error: userFacingError,
+            raw_error: message,
+            temperature,
+            humidity,
+          },
+        });
+      } catch {}
+
       return NextResponse.json(
-        { success: false, error: denied ? "Không có quyền ghi số đo" : conflict ? "Điểm đo đã được ghi" : invalid ? "Thiếu giá trị đo bắt buộc" : "Không thể lưu số đo" },
+        { success: false, error: userFacingError },
         { status: denied ? 403 : conflict ? 409 : invalid ? 400 : 500 },
       );
     }

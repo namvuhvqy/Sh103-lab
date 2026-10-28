@@ -80,6 +80,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
   const numHum = humVal.trim() !== "" ? parseFloat(humVal) : null;
 
   const isTempEntered = numTemp !== null && !isNaN(numTemp);
+  const isWaitingForHumidity = Boolean(isEnv && isTempEntered && (numHum === null || isNaN(numHum)));
   const isTempAbnormal = isTempEntered && (numTemp < minTemp || numTemp > maxTemp);
   const isHumAbnormal = isEnv && numHum !== null && !isNaN(numHum) && (numHum < minHum || numHum > maxHum);
   const isAbnormal = isTempAbnormal || isHumAbnormal;
@@ -129,9 +130,10 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
       setSaveSuccess(false);
       setSaveError(null);
 
+      // Nếu là phòng môi trường và chưa nhập độ ẩm, chờ người dùng nhập nốt độ ẩm (không báo lỗi)
       if (isEnv && temp !== null && hum === null) {
-        setPendingSync(true);
-        setSaveError("Cần nhập độ ẩm");
+        setPendingSync(false);
+        setSaveError(null);
         return;
       }
 
@@ -264,6 +266,11 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
                 <AlertTriangle className="size-3 text-rose-600" />
                 Lưu thất bại
               </span>
+            ) : isWaitingForHumidity ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-bold text-sky-800 border border-sky-200">
+                <Droplets className="size-3 text-sky-600" />
+                Chờ độ ẩm
+              </span>
             ) : pendingSync ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-900 border border-amber-300">
                 <Clock3 className="size-3 text-amber-600" />
@@ -271,7 +278,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
               </span>
             ) : isTempEntered ? (
               isAbnormal ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-800 border border-rose-300 animate-pulse">
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-black text-rose-800 border border-rose-300 animate-pulse" title="Giá trị đo nằm ngoài dải kiểm soát y tế theo ISO 15189">
                   <AlertTriangle className="size-3 text-rose-600" />
                   Vượt ngưỡng: {numTemp}°C
                 </span>
@@ -312,7 +319,13 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
                 <Thermometer className="size-3.5 text-teal-700" />
                 Nhiệt độ (°C)
               </span>
-              {saveSuccess ? <span className="text-[10px] font-bold text-emerald-700">✓ Đã lưu</span> : pendingSync ? <span className="text-[10px] font-bold text-amber-700" title={saveError ?? undefined}>{saveError === "Cần nhập độ ẩm" ? saveError : "Chờ đồng bộ"}</span> : null}
+              {saveSuccess ? (
+                <span className="text-[10px] font-bold text-emerald-700">✓ Đã lưu</span>
+              ) : isWaitingForHumidity ? (
+                <span className="text-[10px] font-bold text-sky-700">Cần nhập độ ẩm</span>
+              ) : pendingSync ? (
+                <span className="text-[10px] font-bold text-amber-700">Chờ đồng bộ</span>
+              ) : null}
             </label>
             <div className="relative flex items-center">
               <input
@@ -380,7 +393,7 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
         </div>
 
         {/* Cảnh báo và nút Thử lưu lại khi mất mạng / Supabase lỗi */}
-        {(saveError || pendingSync) && (
+        {(saveError || (pendingSync && !isWaitingForHumidity)) && (
           <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50 p-2.5 text-xs font-bold text-amber-900 shadow-xs animate-fadeIn">
             <div className="flex items-center gap-1.5 truncate">
               <AlertTriangle className="size-3.5 text-amber-600 shrink-0" />
@@ -406,9 +419,17 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
 
         {/* Trợ giúp thao tác nhanh: Chạm để sửa ngay */}
         <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-          <span>{pendingSync ? "Đã giữ cục bộ · Chạm ra ngoài để thử đồng bộ lại" : isTempEntered ? "Chạm con số để sửa ngay · Tự động lưu" : "Gõ số đo · Tự lưu khi xong"}</span>
+          <span>
+            {isWaitingForHumidity
+              ? "Vui lòng nhập độ ẩm phòng để hoàn tất lưu chuẩn ISO 15189"
+              : pendingSync
+              ? "Đã giữ cục bộ · Chạm ra ngoài để thử đồng bộ lại"
+              : isTempEntered
+              ? "Chạm con số để sửa ngay · Tự động lưu"
+              : "Gõ số đo · Tự lưu khi xong"}
+          </span>
           {isAbnormal && (
-            <span className="font-bold text-rose-700 flex items-center gap-1">
+            <span className="font-bold text-rose-700 flex items-center gap-1" title="Cảnh báo chỉ số đo vượt ngưỡng an toàn y tế ISO 15189">
               <span className="size-1.5 rounded-full bg-rose-600 animate-ping" />
               Cảnh báo ISO
             </span>

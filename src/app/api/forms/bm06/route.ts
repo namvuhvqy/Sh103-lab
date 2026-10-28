@@ -146,7 +146,25 @@ export async function POST(request: Request) {
     }
   }
 
-  const mapped = filteredStatuses.map((item) => ({
+  // When finalizing, merge draft statuses previously saved in DB with incoming statuses:
+  // This allows technicians to finalize even if they navigated/entered machines by area.
+  const statusMap = new Map<string, string>();
+  if (intent === "finalize" && existingStatuses.length > 0) {
+    for (const es of existingStatuses) {
+      if (es.asset_id && es.status_code) {
+        statusMap.set(es.asset_id, es.status_code);
+      }
+    }
+  }
+  for (const s of filteredStatuses) {
+    statusMap.set(s.asset_id, s.status);
+  }
+
+  const effectiveStatuses = intent === "finalize"
+    ? Array.from(statusMap.entries()).map(([asset_id, status]) => ({ asset_id, status }))
+    : filteredStatuses;
+
+  const mapped = effectiveStatuses.map((item) => ({
     assetId: item.asset_id,
     status: item.status,
   }));
@@ -154,6 +172,26 @@ export async function POST(request: Request) {
   const required = intent === "finalize" ? (expected ?? []).map((item) => item.asset_id) : mapped.map((item) => item.assetId);
   const validation = validateShiftStatuses(mapped, required);
   if (!validation.ok) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { logAuditEvent } = await import("@/lib/audit");
+      await logAuditEvent({
+        action: "BM06_ENTRY_ERROR",
+        entityType: "schedule_occurrences",
+        entityId: occurrenceId,
+        actorUserId: user?.id,
+        afterData: {
+          action_label: "Lỗi kiểm tra nhập liệu BM.06",
+          error: validation.error,
+          intent,
+          area_code: areaCode || "ALL",
+          provided_count: mapped.length,
+          required_count: required.length,
+        },
+      });
+    } catch (auditErr) {
+      console.warn("[BM06 Entry Error Audit Warning]:", auditErr);
+    }
     return redirectError(request, areaCode, validation.error);
   }
 
@@ -176,7 +214,7 @@ export async function POST(request: Request) {
     target_usage: resolvedUsage ?? null, // preserves target_usage: null for v4.1 compatibility
     target_unit: resolvedUnit ?? null, // preserves target_unit: null for v4.1 compatibility
     target_note: targetNote,
-    target_statuses: filteredStatuses,
+    target_statuses: effectiveStatuses,
     target_finalize: intent === "finalize",
     target_expected_lock: lockVersion,
     target_coworker_id: resolvedCoworker,
@@ -239,7 +277,7 @@ export async function POST(request: Request) {
         target_usage: retryUsage ?? null, // preserves target_usage: null for v4.1 compatibility
         target_unit: retryUnit ?? null, // preserves target_unit: null for v4.1 compatibility
         target_note: retryNote,
-        target_statuses: filteredStatuses,
+        target_statuses: effectiveStatuses,
         target_finalize: false,
         target_expected_lock: lockVersion,
         target_coworker_id: retryCoworker,
@@ -249,6 +287,25 @@ export async function POST(request: Request) {
   }
 
   if (error) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { logAuditEvent } = await import("@/lib/audit");
+      await logAuditEvent({
+        action: "BM06_ENTRY_ERROR",
+        entityType: "schedule_occurrences",
+        entityId: occurrenceId,
+        actorUserId: user?.id,
+        afterData: {
+          action_label: intent === "finalize" ? "Lỗi hoàn tất ca BM.06" : "Lỗi lưu ca BM.06",
+          error: translateBm06Error(error.message),
+          raw_error: error.message,
+          intent,
+          area_code: areaCode || "ALL",
+        },
+      });
+    } catch (auditErr) {
+      console.warn("[BM06 RPC Error Audit Warning]:", auditErr);
+    }
     return redirectError(request, areaCode, translateBm06Error(error.message));
   }
 

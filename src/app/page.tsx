@@ -13,18 +13,21 @@ import { getOperationalDashboard } from "@/lib/p5/operational-queries";
 import { getNotifications } from "@/lib/p5/queries";
 import { getTodayRealtimeOverview } from "@/lib/p5/today-overview";
 import { TodayRealtimeStatus } from "@/components/p5/TodayRealtimeStatus";
+import { ActiveAnnouncementsBanner } from "@/components/p5/ActiveAnnouncementsBanner";
+import { getActiveAnnouncements } from "@/lib/p5/queries";
 import { Activity, Bell, ClipboardCheck, ShieldAlert, Sparkles, TestTube2, Thermometer } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [todayOverview, areas, shiftData, summary, access, homeNotifications] = await Promise.all([
+  const [todayOverview, areas, shiftData, summary, access, homeNotifications, activeAnnouncements] = await Promise.all([
     getTodayRealtimeOverview(),
     getAreaSummaries(),
     getCurrentBm06(),
     getOperationalDashboard(),
     getCurrentAccess(),
     getNotifications("all", { limit: 5 }),
+    getActiveAnnouncements(),
   ]);
   const activeShift = shiftData?.shift ?? currentShift();
   const shiftCompleted = Object.keys(shiftData?.initialStatuses ?? {}).length;
@@ -38,6 +41,7 @@ export default async function Home() {
   return <AppShell headerTitle="Khoa Sinh hóa" headerSubtitle={`BV Quân y 103 · ${activeShift.label}`} unreadCount={summary.unreadNotifications} isAdmin={access?.isAdmin}>
     <div className="space-y-5 md:space-y-7">
       <CurrentShiftCard shift={activeShift} />
+      <ActiveAnnouncementsBanner announcements={activeAnnouncements} />
       <OperationalBanner {...banner} />
       <TodayRealtimeStatus data={todayOverview} />
       <section aria-labelledby="kpi-title">
