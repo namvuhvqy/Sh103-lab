@@ -59,4 +59,5 @@ jobs:
         with:
           name: release-evidence
           path: .release-evidence.json
+          include-hidden-files: true
           if-no-files-found: error
