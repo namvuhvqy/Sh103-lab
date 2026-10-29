@@ -1,6 +1,8 @@
 import { AdminPageShell } from "@/components/admin/AdminPageShell";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 
+export const dynamic = "force-dynamic";
+
 const steps = ["Chọn loại", "Upload", "Preview", "Validate", "Danh sách trùng", "Xác nhận", "Commit", "Tóm tắt"];
 export default async function ImportPage() {
   await requireAdmin();

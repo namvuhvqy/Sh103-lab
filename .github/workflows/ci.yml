@@ -43,12 +43,16 @@ jobs:
         env:
           NEXT_PUBLIC_APP_NAME: "SH103 Lab"
           NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder"
 
       - name: Generate Release Evidence
         run: pnpm run release:evidence
         env:
           NEXT_PUBLIC_APP_NAME: "SH103 Lab"
           NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+          NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.placeholder"
 
       - name: Upload Release Evidence Artifact
         uses: actions/upload-artifact@v4
