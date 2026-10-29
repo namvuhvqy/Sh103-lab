@@ -40,6 +40,16 @@ beforeEach(() => {
 
   createClient.mockResolvedValue({
     auth: { getUser },
+    from: vi.fn((table: string) => {
+      if (table === "push_subscriptions") {
+        return {
+          upsert,
+          delete: deleteQuery,
+          select,
+        };
+      }
+      return {};
+    }),
   });
 
   getUser.mockResolvedValue({
@@ -117,6 +127,26 @@ describe("Nhóm A: Bảo mật API /api/notifications/subscribe", () => {
       }),
       { onConflict: "endpoint" }
     );
+  });
+
+  it("POST: tự động fallback sang authenticated client khi admin client gặp lỗi RLS 42501", async () => {
+    // Lần gọi đầu tiên (admin client) bị RLS 42501
+    // Lần gọi thứ hai (fallback sang authenticated client) thành công
+    upsert
+      .mockResolvedValueOnce({ error: { code: "42501", message: 'new row violates row-level security policy for table "push_subscriptions"' } })
+      .mockResolvedValueOnce({ error: null });
+
+    const res = await subscribePOST(
+      makeRequest("https://example.test/api/notifications/subscribe", "POST", {
+        subscription: { endpoint: "https://fcm.test/fallback", keys: { p256dh: "k1", auth: "a1" } },
+        userAgent: "TestBrowser/1.0",
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    // Xác minh upsert được thử lại lần 2
+    expect(upsert).toHaveBeenCalledTimes(2);
   });
 
   it("DELETE: từ chối 401 khi chưa đăng nhập", async () => {

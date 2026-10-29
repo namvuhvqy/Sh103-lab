@@ -15,11 +15,21 @@ export async function GET(request: Request) {
     const admin = createAdminClient();
 
     if (endpoint) {
-      const { data, error } = await admin
+      let { data, error } = await admin
         .from("push_subscriptions")
         .select("id, user_id, updated_at")
         .eq("endpoint", endpoint)
         .maybeSingle();
+
+      if (error && (error.code === "42501" || error.message?.includes("row-level security"))) {
+        const fallback = await supabase
+          .from("push_subscriptions")
+          .select("id, user_id, updated_at")
+          .eq("endpoint", endpoint)
+          .maybeSingle();
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -32,10 +42,19 @@ export async function GET(request: Request) {
       });
     }
 
-    const { count, error } = await admin
+    let { count, error } = await admin
       .from("push_subscriptions")
       .select("id", { count: "exact", head: true })
       .eq("user_id", user.id);
+
+    if (error && (error.code === "42501" || error.message?.includes("row-level security"))) {
+      const fallback = await supabase
+        .from("push_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      count = fallback.count;
+      error = fallback.error;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -75,7 +94,7 @@ export async function POST(request: Request) {
     const targetUserId = user.id;
     const admin = createAdminClient();
 
-    const { error } = await admin.from("push_subscriptions").upsert(
+    let { error } = await admin.from("push_subscriptions").upsert(
       {
         user_id: targetUserId,
         endpoint,
@@ -86,6 +105,23 @@ export async function POST(request: Request) {
       },
       { onConflict: "endpoint" }
     );
+
+    // Fallback: nếu admin client không có service_role key hoặc gặp lỗi RLS 42501, dùng authenticated client
+    if (error && (error.code === "42501" || error.message?.includes("row-level security"))) {
+      console.warn("Admin upsert hit RLS error, falling back to authenticated supabase client:", error.message);
+      const fallback = await supabase.from("push_subscriptions").upsert(
+        {
+          user_id: targetUserId,
+          endpoint,
+          p256dh,
+          auth,
+          user_agent: userAgent || null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "endpoint" }
+      );
+      error = fallback.error;
+    }
 
     if (error) {
       console.error("Error saving push subscription:", error);
@@ -117,10 +153,18 @@ export async function DELETE(request: Request) {
 
     const admin = createAdminClient();
     // Bảo mật quyền sở hữu: Chỉ cho phép xóa subscription của chính user đang đăng nhập
-    const { error } = await admin
+    let { error } = await admin
       .from("push_subscriptions")
       .delete()
       .match({ endpoint, user_id: user.id });
+
+    if (error && (error.code === "42501" || error.message?.includes("row-level security"))) {
+      const fallback = await supabase
+        .from("push_subscriptions")
+        .delete()
+        .match({ endpoint, user_id: user.id });
+      error = fallback.error;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
