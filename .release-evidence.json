@@ -4,13 +4,13 @@
   "hospital": "Bệnh viện Quân y 103 - Học viện Quân y",
   "department": "Bộ môn - Khoa Sinh Hóa",
   "standard": "ISO 15189:2022",
-  "generatedAt": "2026-10-30T02:42:22.437Z",
+  "generatedAt": "2026-10-30T02:58:13.301Z",
   "verdict": "APPROVED",
   "git": {
     "branch": "fix/push-notification-hardening",
-    "commitHash": "5b772fe80c3eb683e8d71770d5434f0676f218b1",
-    "commitShort": "5b772fe",
-    "commitMessage": "fix(push): add authenticated client RLS fallback in push subscription API and configure Vercel env",
+    "commitHash": "6bf36bb05e371f65a70a75b48b309749c7ad7b62",
+    "commitShort": "6bf36bb",
+    "commitMessage": "feat(push): implement multi-device delivery and add comprehensive test suite for 5 technical principles",
     "commitAuthor": "namfive",
     "isClean": false
   },
@@ -23,7 +23,7 @@
     "totalGates": 6,
     "passedGates": 6,
     "failedGates": 0,
-    "durationTotalSeconds": 51.4
+    "durationTotalSeconds": 37
   },
   "gates": [
     {
@@ -32,7 +32,7 @@
       "description": "Verify zero lint errors and conformance with Next.js/React standards",
       "command": "pnpm run lint",
       "status": "PASSED",
-      "durationSeconds": 9.1
+      "durationSeconds": 8.6
     },
     {
       "level": "L1",
@@ -40,7 +40,7 @@
       "description": "Verify zero TypeScript compile errors with strict typechecking",
       "command": "pnpm run typecheck",
       "status": "PASSED",
-      "durationSeconds": 1.8
+      "durationSeconds": 1.7
     },
     {
       "level": "L2",
@@ -48,7 +48,7 @@
       "description": "Verify authentication boundary, deduplication, credential hygiene and route contracts",
       "command": "pnpm exec vitest run tests/credential-hygiene.test.ts tests/login-security-contract.test.ts tests/nav-perf-and-auth.test.ts tests/quick-save-route.test.ts tests/admin-staff-routes.test.ts tests/p5-route-contract.test.ts tests/p3-route-contract.test.ts",
       "status": "PASSED",
-      "durationSeconds": 1.6
+      "durationSeconds": 1.5
     },
     {
       "level": "L3",
@@ -61,13 +61,13 @@
     {
       "level": "L1",
       "name": "L1.3 Complete Test Suite Coverage",
-      "description": "All tests passing (80 test files, 360 tests)",
+      "description": "All tests passing (80 test files, 361 tests)",
       "command": "pnpm exec vitest run",
       "status": "PASSED",
-      "durationSeconds": 19.3,
+      "durationSeconds": 18.4,
       "details": {
         "testFilesPassed": 80,
-        "totalPassed": 360
+        "totalPassed": 361
       }
     },
     {
@@ -76,7 +76,7 @@
       "description": "Verify Next.js production bundle compilation and static page generation",
       "command": "pnpm run build",
       "status": "PASSED",
-      "durationSeconds": 17.6
+      "durationSeconds": 4.8
     }
   ]
 }

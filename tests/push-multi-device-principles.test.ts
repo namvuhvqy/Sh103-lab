@@ -239,4 +239,65 @@ describe("5 Nguyên tắc Kỹ thuật Push Notification Đa thiết bị (Multi
     expect(deleteQuery).toHaveBeenCalledTimes(1);
     expect(inMock).toHaveBeenCalledWith("id", ["sub-old-phone"]);
   });
+
+  it("Tương thích đa nền tảng: Gửi đồng thời tới Android (Google FCM), iPhone (Apple APNs) và PC", async () => {
+    // Kịch bản toàn khoa:
+    // - Bác sĩ A (Thuận): Máy tính Windows (Google FCM) + Điện thoại Oppo (Google FCM)
+    // - Bác sĩ B (Hiếu): Điện thoại iPhone Safari PWA (Apple APNs)
+    const multiPlatformSubs = [
+      {
+        id: "sub-pc-fcm",
+        user_id: "user-thuan",
+        endpoint: "https://fcm.googleapis.com/fcm/send/token-pc",
+        p256dh: "key-pc",
+        auth: "auth-pc",
+      },
+      {
+        id: "sub-oppo-fcm",
+        user_id: "user-thuan",
+        endpoint: "https://fcm.googleapis.com/fcm/send/token-oppo-reno11",
+        p256dh: "key-oppo",
+        auth: "auth-oppo",
+      },
+      {
+        id: "sub-iphone-apns",
+        user_id: "user-hieu",
+        endpoint: "https://web.push.apple.com/QIAB8gE6Qtest/token-iphone-15",
+        p256dh: "key-iphone-apple",
+        auth: "auth-iphone-apple",
+      },
+    ];
+
+    select.mockResolvedValue({ data: multiPlatformSubs, error: null });
+
+    const result = await sendPushToAllSubscriptions({
+      title: "🔔 [THÔNG BÁO KHẨN] Giao ban Khoa Sinh Hóa BV103",
+      body: "Kiểm tra gửi đồng thời Android + iPhone + PC.",
+      url: "/notifications",
+    });
+
+    // Cả 3 nền tảng (Android, iPhone, PC) đều nhận được thông báo
+    expect(sendNotification).toHaveBeenCalledTimes(3);
+    expect(result.sent).toBe(3);
+    expect(result.failed).toBe(0);
+    expect(result.cleaned).toBe(0);
+
+    // Xác minh cuộc gọi tới Apple APNs endpoint
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "https://web.push.apple.com/QIAB8gE6Qtest/token-iphone-15",
+        keys: { p256dh: "key-iphone-apple", auth: "auth-iphone-apple" },
+      }),
+      expect.any(String)
+    );
+
+    // Xác minh cuộc gọi tới Google FCM endpoint
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "https://fcm.googleapis.com/fcm/send/token-oppo-reno11",
+        keys: { p256dh: "key-oppo", auth: "auth-oppo" },
+      }),
+      expect.any(String)
+    );
+  });
 });
