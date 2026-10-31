@@ -17,19 +17,32 @@ export interface PushNotificationPayload {
   tag?: string;
 }
 
-export async function sendPushToAllSubscriptions(payload: PushNotificationPayload) {
+export interface SendPushOptions {
+  targetUserIds?: string[];
+}
+
+export async function sendPushToSubscriptions(
+  payload: PushNotificationPayload,
+  options?: SendPushOptions
+) {
   if (!publicKey || !privateKey) {
     console.warn("VAPID keys not configured, skipping web push send.");
-    return { sent: 0, failed: 0 };
+    return { sent: 0, failed: 0, cleaned: 0 };
   }
 
   const admin = createAdminClient();
-  const { data: subs, error } = await admin
+  let query = admin
     .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth");
+    .select("id, user_id, endpoint, p256dh, auth");
+
+  if (options?.targetUserIds && options.targetUserIds.length > 0) {
+    query = query.in("user_id", options.targetUserIds);
+  }
+
+  const { data: subs, error } = await query;
 
   if (error || !subs || subs.length === 0) {
-    return { sent: 0, failed: 0 };
+    return { sent: 0, failed: 0, cleaned: 0 };
   }
 
   let sent = 0;
@@ -55,7 +68,10 @@ export async function sendPushToAllSubscriptions(payload: PushNotificationPayloa
       };
 
       try {
-        await webpush.sendNotification(pushSubscription, stringifiedPayload);
+        await webpush.sendNotification(pushSubscription, stringifiedPayload, {
+          urgency: "high",
+          TTL: 86400, // 24 giờ
+        });
         sent++;
       } catch (err: any) {
         failed++;
@@ -67,10 +83,18 @@ export async function sendPushToAllSubscriptions(payload: PushNotificationPayloa
     })
   );
 
-  // Clean up expired subscriptions
+  // Nguyên tắc 5: Chỉ loại bỏ subscription của thiết bị hết hiệu lực bằng id, không xóa user_id
   if (expiredIds.length > 0) {
     await admin.from("push_subscriptions").delete().in("id", expiredIds);
   }
 
   return { sent, failed, cleaned: expiredIds.length };
+}
+
+export async function sendPushToAllSubscriptions(payload: PushNotificationPayload) {
+  return sendPushToSubscriptions(payload);
+}
+
+export async function sendPushToUser(userId: string, payload: PushNotificationPayload) {
+  return sendPushToSubscriptions(payload, { targetUserIds: [userId] });
 }

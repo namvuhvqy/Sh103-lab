@@ -18,16 +18,11 @@ function getServerPushState(): PushState {
   return "unsupported";
 }
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
+import {
+  urlBase64ToUint8Array,
+  getReadyServiceWorkerRegistration,
+  extractSubscriptionPayload,
+} from "@/lib/notifications/sw-client";
 
 export function InAppAlertBanner() {
   const [dismissed, setDismissed] = useState(false);
@@ -50,23 +45,27 @@ export function InAppAlertBanner() {
           process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
           "BJvJ4_NDKETQlGptGicFnVhXGjMemhAxOcekgmOLxz4TMbihL7_62HF9mZdFAoTzF2yqStqyeVtAHsM22Sy6qjg";
         if (typeof window !== "undefined" && "serviceWorker" in navigator && vapidPublicKey) {
-          const reg = await navigator.serviceWorker.ready;
-          let sub = await reg.pushManager.getSubscription();
-          if (!sub) {
-            sub = await reg.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-            });
-          }
-          if (sub) {
-            await fetch("/api/notifications/subscribe", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                subscription: sub,
-                userAgent: navigator.userAgent,
-              }),
-            });
+          const reg = await getReadyServiceWorkerRegistration();
+          if (reg && reg.pushManager) {
+            let sub = await reg.pushManager.getSubscription();
+            if (!sub) {
+              sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+              });
+            }
+            if (sub) {
+              const subPayload = extractSubscriptionPayload(sub);
+              await fetch("/api/notifications/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                  subscription: subPayload,
+                  userAgent: navigator.userAgent,
+                }),
+              });
+            }
           }
         }
         setSubscribedSuccess(true);

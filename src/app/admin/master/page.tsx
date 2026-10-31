@@ -2,6 +2,8 @@ import Link from "next/link";
 import { AdminPageShell, SummaryCard } from "@/components/admin/AdminPageShell";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 
+export const dynamic = "force-dynamic";
+
 export default async function MasterPage() {
   const { supabase } = await requireAdmin();
   const [locations, assets, devices, templates] = await Promise.all([

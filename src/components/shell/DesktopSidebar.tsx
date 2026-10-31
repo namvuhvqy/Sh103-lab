@@ -54,7 +54,6 @@ export function DesktopSidebar({
     { label: "Quản trị thiết bị & Tủ", href: "/admin/assets", icon: Settings },
     { label: "Khu vực & Điểm đo", href: "/admin/locations", icon: Settings },
     { label: "Dữ liệu danh mục gốc", href: "/admin/master", icon: Settings },
-    { label: "Thông báo nội bộ khoa", href: "/admin/announcements", icon: Megaphone },
   ];
 
   return (

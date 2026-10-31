@@ -1,6 +1,8 @@
 import { AdminPageShell, SummaryCard } from "@/components/admin/AdminPageShell";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 
+export const dynamic = "force-dynamic";
+
 export default async function AssetsPage() {
   const { supabase } = await requireAdmin();
   const { data: assets } = await supabase.from("assets").select("id,asset_type,source_code,source_name,source_order,active,locations(code,name)").order("source_order");

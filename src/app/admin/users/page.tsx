@@ -5,6 +5,8 @@ import { roleLabel, type BusinessRole } from "@/lib/auth/access";
 import { checkAuthAdminPrerequisites } from "@/lib/admin/staff-actions";
 import { Lock, Plus, Trash2 } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersPage() {
   const { supabase } = await requireAdmin();
   const { data: profiles } = await supabase
