@@ -178,6 +178,20 @@ export function InlineTemperatureCard({ occurrence, onSaved }: InlineTemperature
     [occurrence.id, lastSavedTemp, lastSavedHum, triggerHaptic, onSaved, isAbnormal, isEnv]
   );
 
+  // Tự động đồng bộ ngầm ngay khi thiết bị di động có kết nối mạng trở lại
+  useEffect(() => {
+    if (!pendingSync || isWaitingForHumidity) return;
+    const handleOnline = () => {
+      const parsedTemp = tempVal.trim() !== "" ? parseFloat(tempVal) : null;
+      const parsedHum = humVal.trim() !== "" ? parseFloat(humVal) : null;
+      if (parsedTemp !== null && !isNaN(parsedTemp)) {
+        saveToServer(parsedTemp, parsedHum !== null && !isNaN(parsedHum) ? parsedHum : null, true);
+      }
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [pendingSync, isWaitingForHumidity, tempVal, humVal, saveToServer]);
+
   // Debounce khi gõ số để lưu tự động
   const handleTempChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;

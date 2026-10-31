@@ -1,4 +1,4 @@
-const CACHE_NAME = "sh103-static-v2";
+const CACHE_NAME = "sh103-static-v3";
 const OFFLINE_URL = "/offline";
 
 const STATIC_ASSETS = [
@@ -7,6 +7,11 @@ const STATIC_ASSETS = [
   "/favicon.ico",
   "/icons/icon-192x192.png",
   "/icons/icon-512x512.png",
+  "/images/logo103.png",
+  "/images/equipment/biochemistry-analyzer.jpg",
+  "/images/equipment/immunology-analyzer.jpg",
+  "/images/equipment/bloodgas-analyzer.jpg",
+  "/images/equipment/centrifuge-machine.jpg",
 ];
 
 // Patterns that MUST NEVER be cached by service worker
@@ -54,17 +59,55 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first or Cache fallback for app shell / static assets
+  const isImmutableNextStatic = url.pathname.startsWith("/_next/static/");
+  const isStaticMediaOrManifest =
+    url.pathname.startsWith("/icons/") ||
+    url.pathname.startsWith("/images/") ||
+    url.pathname === "/favicon.ico" ||
+    url.pathname === "/manifest.json";
+
+  // 1. Cache-First for immutable Next.js hashed bundles (0ms latency on mobile)
+  if (isImmutableNextStatic) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        const response = await fetch(event.request);
+        if (response.status === 200) {
+          cache.put(event.request, response.clone());
+        }
+        return response;
+      })
+    );
+    return;
+  }
+
+  // 2. Stale-While-Revalidate for static icons, hospital logos, and equipment thumbnails
+  if (isStaticMediaOrManifest) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        const cached = await cache.match(event.request);
+        const networkPromise = fetch(event.request)
+          .then((response) => {
+            if (response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => null);
+        return cached || (await networkPromise) || new Response("", { status: 504 });
+      })
+    );
+    return;
+  }
+
+  // 3. Network-first with Cache fallback for app shell / navigation
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache static JS/CSS assets
         if (
           response.status === 200 &&
-          (url.pathname.startsWith("/_next/static/") ||
-            url.pathname.startsWith("/icons/") ||
-            url.pathname.endsWith(".css") ||
-            url.pathname.endsWith(".js"))
+          (url.pathname.endsWith(".css") || url.pathname.endsWith(".js"))
         ) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {

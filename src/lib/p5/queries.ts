@@ -1,4 +1,6 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getOrFetchCached, MASTER_DATA_TTL_MS } from "@/lib/cache/master-data-cache";
 
 export interface NotificationItem {
   id: string;
@@ -107,7 +109,7 @@ export async function getNotifications(
   return (data ?? []) as NotificationItem[];
 }
 
-export async function getUnreadNotificationCount(): Promise<number> {
+export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from("notifications")
@@ -115,7 +117,7 @@ export async function getUnreadNotificationCount(): Promise<number> {
     .is("read_at", null);
   if (error) return 0;
   return count ?? 0;
-}
+});
 
 export async function getAdminAnnouncements(): Promise<AnnouncementItem[]> {
   const supabase = await createClient();
@@ -160,14 +162,16 @@ export async function getActiveAnnouncements(): Promise<AnnouncementItem[]> {
 }
 
 export async function getIncidentCategories(): Promise<IncidentCategory[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("incident_categories")
-    .select("*")
-    .eq("active", true)
-    .order("sort_order", { ascending: true });
-  if (error) throw new Error(`Không tải được danh mục sự cố: ${error.message}`);
-  return (data ?? []) as IncidentCategory[];
+  return getOrFetchCached("master:incident-categories", MASTER_DATA_TTL_MS, async () => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("incident_categories")
+      .select("*")
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    if (error) throw new Error(`Không tải được danh mục sự cố: ${error.message}`);
+    return (data ?? []) as IncidentCategory[];
+  });
 }
 
 export async function getIncidents(options?: {

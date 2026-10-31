@@ -3,6 +3,7 @@ import { currentShift, SHIFT_DEFINITIONS } from "@/lib/forms/domain";
 import { buildOperationalSummary } from "./domain";
 import { getUnreadNotificationCount } from "./queries";
 import { ensureOperationalMonthSafe } from "@/lib/forms/ensure-month";
+import { getOrFetchCached, MASTER_DATA_TTL_MS } from "@/lib/cache/master-data-cache";
 
 const todayInVietnam = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
 const isValidIsoDate = (value?: string) => {
@@ -41,7 +42,7 @@ export async function getOperationalDashboard() {
     supabase.from("schedule_occurrences").select("status,register_periods!inner(form_template_versions!inner(form_templates!inner(code)))").eq("business_date", today),
     supabase.from("measurement_details").select("temperature_abnormal,humidity_abnormal,records!inner(business_date,is_effective)").eq("records.business_date", today).eq("records.is_effective", true),
     supabase.from("equipment_shift_statuses").select("status_code,equipment_shift_details!inner(records!inner(business_date,slot_code,is_effective))").eq("equipment_shift_details.records.business_date", shift.businessDate).eq("equipment_shift_details.records.slot_code", shift.code).eq("equipment_shift_details.records.is_effective", true),
-    supabase.from("register_periods").select("status"),
+    supabase.from("register_periods").select("status").in("status", ["READY_FOR_REVIEW", "RETURNED"]),
     supabase.from("incidents").select("id", { count: "exact", head: true }).in("status", ["OPEN", "IN_REVIEW"]),
     getUnreadNotificationCount(),
   ]);
@@ -83,11 +84,15 @@ export async function getEquipmentOverview(date?: string, slot?: string) {
   const shiftDef = SHIFT_DEFINITIONS.find((s) => s.code === slotCode) ?? current;
   const shift = { ...shiftDef, businessDate };
 
-  const [{ data: assets, error: assetError }, { data: statuses, error: statusError }] = await Promise.all([
-    supabase.from("assets").select("id,source_name,source_code,source_order,locations(code,name)").eq("asset_type", "LAB_EQUIPMENT").eq("active", true).order("source_order"),
+  const [assets, { data: statuses, error: statusError }] = await Promise.all([
+    getOrFetchCached("master:lab-equipment-full", MASTER_DATA_TTL_MS, async () => {
+      const { data, error } = await supabase.from("assets").select("id,source_name,source_code,source_order,locations(code,name)").eq("asset_type", "LAB_EQUIPMENT").eq("active", true).order("source_order");
+      if (error) throw new Error("Không tải được dữ liệu thiết bị");
+      return data ?? [];
+    }),
     supabase.from("equipment_shift_statuses").select("asset_id,status_code,updated_at,equipment_shift_details!inner(records!inner(id,business_date,slot_code,is_effective))").eq("equipment_shift_details.records.business_date", businessDate).eq("equipment_shift_details.records.slot_code", slotCode).eq("equipment_shift_details.records.is_effective", true),
   ]);
-  if (assetError || statusError) throw new Error("Không tải được dữ liệu thiết bị");
+  if (statusError) throw new Error("Không tải được dữ liệu thiết bị");
   const latest = new Map((statuses ?? []).map((row) => [row.asset_id, row]));
   return { shift, assets: (assets ?? []).map((asset) => ({ ...asset, latest: latest.get(asset.id) ?? null })) };
 }
@@ -97,15 +102,19 @@ export async function getDecontaminationWorkspace(date?: string) {
   const today = isValidIsoDate(date) ? date! : todayInVietnam();
   await ensureOperationalMonthSafe(supabase, today);
 
-  const [{ data: locations, error: locationError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
-    supabase.from("locations").select("id,code,name,sort_order").in("code", [...BM01_KNBM_AREA_CODES]).order("sort_order"),
+  const [locations, { data: occurrences, error: occurrenceError }] = await Promise.all([
+    getOrFetchCached("master:5-locations", MASTER_DATA_TTL_MS, async () => {
+      const { data, error } = await supabase.from("locations").select("id,code,name,sort_order").in("code", [...BM01_KNBM_AREA_CODES]).order("sort_order");
+      if (error) throw new Error("Không tải được dữ liệu khử nhiễm");
+      return data ?? [];
+    }),
     supabase
       .from("schedule_occurrences")
       .select("id,status,fulfilled_by_record_id,register_periods!inner(id,location_id,form_template_versions!inner(form_templates!inner(code)))")
       .eq("business_date", today)
       .eq("register_periods.form_template_versions.form_templates.code", "BM.01_KNBM"),
   ]);
-  if (locationError || occurrenceError) throw new Error("Không tải được dữ liệu khử nhiễm");
+  if (occurrenceError) throw new Error("Không tải được dữ liệu khử nhiễm");
 
   const typedOccurrences = (occurrences ?? []) as unknown as DecontaminationOccurrence[];
   const byLocation = new Map<string, DecontaminationOccurrence>();
@@ -218,11 +227,15 @@ export async function getExportWorkspace(filters: { templateCode?: string; year?
   let reqYear = /^\d{4}$/.test(filters.year ?? "") ? filters.year! : "2026";
   let reqMonth = filters.month && /^(0?[1-9]|1[0-2])$/.test(filters.month) ? String(Number(filters.month)).padStart(2, "0") : undefined;
 
-  const [{ data: templates, error: templateError }, { data: periods, error: periodError }] = await Promise.all([
-    supabase.from("form_template_versions").select("id,version_label,form_templates!inner(code,name,form_kind)").eq("status", "PUBLISHED").order("created_at"),
-    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind)),records(count)").order("period_start", { ascending: false }),
+  const [templates, { data: periods, error: periodError }] = await Promise.all([
+    getOrFetchCached("master:published-templates", MASTER_DATA_TTL_MS, async () => {
+      const { data, error } = await supabase.from("form_template_versions").select("id,version_label,form_templates!inner(code,name,form_kind)").eq("status", "PUBLISHED").order("created_at");
+      if (error) throw new Error("Không tải được không gian xuất biểu mẫu");
+      return data ?? [];
+    }),
+    supabase.from("register_periods").select("id,period_label,period_start,period_end,status,approved_at,locations(name),assets(source_name),form_template_versions!inner(id,version_label,form_templates!inner(code,name,form_kind)),records(count)").order("period_start", { ascending: false }).limit(500),
   ]);
-  if (templateError || periodError) throw new Error("Không tải được không gian xuất biểu mẫu");
+  if (periodError) throw new Error("Không tải được không gian xuất biểu mẫu");
 
   type Period = {
     id: string;
