@@ -111,7 +111,7 @@ export function ActiveAnnouncementsBanner({ announcements }: ActiveAnnouncements
 
               <div className="flex items-center gap-3">
                 <Link
-                  href="/announcements"
+                  href="/notifications"
                   className="text-xs font-black text-teal-800 hover:text-teal-950 underline underline-offset-2"
                 >
                   Xem tất cả ({announcements.length}) →

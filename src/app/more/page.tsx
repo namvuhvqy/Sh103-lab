@@ -29,8 +29,7 @@ const generalLinks = [
   { href: "/temperature", label: "Nhiệt độ & Độ ẩm", description: "Môi trường, tủ mát và tủ đông", icon: ClipboardList },
   { href: "/periods", label: "Lịch sử kỳ", description: "Tra cứu kỳ và bản ghi", icon: History },
   { href: "/approvals", label: "Trung tâm phê duyệt", description: "Duyệt theo kỳ / sổ", icon: ClipboardCheck },
-  { href: "/notifications", label: "Trung tâm thông báo", description: "Thông báo chưa đọc và cảnh báo", icon: Bell },
-  { href: "/announcements", label: "Thông báo nội bộ khoa", description: "Xem các chỉ đạo, chuyển đổi xét nghiệm và thông báo", icon: Megaphone },
+  { href: "/notifications", label: "Trung tâm thông báo & Bảng tin", description: "Bảng tin kíp trực, trao đổi nội bộ và cảnh báo", icon: Bell },
   { href: "/incidents", label: "Báo cáo sự cố", description: "Tạo và theo dõi sự cố thủ công", icon: CircleAlert },
   { href: "/account", label: "Tài khoản cá nhân", description: "Vai trò và trạng thái tài khoản", icon: UserRound },
 ];
@@ -41,7 +40,6 @@ const adminLinks = [
   { href: "/admin/assets", label: "Quản trị thiết bị & Tủ", description: "Danh mục 20 máy xét nghiệm và 13 tủ bảo quản", icon: Sliders },
   { href: "/admin/locations", label: "Khu vực & Điểm đo", description: "Cấu hình 5 khu vực phòng xét nghiệm", icon: MapPin },
   { href: "/admin/master", label: "Dữ liệu danh mục gốc", description: "Tham số ISO, mã biểu mẫu và ngưỡng chuẩn", icon: Database },
-  { href: "/admin/announcements", label: "Thông báo nội bộ khoa", description: "Soạn và phát hành thông báo toàn viện/khoa", icon: Megaphone },
 ];
 
 export default async function MorePage() {

@@ -291,3 +291,85 @@ export async function addNotificationCommentAction(
   }
 }
 
+export async function createStaffNotificationAction(formData: FormData): Promise<ActionResponse<{ count: number }>> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: "Yêu cầu đăng nhập để đăng thông báo" };
+    }
+
+    const title = String(formData.get("title") ?? "").trim();
+    const body = String(formData.get("body") ?? "").trim();
+    const severity = String(formData.get("severity") ?? "INFO");
+    const isUrgent = formData.get("is_urgent") === "true" || formData.get("is_urgent") === "on";
+
+    if (!title || !body) {
+      return { success: false, error: "Tiêu đề và nội dung thông báo là bắt buộc" };
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, business_role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const authorName = profile?.full_name || "Nhân viên ca trực";
+
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const admin = createAdminClient();
+
+    // Lấy danh sách tất cả nhân sự đang active trong khoa
+    const { data: activeUsers } = await admin
+      .from("profiles")
+      .select("user_id")
+      .eq("active", true);
+
+    const nowTs = Date.now();
+    const notifBatch = (activeUsers || []).map((p) => ({
+      recipient_user_id: p.user_id,
+      kind: "STAFF_NOTICE",
+      title,
+      body: `[${authorName}] ${body}`,
+      severity: (["INFO", "SUCCESS", "WARNING", "CRITICAL"].includes(severity) ? severity : "INFO") as
+        | "INFO"
+        | "SUCCESS"
+        | "WARNING"
+        | "CRITICAL",
+      target_url: "/notifications",
+      source_type: "STAFF_NOTICE",
+      source_id: user.id,
+      idempotency_key: `staff-notice:${user.id}:${nowTs}:${p.user_id}`,
+    }));
+
+    if (notifBatch.length > 0) {
+      const { error: insertError } = await admin.from("notifications").insert(notifBatch);
+      if (insertError) {
+        console.error("Lỗi insert staff notifications:", insertError);
+        throw insertError;
+      }
+    }
+
+    // Nếu đánh dấu khẩn cấp, phát chuông Web Push tới kíp trực
+    if (isUrgent || severity === "CRITICAL") {
+      try {
+        const { sendPushToAllSubscriptions } = await import("@/lib/notifications/web-push");
+        await sendPushToAllSubscriptions({
+          title: `📢 [${authorName}] ${title}`,
+          body,
+          url: "/notifications",
+          tag: `staff-notice-${nowTs}`,
+        });
+      } catch (pushErr) {
+        console.warn("Lỗi phát Web Push thông báo khẩn cấp:", pushErr);
+      }
+    }
+
+    revalidatePath("/notifications");
+    revalidatePath("/");
+    return { success: true, data: { count: notifBatch.length } };
+  } catch (err: unknown) {
+    return { success: false, error: errorMessage(err, "Không thể tạo thông báo ca trực") };
+  }
+}
+

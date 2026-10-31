@@ -1,10 +1,10 @@
 import { AppShell } from "@/components/shell/AppShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/p5/SegmentedControl";
-import { getNotifications, getUnreadNotificationCount, getNotificationInteractions, getActiveAnnouncements } from "@/lib/p5/queries";
+import { getNotifications, getUnreadNotificationCount, getNotificationInteractions, getActiveAnnouncements, type NotificationItem } from "@/lib/p5/queries";
 import { markAllNotificationsReadAction } from "@/lib/p5/actions";
 import { NotificationInteractiveFeed } from "@/components/notifications/NotificationInteractiveFeed";
-import { ActiveAnnouncementsBanner } from "@/components/p5/ActiveAnnouncementsBanner";
+import { CreateNotificationCard } from "@/components/notifications/CreateNotificationCard";
 import { MobilePushSubscriptionCard } from "@/components/notifications/MobilePushSubscriptionCard";
 import { createClient } from "@/lib/supabase/server";
 import { Bell } from "lucide-react";
@@ -39,8 +39,32 @@ export default async function NotificationsPage({
     }
   }
 
+  // Hợp nhất chỉ đạo Ban Chủ nhiệm vào chung dòng tin thông báo duy nhất
+  const existingSourceIds = new Set(items.map((i) => i.source_id).filter(Boolean));
+  const activeAnnouncementsAsNotifs: NotificationItem[] = activeAnnouncements
+    .filter((a) => !existingSourceIds.has(a.id))
+    .map((a) => ({
+      id: `announcement-${a.id}`,
+      recipient_user_id: user?.id || "",
+      kind: "ADMIN_ANNOUNCEMENT",
+      title: `📢 ${a.title}`,
+      body: a.body,
+      severity: a.severity,
+      target_url: "/notifications",
+      created_at: a.published_at || a.created_at,
+      read_at: null,
+      expires_at: a.expires_at,
+      source_type: "ANNOUNCEMENT",
+      source_id: a.id,
+      idempotency_key: `announcement-feed:${a.id}`,
+    }));
+
+  const combinedItems = [...activeAnnouncementsAsNotifs, ...items].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
   const interactions = await getNotificationInteractions(
-    items.map((i) => i.id),
+    combinedItems.map((i) => i.id),
     user?.id
   );
 
@@ -69,7 +93,7 @@ export default async function NotificationsPage({
             </div>
             <h1 className="clinical-page-title mt-1">Thông báo &amp; Vận hành</h1>
             <p className="mt-0.5 text-xs text-slate-500">
-              Trao đổi nội bộ kíp trực, tiếp nhận cảnh báo và phản hồi ý kiến theo chuẩn ISO 15189.
+              Bảng tin chung kíp trực: trao đổi nghiệp vụ, tiếp nhận cảnh báo và chỉ đạo điều phối theo chuẩn ISO 15189.
             </p>
           </div>
 
@@ -82,11 +106,11 @@ export default async function NotificationsPage({
           ) : null}
         </section>
 
-        {/* Thông báo chỉ đạo nội bộ khoa (Announcements) */}
-        <ActiveAnnouncementsBanner announcements={activeAnnouncements} />
-
-        {/* Thiết lập Thông báo đẩy ra màn hình điện thoại */}
+        {/* Thiết lập nhận chuông đẩy trên điện thoại */}
         <MobilePushSubscriptionCard userId={user?.id} />
+
+        {/* Khung tạo thông báo ca trực cho mọi nhân viên */}
+        <CreateNotificationCard currentUserName={currentUserName} />
 
         {/* Filter Segmented Control */}
         <SegmentedControl
@@ -98,10 +122,10 @@ export default async function NotificationsPage({
           ]}
         />
 
-        {/* Interactive feed with Like & Comment */}
-        {items.length ? (
+        {/* Dòng tin thống nhất 100% hỗ trợ Thích & Bình luận */}
+        {combinedItems.length ? (
           <NotificationInteractiveFeed
-            items={items}
+            items={combinedItems}
             initialInteractions={interactions}
             currentUserId={user?.id}
             currentUserName={currentUserName}
