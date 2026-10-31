@@ -68,7 +68,10 @@ export async function sendPushToSubscriptions(
       };
 
       try {
-        await webpush.sendNotification(pushSubscription, stringifiedPayload);
+        await webpush.sendNotification(pushSubscription, stringifiedPayload, {
+          urgency: "high",
+          TTL: 86400, // 24 giờ
+        });
         sent++;
       } catch (err: any) {
         failed++;

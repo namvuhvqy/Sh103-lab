@@ -282,22 +282,24 @@ describe("5 Nguyên tắc Kỹ thuật Push Notification Đa thiết bị (Multi
     expect(result.failed).toBe(0);
     expect(result.cleaned).toBe(0);
 
-    // Xác minh cuộc gọi tới Apple APNs endpoint
+    // Xác minh cuộc gọi tới Apple APNs endpoint kèm độ ưu tiên cao (urgency: high)
     expect(sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "https://web.push.apple.com/QIAB8gE6Qtest/token-iphone-15",
         keys: { p256dh: "key-iphone-apple", auth: "auth-iphone-apple" },
       }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ urgency: "high", TTL: 86400 })
     );
 
-    // Xác minh cuộc gọi tới Google FCM endpoint
+    // Xác minh cuộc gọi tới Google FCM endpoint kèm độ ưu tiên cao (urgency: high)
     expect(sendNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: "https://fcm.googleapis.com/fcm/send/token-oppo-reno11",
         keys: { p256dh: "key-oppo", auth: "auth-oppo" },
       }),
-      expect.any(String)
+      expect.any(String),
+      expect.objectContaining({ urgency: "high", TTL: 86400 })
     );
   });
 });
