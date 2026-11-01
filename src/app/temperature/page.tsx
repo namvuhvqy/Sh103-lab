@@ -31,7 +31,12 @@ type Occurrence = {
 
 type MeasurementRecord = {
   id: string;
+  business_date?: string;
+  slot_code?: string | null;
   performed_at: string | null;
+  locations?: { name: string } | null;
+  assets?: { source_name: string } | null;
+  form_template_versions?: { form_templates: { code: string } } | null;
   measurement_details: Detail[] | Detail | null;
 };
 
@@ -45,13 +50,23 @@ const documentedRange = (code: string) => code.includes("BM.01/") ? { min: 21, m
 import { redirect } from "next/navigation";
 import { getCurrentAccess } from "@/lib/forms/workflow";
 
-export default async function TemperaturePage() {
+export default async function TemperaturePage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ date?: string; range?: string }>;
+}) {
+  const query = (await searchParams) ?? {};
+  const todayIso = vietnamParts(new Date()).date;
+  const selectedDateIso = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
+  const requestedRange = Number(query.range);
+  const selectedRangeDays = [1, 7, 14, 30].includes(requestedRange) ? requestedRange : 7;
+
   let data;
   let unread = 0;
   let access = null;
   try {
     const [overviewData, unreadCount, currentAccess] = await Promise.all([
-      getTemperatureOverview(),
+      getTemperatureOverview({ date: selectedDateIso, rangeDays: selectedRangeDays }),
       getUnreadNotificationCount().catch(() => 0),
       getCurrentAccess().catch(() => null),
     ]);
@@ -105,15 +120,54 @@ export default async function TemperaturePage() {
     };
   });
 
-  const chartPoints: QCTrendPoint[] = initialPoints
-    .filter((point) => point.temperature !== null || point.humidity !== null)
-    .map((point) => ({ areaName: point.area, time: point.updatedAt, temperature: point.temperature, humidity: point.humidity }));
+  const chartPoints: QCTrendPoint[] = records
+    .map((record) => {
+      const detail = firstDetail(record);
+      if (!detail || (detail.temperature_c === null && detail.humidity_pct === null)) return null;
+      const code = record.form_template_versions?.form_templates?.code ?? "BM.01";
+      const category: "ROOM" | "COOLER" | "FREEZER" = code.includes("BM.01")
+        ? "ROOM"
+        : code.includes("BM.03")
+        ? "FREEZER"
+        : "COOLER";
+      const areaLabel = record.assets?.source_name ?? record.locations?.name ?? "Điểm đo";
+      const shortDate = record.business_date ? record.business_date.slice(8, 10) + "/" + record.business_date.slice(5, 7) : "";
+      const timeLabel = record.performed_at
+        ? new Date(record.performed_at).toLocaleTimeString("vi-VN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "Asia/Ho_Chi_Minh",
+          })
+        : record.slot_code === "AFTERNOON"
+        ? "14:00"
+        : "08:00";
+
+      return {
+        areaName: areaLabel,
+        locationName: record.locations?.name ?? areaLabel,
+        date: record.business_date ?? selectedDateIso,
+        slotCode: record.slot_code ?? null,
+        time: selectedRangeDays > 1 && shortDate ? `${shortDate} ${timeLabel}` : timeLabel,
+        temperature: detail.temperature_c,
+        humidity: detail.humidity_pct,
+        category,
+      };
+    })
+    .filter((pt): pt is NonNullable<typeof pt> => pt !== null);
+
   const nowShift = currentShift();
-  const today = vietnamParts(new Date()).date.split("-").reverse().join("/");
+  const formattedDate = selectedDateIso.split("-").reverse().join("/");
 
   return (
     <AppShell headerTitle="Khoa Sinh Hóa BV103" headerSubtitle="Nhiệt độ & Độ ẩm (BM.01 - BM.02 - BM.03)" unreadCount={unread} isAdmin={access?.isAdmin}>
-      <TemperatureLabDashboard initialPoints={initialPoints} occurrences={mappedOccurrences} chartPoints={chartPoints} activeDate={`${today} · ${nowShift.name}`} />
+      <TemperatureLabDashboard
+        initialPoints={initialPoints}
+        occurrences={mappedOccurrences}
+        chartPoints={chartPoints}
+        activeDate={`${formattedDate} · ${nowShift.name}`}
+        selectedDateIso={selectedDateIso}
+        selectedRangeDays={selectedRangeDays}
+      />
     </AppShell>
   );
 }

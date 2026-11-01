@@ -64,16 +64,35 @@ export async function getOperationalDashboard() {
   });
 }
 
-export async function getTemperatureOverview() {
+export async function getTemperatureOverview(options?: { date?: string; rangeDays?: number }) {
   const supabase = await createClient();
-  const today = todayInVietnam();
-  await ensureOperationalMonthSafe(supabase, today);
+  const targetDate = options?.date && isValidIsoDate(options.date) ? options.date : todayInVietnam();
+  const rangeDays = Math.min(Math.max(options?.rangeDays ?? 1, 1), 31);
+
+  const endObj = new Date(`${targetDate}T00:00:00Z`);
+  const startObj = new Date(endObj.getTime() - (rangeDays - 1) * 86_400_000);
+  const startDate = startObj.toISOString().slice(0, 10);
+
+  await ensureOperationalMonthSafe(supabase, targetDate);
   const [{ data: occurrences, error: occurrenceError }, { data: records, error: recordError }] = await Promise.all([
-    supabase.from("schedule_occurrences").select("id,status,business_date,slot_code,window_start,window_end,fulfilled_by_record_id,register_periods!inner(id,locations(code,name),assets(id,source_name,source_code,storage_purpose),form_template_versions!inner(form_templates!inner(code,name)))").eq("business_date", today).in("register_periods.form_template_versions.form_templates.code", ["BM.01/QL.HTAT.01", "BM.02/QL.HTAT.01", "BM.03/QL.HTAT.01"]).order("window_start"),
-    supabase.from("records").select("id,business_date,slot_code,performed_at,entered_at,entered_by,location_id,asset_id,form_template_versions!inner(form_templates!inner(code)),profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_min_snapshot,temperature_max_snapshot,humidity_min_snapshot,humidity_max_snapshot,temperature_abnormal,humidity_abnormal)").eq("business_date", today).eq("is_effective", true),
+    supabase
+      .from("schedule_occurrences")
+      .select("id,status,business_date,slot_code,window_start,window_end,fulfilled_by_record_id,register_periods!inner(id,locations(code,name),assets(id,source_name,source_code,storage_purpose),form_template_versions!inner(form_templates!inner(code,name)))")
+      .eq("business_date", targetDate)
+      .in("register_periods.form_template_versions.form_templates.code", ["BM.01/QL.HTAT.01", "BM.02/QL.HTAT.01", "BM.03/QL.HTAT.01"])
+      .order("window_start"),
+    supabase
+      .from("records")
+      .select("id,business_date,slot_code,performed_at,entered_at,entered_by,location_id,asset_id,locations(name),assets(source_name),form_template_versions!inner(form_templates!inner(code)),profiles!records_entered_by_fkey(full_name),measurement_details(temperature_c,humidity_pct,temperature_min_snapshot,temperature_max_snapshot,humidity_min_snapshot,humidity_max_snapshot,temperature_abnormal,humidity_abnormal)")
+      .gte("business_date", startDate)
+      .lte("business_date", targetDate)
+      .eq("is_effective", true)
+      .order("business_date", { ascending: true })
+      .order("performed_at", { ascending: true })
+      .limit(600),
   ]);
   if (occurrenceError || recordError) throw new Error("Không tải được dữ liệu nhiệt độ");
-  return { today, occurrences: occurrences ?? [], records: records ?? [] };
+  return { today: targetDate, startDate, rangeDays, occurrences: occurrences ?? [], records: records ?? [] };
 }
 
 export async function getEquipmentOverview(date?: string, slot?: string) {
