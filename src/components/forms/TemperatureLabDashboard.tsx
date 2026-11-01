@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -51,11 +51,31 @@ export function TemperatureLabDashboard({
   // Owner decision: remove only the Tổng quan button; keep chart/list UX and open read-only list by default.
   const [activeTab, setActiveTab] = useState<"list" | "input" | "chart" | "report" | "config">("list");
 
-  // Bộ lọc
+  // Bộ lọc (lưu nhanh vào sessionStorage để giữ nguyên khi chuyển qua lại giữa các màn hình trên mobile)
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
   const [selectedShift, setSelectedShift] = useState<string>("MORNING");
   const [localOverrides, setLocalOverrides] = useState<Record<string, { temperature: number | null; humidity: number | null; isAbnormal: boolean; updatedAt: string }>>({});
+
+  useEffect(() => {
+    try {
+      const savedArea = sessionStorage.getItem("lab103_temp_filter_area");
+      const savedShift = sessionStorage.getItem("lab103_temp_filter_shift");
+      if (savedArea) setSelectedArea(savedArea);
+      if (savedShift === "MORNING" || savedShift === "AFTERNOON") setSelectedShift(savedShift);
+    } catch {
+      // Safe fallback
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("lab103_temp_filter_area", selectedArea);
+      sessionStorage.setItem("lab103_temp_filter_shift", selectedShift);
+    } catch {
+      // Safe fallback
+    }
+  }, [selectedArea, selectedShift]);
 
   const points = useMemo(() => {
     if (Object.keys(localOverrides).length === 0) return initialPoints;

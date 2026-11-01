@@ -29,6 +29,7 @@ export function BottomNav({ className, currentPath: pathOverride }: { className?
           <Link
             key={tab.href}
             href={tab.href}
+            prefetch={true}
             aria-current={active ? "page" : undefined}
             className={cn(
               "relative flex min-h-14 min-w-0 flex-col items-center justify-center rounded-xl px-1 text-[10px] font-bold transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 select-none",

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { currentShift } from "./domain";
 import { summarizeAreaProgress } from "./area-progress";
 import { ensureOperationalMonthSafe } from "./ensure-month";
+import { getOrFetchCached, MASTER_DATA_TTL_MS } from "@/lib/cache/master-data-cache";
 import type { TaskView } from "@/components/forms/TaskList";
 
 export interface OccurrenceView {
@@ -20,9 +21,17 @@ export async function getAreaSummaries() {
   const supabase = await createClient();
   const shift = currentShift();
   await ensureOperationalMonthSafe(supabase, shift.businessDate);
-  const [{ data: locations, error: locationError }, { data: assets, error: assetError }, { data: occurrences, error: occurrenceError }] = await Promise.all([
-    supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order"),
-    supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true),
+  const [locations, assets, { data: occurrences, error: occurrenceError }] = await Promise.all([
+    getOrFetchCached("master:5-locations", MASTER_DATA_TTL_MS, async () => {
+      const { data, error } = await supabase.from("locations").select("id,code,name,sort_order").in("code", ["SINH_HOA", "MIEN_DICH", "NUOC_TIEU", "LY_TAM", "NHAN_BENH_PHAM"]).order("sort_order");
+      if (error) throw new Error(`Không tải được khu vực: ${error.message}`);
+      return data ?? [];
+    }),
+    getOrFetchCached("master:lab-equipment-location-ids", MASTER_DATA_TTL_MS, async () => {
+      const { data, error } = await supabase.from("assets").select("id,location_id").eq("asset_type", "LAB_EQUIPMENT").eq("active", true);
+      if (error) throw new Error(`Không tải được thiết bị: ${error.message}`);
+      return data ?? [];
+    }),
     supabase.from("schedule_occurrences")
       .select("fulfilled_by_record_id,register_periods!inner(form_template_versions!inner(status,form_templates!inner(code)))")
       .eq("business_date", shift.businessDate)
@@ -31,8 +40,6 @@ export async function getAreaSummaries() {
       .eq("register_periods.form_template_versions.form_templates.code", "BM.06/QL.TRTB.01")
       .limit(1),
   ]);
-  if (locationError) throw new Error(`Không tải được khu vực: ${locationError.message}`);
-  if (assetError) throw new Error(`Không tải được thiết bị: ${assetError.message}`);
   if (occurrenceError) throw new Error(`Không tải được ca BM.06: ${occurrenceError.message}`);
 
   type HomeBm06Occurrence = { fulfilled_by_record_id: string | null };

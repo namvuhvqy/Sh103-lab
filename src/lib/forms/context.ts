@@ -1,6 +1,49 @@
+import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { currentShift, vietnamParts } from "./domain";
 import { ensureOperationalMonthSafe } from "./ensure-month";
+import { getOrFetchCached, MASTER_DATA_TTL_MS } from "@/lib/cache/master-data-cache";
+
+type AssetRow = {
+  asset_id: string;
+  display_order: number;
+  assets: { source_name: string; locations: { code: string } };
+};
+
+export type Bm06MasterMeta = {
+  versionId: string;
+  assets: Array<{ id: string; sourceOrder: number; name: string; locationCode: string }>;
+};
+
+async function getBm06MasterMeta(supabase: SupabaseClient): Promise<Bm06MasterMeta | null> {
+  return getOrFetchCached("master:bm06-version-assets", MASTER_DATA_TTL_MS, async () => {
+    const { data: version } = await supabase
+      .from("form_template_versions")
+      .select("id,form_templates!inner(code)")
+      .eq("status", "PUBLISHED")
+      .eq("form_templates.code", "BM.06/QL.TRTB.01")
+      .single();
+    if (!version) return null;
+
+    const { data: rows } = await supabase
+      .from("form_version_assets")
+      .select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))")
+      .eq("form_version_id", version.id)
+      .eq("active", true)
+      .eq("assets.active", true)
+      .order("display_order");
+
+    const assets = ((rows ?? []) as unknown as AssetRow[]).map((row) => ({
+      id: row.asset_id,
+      sourceOrder: row.display_order,
+      name: row.assets.source_name,
+      locationCode: row.assets.locations.code,
+    }));
+
+    return { versionId: version.id, assets };
+  });
+}
 
 function monthBounds(date = new Date()) {
   const { date: iso } = vietnamParts(date);
@@ -28,11 +71,20 @@ export async function ensurePeriod(templateCode: string, locationId: string | nu
 
 export async function getBm06Occurrence(occurrenceId: string, areaCode?: string) {
   const supabase = await createClient();
-  const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id,register_periods(form_version_id)").eq("id", occurrenceId).single();
+  const [{ data: occurrence }, masterMeta] = await Promise.all([
+    supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id,register_periods(form_version_id)").eq("id", occurrenceId).single(),
+    getBm06MasterMeta(supabase),
+  ]);
   type OccurrenceRow = { id:string; business_date:string|null; slot_code:string|null; status:string; fulfilled_by_record_id:string|null; register_periods:{form_version_id:string} };
   const typed = occurrence as unknown as OccurrenceRow | null;
   if (!typed) return null;
-  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))").eq("form_version_id", typed.register_periods.form_version_id).eq("active", true).eq("assets.active", true).order("display_order");
+
+  let assets = masterMeta?.versionId === typed.register_periods.form_version_id ? masterMeta.assets : null;
+  if (!assets) {
+    const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))").eq("form_version_id", typed.register_periods.form_version_id).eq("active", true).eq("assets.active", true).order("display_order");
+    assets = ((rows ?? []) as unknown as AssetRow[]).map((row) => ({ id: row.asset_id, sourceOrder: row.display_order, name: row.assets.source_name, locationCode: row.assets.locations.code }));
+  }
+
   let initialStatuses: Record<string,string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null; let initialNote = "";
   if (typed.fulfilled_by_record_id) {
     const [{data:record},{data:statuses}] = await Promise.all([
@@ -45,12 +97,10 @@ export async function getBm06Occurrence(occurrenceId: string, areaCode?: string)
     const ctx = (record?.context_snapshot as Record<string, unknown>) || {};
     initialCoWorkerId = (ctx.co_worker_id as string) || null;
   }
-  type AssetRow={asset_id:string;display_order:number;assets:{source_name:string;locations:{code:string}}};
-  const assets=((rows??[]) as unknown as AssetRow[]).map(row=>({id:row.asset_id,sourceOrder:row.display_order,name:row.assets.source_name,locationCode:row.assets.locations.code}));
   return { occurrence:typed, assets, initialStatuses, lockVersion, initialCoWorkerId, initialNote, areaCode };
 }
 
-export async function getBm06ByDateShift(businessDate?: string, shiftCode?: string, areaCode?: string) {
+export const getBm06ByDateShift = cache(async (businessDate?: string, shiftCode?: string, areaCode?: string) => {
   const supabase = await createClient();
   const current = currentShift();
   const selectedShift = shiftCode ?? current.code;
@@ -61,16 +111,45 @@ export async function getBm06ByDateShift(businessDate?: string, shiftCode?: stri
     businessDate: selectedBusinessDate,
     label: selectedShift === "SHIFT_1" ? "Ca 1 - Sáng (07:00–11:30)" : selectedShift === "SHIFT_2" ? "Ca 2 - Trực trưa (11:30–13:30)" : selectedShift === "SHIFT_3" ? "Ca 3 - Chiều (13:30–16:30)" : "Ca 4 - Trực đêm (16:30–07:00 hôm sau)",
   };
-  const { data: version } = await supabase.from("form_template_versions").select("id,form_templates!inner(code)").eq("status", "PUBLISHED").eq("form_templates.code", "BM.06/QL.TRTB.01").single();
-  if (!version) return null;
   const bounds = monthBounds(new Date(`${selectedBusinessDate}T12:00:00+07:00`));
-  await ensureOperationalMonthSafe(supabase, selectedBusinessDate);
-  const { data: period, error } = await supabase.from("register_periods").select("id").eq("form_version_id", version.id).eq("period_start", bounds.start).eq("period_end", bounds.end).is("location_id", null).is("asset_id", null).single();
-  if (error || !period) throw new Error(error?.message ?? "Không tìm thấy kỳ BM.06");
-  const periodId = period.id;
-  const { data: occurrence } = await supabase.from("schedule_occurrences").select("id,business_date,slot_code,status,fulfilled_by_record_id").eq("period_id", periodId).eq("business_date", selectedBusinessDate).eq("slot_code", selectedShift).single();
+
+  // Step 1: Run month initialization and master meta lookup in parallel (cached in memory after first hit)
+  const [masterMeta] = await Promise.all([
+    getBm06MasterMeta(supabase),
+    ensureOperationalMonthSafe(supabase, selectedBusinessDate),
+  ]);
+  if (!masterMeta) return null;
+
+  const { versionId, assets } = masterMeta;
+
+  // Step 2: Resolve monthly periodId (cached per month) and fetch shift occurrence
+  const periodId = await getOrFetchCached(
+    `master:bm06-period:${versionId}:${bounds.start}:${bounds.end}`,
+    MASTER_DATA_TTL_MS,
+    async () => {
+      const { data: period, error } = await supabase
+        .from("register_periods")
+        .select("id")
+        .eq("form_version_id", versionId)
+        .eq("period_start", bounds.start)
+        .eq("period_end", bounds.end)
+        .is("location_id", null)
+        .is("asset_id", null)
+        .single();
+      if (error || !period) throw new Error(error?.message ?? "Không tìm thấy kỳ BM.06");
+      return period.id as string;
+    }
+  );
+
+  const { data: occurrence } = await supabase
+    .from("schedule_occurrences")
+    .select("id,business_date,slot_code,status,fulfilled_by_record_id")
+    .eq("period_id", periodId)
+    .eq("business_date", selectedBusinessDate)
+    .eq("slot_code", selectedShift)
+    .single();
   if (!occurrence) return null;
-  const { data: rows } = await supabase.from("form_version_assets").select("display_order,asset_id,assets!inner(source_name,active,location_id,locations!inner(code))").eq("form_version_id", version.id).eq("active", true).eq("assets.active", true).order("display_order");
+
   let initialStatuses: Record<string, string> = {}; let lockVersion = 1; let initialCoWorkerId: string | null = null; let initialNote = "";
   if (occurrence.fulfilled_by_record_id) {
     const [{ data: record }, { data: statuses }] = await Promise.all([
@@ -83,10 +162,8 @@ export async function getBm06ByDateShift(businessDate?: string, shiftCode?: stri
     const ctx = (record?.context_snapshot as Record<string, unknown>) || {};
     initialCoWorkerId = (ctx.co_worker_id as string) || null;
   }
-  type AssetRow = { asset_id: string; display_order: number; assets: { source_name: string; locations: { code: string } } };
-  const assets = ((rows ?? []) as unknown as AssetRow[]).map((row) => ({ id: row.asset_id, sourceOrder: row.display_order, name: row.assets.source_name, locationCode: row.assets.locations.code }));
   return { occurrence, assets, initialStatuses, lockVersion, initialCoWorkerId, initialNote, areaCode, shift, periodId };
-}
+});
 
 export async function getCurrentBm06(areaCode?: string) {
   const shift = currentShift();
