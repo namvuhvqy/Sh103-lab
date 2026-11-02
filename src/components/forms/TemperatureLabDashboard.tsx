@@ -322,8 +322,8 @@ export function TemperatureLabDashboard({
         {/* Hàng 2: Điều khiển thời gian theo chế độ đang chọn */}
         {filterMode === "daily" ? (
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
-              <span className="text-slate-500">Chọn ngày:</span>
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800 cursor-pointer">
+              <span className="text-xs font-bold text-slate-600">Chọn ngày:</span>
               <input
                 type="date"
                 value={dailyDate}
@@ -331,7 +331,7 @@ export function TemperatureLabDashboard({
                   setDailyDate(e.target.value);
                   if (e.target.value) applyDailyFilter(e.target.value);
                 }}
-                className="bg-transparent font-black text-slate-900 outline-none"
+                className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
               />
             </label>
 
@@ -345,36 +345,28 @@ export function TemperatureLabDashboard({
             >
               Hôm nay
             </button>
-
-            <button
-              type="button"
-              onClick={() => applyDailyFilter("2026-10-31")}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700 font-bold hover:bg-slate-100 transition"
-            >
-              Cuối tháng 10 (31/10)
-            </button>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
-              <span className="text-slate-500">Từ ngày:</span>
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800 cursor-pointer">
+              <span className="text-xs font-bold text-slate-600">Ngày bắt đầu:</span>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="bg-transparent font-black text-slate-900 outline-none"
+                className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
               />
             </label>
 
             <ArrowRight className="size-3.5 text-slate-400 shrink-0" />
 
-            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
-              <span className="text-slate-500">Đến ngày:</span>
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800 cursor-pointer">
+              <span className="text-xs font-bold text-slate-600">Ngày kết thúc:</span>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="bg-transparent font-black text-slate-900 outline-none"
+                className="bg-transparent font-black text-slate-900 outline-none cursor-pointer"
               />
             </label>
 
@@ -410,13 +402,13 @@ export function TemperatureLabDashboard({
               </button>
               <button
                 type="button"
-                onClick={() => applyRangeFilter("2026-10-01", "2026-10-31")}
+                onClick={() => applyRangePreset(30)}
                 className={cn(
                   "rounded-lg px-2 py-1 text-xs font-bold transition",
                   selectedRangeDays >= 30 ? "bg-white text-teal-800 shadow-2xs" : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                Cả tháng 10 (31 ngày)
+                30 ngày
               </button>
             </div>
           </div>

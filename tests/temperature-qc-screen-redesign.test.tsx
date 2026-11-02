@@ -98,14 +98,17 @@ describe("QC Trend Chart & Temperature Screen Redesign", () => {
     );
 
     expect(screen.getByText("Theo ngày (Daily)")).toBeInTheDocument();
+    expect(screen.getByText("Hôm nay")).toBeInTheDocument();
+    expect(screen.queryByText("Cuối tháng 10 (31/10)")).not.toBeInTheDocument();
     expect(screen.getByText("Từ ngày A → Đến ngày B (Chuỗi QC)")).toBeInTheDocument();
 
     // Switch to range mode
     fireEvent.click(screen.getByText("Từ ngày A → Đến ngày B (Chuỗi QC)"));
-    expect(screen.getByText("Từ ngày:")).toBeInTheDocument();
-    expect(screen.getByText("Đến ngày:")).toBeInTheDocument();
+    expect(screen.getByText("Ngày bắt đầu:")).toBeInTheDocument();
+    expect(screen.getByText("Ngày kết thúc:")).toBeInTheDocument();
     expect(screen.getByText("Xem biểu đồ")).toBeInTheDocument();
-    expect(screen.getByText("Cả tháng 10 (31 ngày)")).toBeInTheDocument();
+    expect(screen.getByText("30 ngày")).toBeInTheDocument();
+    expect(screen.queryByText("Cuối tháng 10 (31/10)")).not.toBeInTheDocument();
   });
 
   it("Source code respects all architectural contracts", () => {
@@ -134,3 +137,4 @@ describe("QC Trend Chart & Temperature Screen Redesign", () => {
     expect(chartSrc).toContain("Chưa có dữ liệu lịch sử");
   });
 });
+
