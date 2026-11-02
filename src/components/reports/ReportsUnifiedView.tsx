@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { HospitalLogo } from "@/components/ui/HospitalLogo";
@@ -109,7 +109,13 @@ export function ReportsUnifiedView({
   const [activeTab, setActiveTab] = useState<"overview" | "forms">(initialTab);
   const [isPending, startTransition] = useTransition();
   const isApproved = workspace.selectedPeriod?.status === "APPROVED";
-  const [overrideStatus, setOverrideStatus] = useState<boolean | null>(null);
+  // Giá trị lạc quan (optimistic) gắn với khóa "kỳ:trạng thái" của máy chủ. Khi router.refresh()
+  // trả về trạng thái mới hoặc người dùng đổi kỳ, khóa thay đổi → tự động bỏ giá trị lạc quan.
+  const selectedPeriodKey = `${workspace.selectedPeriod?.id ?? ""}:${workspace.selectedPeriod?.status ?? ""}`;
+  const [optimistic, setOptimistic] = useState<{ key: string; value: boolean } | null>(null);
+  const overrideStatus = optimistic && optimistic.key === selectedPeriodKey ? optimistic.value : null;
+  const setOverrideStatus = (value: boolean | null) =>
+    setOptimistic(value === null ? null : { key: selectedPeriodKey, value });
   const confirmStatus = overrideStatus !== null ? overrideStatus : isApproved;
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -237,7 +243,7 @@ export function ReportsUnifiedView({
         setStatusMessage(res.message ?? "Lỗi cập nhật xác nhận");
       } else {
         setStatusMessage(nextVal ? "Đã ghi nhận xác nhận nội bộ của Chỉ huy BMK." : "Đã hủy xác nhận nội bộ.");
-        setOverrideStatus(null);
+        // Giữ trạng thái lạc quan cho tới khi router.refresh() trả về dữ liệu mới (useEffect ở trên sẽ reset)
         router.refresh();
       }
     });

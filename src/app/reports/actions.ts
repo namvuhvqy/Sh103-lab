@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export async function toggleInternalConfirmationAction(periodId: string, confirmed: boolean) {
   const supabase = await createClient();
@@ -34,14 +34,27 @@ export async function toggleInternalConfirmationAction(periodId: string, confirm
         approved_at: null,
       };
 
-  const { error: updateErr } = await supabase
+  // `register_periods` chỉ có policy SELECT cho authenticated (P3). Nếu UPDATE bằng client
+  // người dùng, RLS lọc mất hàng và trả về 0 dòng KHÔNG báo lỗi → giao diện tưởng đã lưu
+  // nhưng dữ liệu không đổi (lỗi "tích xong lại mất"). Quyền đã được kiểm tra ở trên
+  // (Chỉ huy BMK / Quản trị viên), nên ghi bằng service-role và BẮT BUỘC xác minh số dòng.
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { ok: false, message: "Máy chủ thiếu cấu hình SUPABASE_SERVICE_ROLE_KEY, không thể lưu xác nhận." };
+  }
+  const admin = createAdminClient();
+  const { data: updatedRows, error: updateErr } = await admin
     .from("register_periods")
     .update(updates)
-    .eq("id", periodId);
+    .eq("id", periodId)
+    .select("id,status");
 
   if (updateErr) {
     console.error("Error updating register_period:", updateErr);
     return { ok: false, message: "Không thể lưu trạng thái xác nhận: " + updateErr.message };
+  }
+  if (!updatedRows || updatedRows.length !== 1 || updatedRows[0].status !== updates.status) {
+    console.error("[toggleInternalConfirmationAction] No row persisted for period", periodId);
+    return { ok: false, message: "Không tìm thấy sổ kỳ hoặc trạng thái chưa được lưu. Vui lòng tải lại trang." };
   }
 
   // Insert audit event
@@ -66,5 +79,7 @@ export async function toggleInternalConfirmationAction(periodId: string, confirm
   }
 
   revalidatePath("/reports");
+  revalidatePath("/periods");
+  revalidatePath("/");
   return { ok: true, confirmed };
 }
