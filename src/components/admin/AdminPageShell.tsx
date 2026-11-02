@@ -12,7 +12,7 @@ const adminLinks = [
 
 export function AdminPageShell({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
-    <main className="mx-auto min-h-screen max-w-7xl px-4 py-6 sm:px-6">
+    <main className="mx-auto w-full min-w-0 max-w-7xl px-4 py-6 sm:px-6 overflow-x-hidden">
       <header className="rounded-3xl bg-zinc-950 p-6 text-white">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-300">SH103-Lab · Quản trị</p>
         <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{title}</h1>

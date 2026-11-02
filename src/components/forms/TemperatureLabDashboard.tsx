@@ -13,8 +13,10 @@ import {
   Filter,
   Thermometer,
   Calendar,
+  CalendarDays,
   ChevronDown,
   ChevronUp,
+  ArrowRight,
 } from "lucide-react";
 import { QCTrendChart, type QCTrendPoint } from "@/components/p5/QCTrendChart";
 import { InlineTemperatureList } from "@/components/forms/InlineTemperatureList";
@@ -44,6 +46,9 @@ interface TemperatureLabDashboardProps {
   activeDate?: string;
   selectedDateIso?: string;
   selectedRangeDays?: number;
+  initialFilterMode?: "daily" | "range";
+  initialFromDateIso?: string;
+  initialToDateIso?: string;
 }
 
 export function TemperatureLabDashboard({
@@ -53,6 +58,9 @@ export function TemperatureLabDashboard({
   activeDate = "25/10/2026",
   selectedDateIso = "2026-10-25",
   selectedRangeDays = 7,
+  initialFilterMode = "daily",
+  initialFromDateIso,
+  initialToDateIso,
 }: TemperatureLabDashboardProps) {
   const router = useRouter();
   const inputSectionRef = useRef<HTMLDivElement | null>(null);
@@ -60,23 +68,33 @@ export function TemperatureLabDashboard({
   // Gộp màn Nhập số liệu và màn Biểu đồ trên cùng 1 màn hình thống nhất
   const [showQuickEntryCards, setShowQuickEntryCards] = useState(true);
 
-  // Bộ lọc (lưu nhanh vào sessionStorage để giữ nguyên khi chuyển qua lại giữa các màn hình trên mobile)
+  // Chế độ lọc ngày QC: "daily" (Theo ngày) hoặc "range" (Từ ngày A -> Đến ngày B)
+  const [filterMode, setFilterMode] = useState<"daily" | "range">(initialFilterMode);
+  const [dailyDate, setDailyDate] = useState<string>(selectedDateIso);
+  const [fromDate, setFromDate] = useState<string>(
+    initialFromDateIso ?? selectedDateIso
+  );
+  const [toDate, setToDate] = useState<string>(
+    initialToDateIso ?? selectedDateIso
+  );
+
+  // Bộ lọc phụ (lưu nhanh vào sessionStorage để giữ nguyên khi chuyển qua lại giữa các màn hình trên mobile)
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
   const [selectedShift, setSelectedShift] = useState<string>("MORNING");
-  const [dateInput, setDateInput] = useState<string>(selectedDateIso);
-  const [rangeDays, setRangeDays] = useState<number>(selectedRangeDays);
   const [localOverrides, setLocalOverrides] = useState<
     Record<string, { temperature: number | null; humidity: number | null; isAbnormal: boolean; updatedAt: string }>
   >({});
 
   useEffect(() => {
-    setDateInput(selectedDateIso);
+    setDailyDate(selectedDateIso);
   }, [selectedDateIso]);
 
   useEffect(() => {
-    setRangeDays(selectedRangeDays);
-  }, [selectedRangeDays]);
+    if (initialFromDateIso) setFromDate(initialFromDateIso);
+    if (initialToDateIso) setToDate(initialToDateIso);
+    if (initialFilterMode) setFilterMode(initialFilterMode);
+  }, [initialFromDateIso, initialToDateIso, initialFilterMode]);
 
   useEffect(() => {
     try {
@@ -98,10 +116,27 @@ export function TemperatureLabDashboard({
     }
   }, [selectedArea, selectedShift]);
 
-  const applyDateAndRange = (nextDate: string, nextRange: number) => {
-    setDateInput(nextDate);
-    setRangeDays(nextRange);
-    router.push(`/temperature?date=${encodeURIComponent(nextDate)}&range=${nextRange}`);
+  // Điều hướng bộ lọc Theo Ngày (Daily)
+  const applyDailyFilter = (targetDate: string) => {
+    setDailyDate(targetDate);
+    router.push(`/temperature?mode=daily&date=${encodeURIComponent(targetDate)}`);
+  };
+
+  // Điều hướng bộ lọc Khoảng Ngày (Từ Ngày A -> Đến Ngày B)
+  const applyRangeFilter = (fromVal: string, toVal: string) => {
+    setFromDate(fromVal);
+    setToDate(toVal);
+    router.push(`/temperature?mode=range&from=${encodeURIComponent(fromVal)}&to=${encodeURIComponent(toVal)}`);
+  };
+
+  // Nút nhanh preset ngày theo chuỗi QC (7 ngày, 14 ngày, 30 ngày)
+  const applyRangePreset = (days: number) => {
+    const endTarget = toDate || selectedDateIso;
+    const endObj = new Date(`${endTarget}T00:00:00Z`);
+    const startObj = new Date(endObj);
+    startObj.setUTCDate(startObj.getUTCDate() - (days - 1));
+    const startVal = startObj.toISOString().slice(0, 10);
+    applyRangeFilter(startVal, endTarget);
   };
 
   const scrollToQuickInput = () => {
@@ -174,7 +209,7 @@ export function TemperatureLabDashboard({
 
   const activeChartPoints: QCTrendPoint[] = useMemo(() => {
     const baseSeries =
-      rangeDays > 1 && chartPoints.length > 0
+      chartPoints.length > 0
         ? chartPoints
         : points
             .filter((p) => p.temperature !== null || p.humidity !== null)
@@ -199,7 +234,7 @@ export function TemperatureLabDashboard({
       }
       return true;
     });
-  }, [chartPoints, points, rangeDays, selectedArea]);
+  }, [chartPoints, points, selectedArea]);
 
   const totalPoints = filteredPoints.length;
   const recordedCount = filteredPoints.filter((p) => p.temperature !== null).length;
@@ -223,7 +258,7 @@ export function TemperatureLabDashboard({
             <span>Nhập số liệu</span>
           </button>
           <span className="hidden sm:inline-block text-xs font-semibold text-slate-500">
-            Màn hình hợp nhất: Vừa nhập số liệu trực tiếp vừa theo dõi biểu đồ Nhiệt độ &amp; Độ ẩm
+            Màn hình hợp nhất: Vừa nhập số liệu trực tiếp vừa theo dõi biểu đồ QC Nhiệt độ &amp; Độ ẩm
           </span>
         </div>
 
@@ -236,56 +271,160 @@ export function TemperatureLabDashboard({
         </Link>
       </div>
 
-      {/* 2. Bộ Lọc Mở Rộng: Cho phép chọn Ngày cụ thể + Khoảng thời gian dài (1 ngày / 7 ngày / 14 ngày / 30 ngày) + Khu vực + Ca */}
+      {/* 2. BỘ LỌC NGÀY CHUẨN QC: THEO NGÀY (DAILY) & TỪ NGÀY A ĐẾN NGÀY B (RANGE) */}
       <div className="rounded-3xl border border-cyan-100 bg-white p-3.5 shadow-xs space-y-3 text-xs font-bold">
+        {/* Hàng 1: Chuyển đổi 2 chế độ lọc như phần mềm QC Lab */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-          <div className="flex items-center gap-2 text-slate-800">
-            <Calendar className="size-4 text-teal-700 shrink-0" />
-            <span>Đang xem: {activeDate}</span>
-            <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-teal-800 border border-teal-200">
-              Chuỗi biểu đồ {rangeDays} ngày
-            </span>
-          </div>
-
-          {/* Nút chọn nhanh khoảng thời gian xem biểu đồ dài hạn */}
-          <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1">
-            {(
-              [
-                [1, "1 ngày"],
-                [7, "7 ngày"],
-                [14, "14 ngày"],
-                [30, "30 ngày (Cả tháng)"],
-              ] as const
-            ).map(([days, label]) => (
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500 font-bold">Chế độ lọc:</span>
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1">
               <button
-                key={days}
                 type="button"
-                onClick={() => applyDateAndRange(dateInput, days)}
+                onClick={() => setFilterMode("daily")}
                 className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-bold transition-all",
-                  rangeDays === days ? "bg-teal-700 text-white font-black shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition-all",
+                  filterMode === "daily"
+                    ? "bg-teal-700 text-white font-black shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
                 )}
               >
-                {label}
+                <Calendar className="size-3.5" />
+                <span>Theo ngày (Daily)</span>
               </button>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => setFilterMode("range")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition-all",
+                  filterMode === "range"
+                    ? "bg-teal-700 text-white font-black shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                <CalendarDays className="size-3.5" />
+                <span>Từ ngày A → Đến ngày B (Chuỗi QC)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-xs text-slate-500 font-semibold">
+            {filterMode === "daily" ? (
+              <span>Đang xem: {activeDate}</span>
+            ) : (
+              <span>
+                Khoảng QC: {fromDate.split("-").reverse().join("/")} → {toDate.split("-").reverse().join("/")} ({selectedRangeDays} ngày)
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Chọn ngày bất kỳ */}
-          <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
-            <span className="text-slate-500">Ngày:</span>
-            <input
-              type="date"
-              value={dateInput}
-              onChange={(e) => {
-                if (e.target.value) applyDateAndRange(e.target.value, rangeDays);
-              }}
-              className="bg-transparent font-black text-slate-900 outline-none"
-            />
-          </label>
+        {/* Hàng 2: Điều khiển thời gian theo chế độ đang chọn */}
+        {filterMode === "daily" ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
+              <span className="text-slate-500">Chọn ngày:</span>
+              <input
+                type="date"
+                value={dailyDate}
+                onChange={(e) => {
+                  setDailyDate(e.target.value);
+                  if (e.target.value) applyDailyFilter(e.target.value);
+                }}
+                className="bg-transparent font-black text-slate-900 outline-none"
+              />
+            </label>
 
+            <button
+              type="button"
+              onClick={() => {
+                const nowIso = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" });
+                applyDailyFilter(nowIso);
+              }}
+              className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-1.5 text-teal-800 font-bold hover:bg-teal-100 transition"
+            >
+              Hôm nay
+            </button>
+
+            <button
+              type="button"
+              onClick={() => applyDailyFilter("2026-10-31")}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-700 font-bold hover:bg-slate-100 transition"
+            >
+              Cuối tháng 10 (31/10)
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
+              <span className="text-slate-500">Từ ngày:</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="bg-transparent font-black text-slate-900 outline-none"
+              />
+            </label>
+
+            <ArrowRight className="size-3.5 text-slate-400 shrink-0" />
+
+            <label className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-slate-800">
+              <span className="text-slate-500">Đến ngày:</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="bg-transparent font-black text-slate-900 outline-none"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={() => applyRangeFilter(fromDate, toDate)}
+              className="inline-flex items-center gap-1 rounded-xl bg-teal-700 px-3.5 py-1.5 text-white font-black shadow-2xs hover:bg-teal-800 transition"
+            >
+              <span>Xem biểu đồ</span>
+            </button>
+
+            {/* Các preset nhanh */}
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => applyRangePreset(7)}
+                className={cn(
+                  "rounded-lg px-2 py-1 text-xs font-bold transition",
+                  selectedRangeDays === 7 ? "bg-white text-teal-800 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                7 ngày
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRangePreset(14)}
+                className={cn(
+                  "rounded-lg px-2 py-1 text-xs font-bold transition",
+                  selectedRangeDays === 14 ? "bg-white text-teal-800 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                14 ngày
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRangeFilter("2026-10-01", "2026-10-31")}
+                className={cn(
+                  "rounded-lg px-2 py-1 text-xs font-bold transition",
+                  selectedRangeDays >= 30 ? "bg-white text-teal-800 shadow-2xs" : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                Cả tháng 10 (31 ngày)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Hàng 3: Bộ lọc phụ (Khu vực & Ca & Đặt lại) */}
+        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+          <span className="text-slate-500 font-bold">Phạm vi đo:</span>
           {/* Bộ chọn Khu vực */}
           <select
             value={selectedArea}
@@ -377,9 +516,13 @@ export function TemperatureLabDashboard({
         </div>
       </div>
 
-      {/* 4. Biểu Đồ Xu Hướng Nhiệt Độ (°C) & Biểu Đồ Độ Ẩm (%) Nằm Ngay Dưới Nhau */}
+      {/* 4. BIỂU ĐỒ QC NHIỆT ĐỘ (°C) & BIỂU ĐỒ ĐỘ ẨM (%) NẰM NGAY DƯỚI NHAU */}
       <QCTrendChart
-        title={`Biểu đồ xu hướng (${rangeDays} ngày)`}
+        title={
+          filterMode === "range"
+            ? `Biểu đồ xu hướng QC (${fromDate.split("-").reverse().join("/")} → ${toDate.split("-").reverse().join("/")})`
+            : `Biểu đồ xu hướng QC ngày ${dailyDate.split("-").reverse().join("/")}`
+        }
         points={activeChartPoints.length ? activeChartPoints : chartPoints}
       />
 

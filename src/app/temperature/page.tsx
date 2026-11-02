@@ -53,20 +53,45 @@ import { getCurrentAccess } from "@/lib/forms/workflow";
 export default async function TemperaturePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; range?: string }>;
+  searchParams?: Promise<{ date?: string; from?: string; to?: string; mode?: string; range?: string }>;
 }) {
   const query = (await searchParams) ?? {};
   const todayIso = vietnamParts(new Date()).date;
-  const selectedDateIso = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : todayIso;
+  const isIsoDate = (val?: string) => Boolean(val && /^\d{4}-\d{2}-\d{2}$/.test(val));
+
+  const hasExplicitRange = isIsoDate(query.from) && isIsoDate(query.to);
+  const filterMode: "daily" | "range" =
+    query.mode === "daily" ? "daily" : query.mode === "range" || hasExplicitRange ? "range" : "daily";
+
+  const selectedDateIso = isIsoDate(query.date)
+    ? query.date!
+    : hasExplicitRange
+    ? query.to!
+    : todayIso;
+
   const requestedRange = Number(query.range);
-  const selectedRangeDays = [1, 7, 14, 30].includes(requestedRange) ? requestedRange : 7;
+  const selectedRangeDays =
+    filterMode === "daily"
+      ? 1
+      : [1, 7, 14, 30].includes(requestedRange)
+      ? requestedRange
+      : 7;
+
+  const defaultFromObj = new Date(`${selectedDateIso}T00:00:00Z`);
+  defaultFromObj.setUTCDate(defaultFromObj.getUTCDate() - (Math.max(selectedRangeDays, 7) - 1));
+  const fromDateIso = hasExplicitRange ? query.from! : defaultFromObj.toISOString().slice(0, 10);
+  const toDateIso = hasExplicitRange ? query.to! : selectedDateIso;
 
   let data;
   let unread = 0;
   let access = null;
   try {
     const [overviewData, unreadCount, currentAccess] = await Promise.all([
-      getTemperatureOverview({ date: selectedDateIso, rangeDays: selectedRangeDays }),
+      getTemperatureOverview(
+        filterMode === "range"
+          ? { fromDate: fromDateIso, toDate: toDateIso }
+          : { date: selectedDateIso, rangeDays: 1 }
+      ),
       getUnreadNotificationCount().catch(() => 0),
       getCurrentAccess().catch(() => null),
     ]);
@@ -147,7 +172,7 @@ export default async function TemperaturePage({
         locationName: record.locations?.name ?? areaLabel,
         date: record.business_date ?? selectedDateIso,
         slotCode: record.slot_code ?? null,
-        time: selectedRangeDays > 1 && shortDate ? `${shortDate} ${timeLabel}` : timeLabel,
+        time: (data.rangeDays ?? selectedRangeDays) > 1 && shortDate ? `${shortDate} ${timeLabel}` : timeLabel,
         temperature: detail.temperature_c,
         humidity: detail.humidity_pct,
         category,
@@ -166,7 +191,10 @@ export default async function TemperaturePage({
         chartPoints={chartPoints}
         activeDate={`${formattedDate} · ${nowShift.name}`}
         selectedDateIso={selectedDateIso}
-        selectedRangeDays={selectedRangeDays}
+        selectedRangeDays={data.rangeDays ?? selectedRangeDays}
+        initialFilterMode={filterMode}
+        initialFromDateIso={data.startDate ?? fromDateIso}
+        initialToDateIso={data.endDate ?? toDateIso}
       />
     </AppShell>
   );

@@ -64,14 +64,37 @@ export async function getOperationalDashboard() {
   });
 }
 
-export async function getTemperatureOverview(options?: { date?: string; rangeDays?: number }) {
+export async function getTemperatureOverview(options?: {
+  date?: string;
+  fromDate?: string;
+  toDate?: string;
+  rangeDays?: number;
+}) {
   const supabase = await createClient();
-  const targetDate = options?.date && isValidIsoDate(options.date) ? options.date : todayInVietnam();
-  const rangeDays = Math.min(Math.max(options?.rangeDays ?? 1, 1), 31);
+  const hasCustomRange =
+    Boolean(options?.fromDate && isValidIsoDate(options.fromDate)) &&
+    Boolean(options?.toDate && isValidIsoDate(options.toDate));
 
-  const endObj = new Date(`${targetDate}T00:00:00Z`);
-  const startObj = new Date(endObj.getTime() - (rangeDays - 1) * 86_400_000);
-  const startDate = startObj.toISOString().slice(0, 10);
+  let startDate: string;
+  let targetDate: string;
+  let rangeDays: number;
+
+  if (hasCustomRange) {
+    const rawFrom = options!.fromDate!;
+    const rawTo = options!.toDate!;
+    startDate = rawFrom <= rawTo ? rawFrom : rawTo;
+    targetDate = rawFrom <= rawTo ? rawTo : rawFrom;
+    const diffMs =
+      new Date(`${targetDate}T00:00:00Z`).getTime() -
+      new Date(`${startDate}T00:00:00Z`).getTime();
+    rangeDays = Math.min(Math.max(Math.round(diffMs / 86_400_000) + 1, 1), 62);
+  } else {
+    targetDate = options?.date && isValidIsoDate(options.date) ? options.date : todayInVietnam();
+    rangeDays = Math.min(Math.max(options?.rangeDays ?? 1, 1), 62);
+    const endObj = new Date(`${targetDate}T00:00:00Z`);
+    const startObj = new Date(endObj.getTime() - (rangeDays - 1) * 86_400_000);
+    startDate = startObj.toISOString().slice(0, 10);
+  }
 
   await ensureOperationalMonthSafe(supabase, targetDate);
   const [{ data: occurrences, error: occurrenceError }, { data: records, error: recordError }] = await Promise.all([
@@ -89,10 +112,18 @@ export async function getTemperatureOverview(options?: { date?: string; rangeDay
       .eq("is_effective", true)
       .order("business_date", { ascending: true })
       .order("performed_at", { ascending: true })
-      .limit(600),
+      .limit(1200),
   ]);
   if (occurrenceError || recordError) throw new Error("Không tải được dữ liệu nhiệt độ");
-  return { today: targetDate, startDate, rangeDays, occurrences: occurrences ?? [], records: records ?? [] };
+  return {
+    today: targetDate,
+    startDate,
+    endDate: targetDate,
+    rangeDays,
+    filterMode: hasCustomRange || rangeDays > 1 ? ("range" as const) : ("daily" as const),
+    occurrences: occurrences ?? [],
+    records: records ?? [],
+  };
 }
 
 export async function getEquipmentOverview(date?: string, slot?: string) {
