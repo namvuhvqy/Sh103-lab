@@ -7,17 +7,14 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
-  ChevronRight,
   CircleAlert,
   Clock,
   Clock3,
   ExternalLink,
   Eye,
-  Filter,
   Image as ImageIcon,
   Loader2,
   Plus,
-  RefreshCw,
   Search,
   ShieldAlert,
   Upload,
@@ -82,7 +79,7 @@ export function IncidentsUnifiedView({
   canApprove = false,
 }: IncidentsUnifiedViewProps) {
   const router = useRouter();
-  const [incidents, setIncidents] = useState<IncidentItem[]>(initialIncidents);
+  const incidents = initialIncidents;
   const [photoMap, setPhotoMap] = useState<Record<string, IncidentPhoto[]>>(initialPhotoMap);
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);

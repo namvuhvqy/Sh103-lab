@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Loader2, Upload } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { PhotoCaptureField } from "@/components/incidents/PhotoCaptureField";
 import { createIncidentAction } from "@/lib/p5/actions";
 import { uploadIncidentPhoto, type CompressedIncidentPhoto } from "@/lib/incidents/image-client";
@@ -188,3 +188,4 @@ export function NewIncidentForm({
     </form>
   );
 }
+
